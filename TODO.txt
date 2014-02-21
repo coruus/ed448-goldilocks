@@ -1,0 +1,120 @@
+Important work items for Ed448-Goldilocks:
+
+* Import SHA-512 or SHA-3.
+    * Decide which.
+    * Get a public-domain version which is 64-bit and 32-bit clean.
+    * Update LICENSE and README to reflect that SHA is not my code.
+    * Incorporate hashing into goldilocks_shared_secret.
+        * It's a pretty terrible shared secret right now.
+        * Decide on output size
+
+* Documentation: write high-level API docs, and internal docs to help
+  other implementors.
+
+* Documentation: write a spec or add to Watson's
+
+* Cleanup: rename everything consistently.
+    * namespace_op or op_namespace?  namespace_op_type?
+    * We don't have to be super-careful with the namespacing, because
+      symbols will be scrubbed by exported.sym.
+
+* Cleanup: hard-coded tables (probably?)
+    * This reduces the work required for goldilocks_init() at the expense
+      of library size.
+     
+    * Makes error-handling and thread safety easier.
+    
+    * Use the SAGE tool?
+
+* Cleanup: unify intrinsics code
+    * Word_t, mask_t, bigregister_t, etc.
+    * Generate asm intrinsics with a script?
+
+* Bugfix: make sure that init() and randomization are thread-safe.
+
+* Security: check on deserialization that points are < p.
+    * Check also that they're nonzero or otherwise non-pathological?
+
+* Testing:
+    * Corner-case testing
+    * more bulk random testing
+    * SAGE-(auto?)-generated test vectors
+    * Test the Barrett fields
+
+* Safety: add static analysis attributes for compilers that support them
+    * EG, warn on ignored return types
+
+* Safety:
+    * Check for init() if it's still required once we've done the above
+    * Decide what to do about RNG failures
+        * abort
+        * return error and zeroize
+        * return error but continue if RNG is kind of mostly OK
+    
+* Flexibility: decide which API options are good.
+    * Eg, should functions take nbits and table sizes?
+    
+    * Remove hardcoded adjustments from comb control.
+        * These adjustments make the output wrong when it's not 450 bits.
+        
+    * Other slow Barrett fields?  Montgomery fields?
+
+* Mid-level API
+    * Make it easier to work with untwisted Edwards objects.
+    * Probably use extended or projective, not extensible coordinates.
+    * Scalarmul with other cofactor modes.
+
+* High-level API:
+    * Signatures.
+        * Decide on strictness level.
+        
+    * SPAKE2 Elligator Edition?  Maybe write a paper first.
+    
+    * Elligator.
+        * Need to write Elligator inverse.  Might not be Elligator-2S.
+    
+    * What low-level APIs to expose?
+        * Edwards points with add, sub, scalarmul, =, ==, ser/deser?
+
+* Portability: try to make the vector code as portable as possible
+    * Currently using clang ext_vector_length.
+    * I can't get a simple for-loop to autovectorize :-/
+    * SAGE tool?
+
+* Portability: make the inner layers of the code 32-bit clean.
+    * Write new versions of the field code.
+        * 28-bit limbs give less headroom for carries.
+        * NEON and vectorless ARM.
+    
+    * Run through the SAGE tool to generate new bias & bound.
+
+* Portability: make the outer layers of the code 32-bit clean.
+    * I don't think that there are endian bugs, but who knows?
+    
+    * NEON and vectorless constant-time comparison.
+
+* Performance: write and incorporate some extra routines
+    * Deserialize_and_isogeny
+    * Unconditional negate (or just plain subtract)
+
+* Performance: fixed parameters?
+    * Perhaps useful for comb precomputation.
+    
+* Performance: improve the Barrett field code.
+    * Support other primes?
+    * Capture prime shape into a struct instead of passing 3 params.
+    * Make 32-bit clean.  (SAGE?)
+
+* Automation:
+    * Improve the SAGE tool to cover more cases
+        * Real SSA classes to cover branching and looping
+        * Constant-time selection
+        * Intrinsics code
+        * Field code?
+        
+    * Vector-mul-chains
+    * Negation "bubble pushing" optimization
+
+* Clear other TODO/FIXME/HACK/PERF items in the code
+
+* Submit to SUPERCOP
