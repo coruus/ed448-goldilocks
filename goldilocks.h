@@ -148,13 +148,13 @@ goldilocks_sign (
  * @warning This isn't even my final form!
  * @warning This function contains endian bugs. (TODO)
  *
- * @param [out] signature_out Space for the output signature.
- * @param [in] message The message to be signed.
- * @param [in] message_len The length of the message to be signed.
- * @param [in] privkey My private key.
+ * @param [out] signature_out The signature.
+ * @param [in] message The message to be verified.
+ * @param [in] message_len The length of the message to be verified.
+ * @param [in] pubkey The signer's public key.
  *
  * @retval GOLDI_EOK Success.
- * @retval GOLDI_ECORRUPT My key is corrupt.
+ * @retval GOLDI_EINVAL The public key or signature is corrupt.
  */
 int
 goldilocks_verify (

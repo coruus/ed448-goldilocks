@@ -3,7 +3,7 @@
 
 CC = clang
 CFLAGS = -O3 -std=c99 -pedantic -Wall -Wextra -Werror  \
-  -mssse3 -maes -mavx2 -DMUST_HAVE_AVX -mbmi2 \
+  -mssse3 -maes -mavx2 -DMUST_HAVE_AVX2 -mbmi2 \
   -ffunction-sections -fdata-sections -fomit-frame-pointer -fPIC \
   -DEXPERIMENT_ECDH_OBLITERATE_CT=1 -DEXPERIMENT_ECDH_STIR_IN_PUBKEYS=1
 
