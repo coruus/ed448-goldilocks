@@ -256,10 +256,10 @@ goldilocks_verify (
     word_t s[448/WORD_BITS];
     
     mask_t succ = p448_deserialize(&pk,pubkey->opaque);
-    if (!succ) return EINVAL;
+    if (!succ) return GOLDI_EINVAL;
     
     succ = q448_deserialize(s, &signature[56]);
-    if (!succ) return EINVAL;
+    if (!succ) return GOLDI_EINVAL;
     
     /* challenge = H(pk, [nonceG], message).  FIXME: endian. */
     word_t challenge[512/WORD_BITS];
@@ -276,7 +276,7 @@ goldilocks_verify (
     
     /* deserialize [nonce]G */
     succ = p448_deserialize(&eph, signature);
-    if (!succ) return EINVAL;
+    if (!succ) return GOLDI_EINVAL;
     
     
     // succ = affine_deserialize(&pk_aff,&pk);
@@ -285,7 +285,7 @@ goldilocks_verify (
     // convert_affine_to_extensible(&pk_ext,&pk_aff);
     // transfer_un_to_tw(&pk_text,&pk_ext);
     succ = deserialize_and_twist_approx(&pk_text, &sqrt_d_minus_1, &pk);
-    if (!succ) return EINVAL;
+    if (!succ) return GOLDI_EINVAL;
     
     edwards_combo_var_fixed_vt( &pk_text, challenge, s, goldilocks_global.wnafs, 5 );
     
