@@ -49,7 +49,7 @@ br_is_zero(big_register_t x) {
     return (big_register_t)(x == (big_register_t)0);
 }
 #else
-#error "Todo: constant-time equality on vectorless platforms"
+#error "TODO: constant-time equality on vectorless platforms"
 #endif
 
 #endif /* __WORD_H__ */

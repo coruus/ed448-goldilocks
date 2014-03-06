@@ -18,87 +18,141 @@ extern "C" {
 #endif
 
 static __inline__ void
-p448_set_ui(p448_t *out,
-            uint64_t x)
-    __attribute__((unused,always_inline));
+p448_set_ui (
+    p448_t *out,
+    uint64_t x
+) __attribute__((unused,always_inline));
            
 static __inline__ void
-p448_cond_swap(p448_t *a,
-               p448_t *b,
-               mask_t do_swap)
-    __attribute__((unused,always_inline));
+p448_cond_swap (
+    p448_t *a,
+    p448_t *b,
+    mask_t do_swap
+) __attribute__((unused,always_inline));
 
 static __inline__ void
-p448_add(p448_t *out,
-         const p448_t *a,
-         const p448_t *b)
-    __attribute__((unused,always_inline));
+p448_add (
+    p448_t *out,
+    const p448_t *a,
+    const p448_t *b
+) __attribute__((unused,always_inline));
              
 static __inline__ void
-p448_sub(p448_t *out,
-         const p448_t *a,
-         const p448_t *b)
-    __attribute__((unused,always_inline));
+p448_sub (
+    p448_t *out,
+    const p448_t *a,
+    const p448_t *b
+) __attribute__((unused,always_inline));
              
 static __inline__ void
-p448_neg(p448_t *out,
-         const p448_t *a)
-    __attribute__((unused,always_inline));
+p448_neg (
+    p448_t *out,
+    const p448_t *a
+) __attribute__((unused,always_inline));
             
 static __inline__ void
-p448_cond_neg(p448_t *a,
-              mask_t doNegate)
-   __attribute__((unused,always_inline));
+p448_cond_neg (
+    p448_t *a,
+    mask_t doNegate
+) __attribute__((unused,always_inline));
 
 static __inline__ void
-p448_addw(p448_t *a,
-          uint64_t x)
-    __attribute__((unused,always_inline));
+p448_addw (
+    p448_t *a,
+    uint64_t x
+) __attribute__((unused,always_inline));
              
 static __inline__ void
-p448_subw(p448_t *a,
-          uint64_t x)
-    __attribute__((unused,always_inline));
+p448_subw (
+    p448_t *a,
+    uint64_t x
+) __attribute__((unused,always_inline));
              
 static __inline__ void
-p448_copy(p448_t *out, const p448_t *a)
-    __attribute__((unused,always_inline));
+p448_copy (
+    p448_t *out,
+    const p448_t *a
+) __attribute__((unused,always_inline));
              
 static __inline__ void
-p448_weak_reduce(p448_t *inout)
-    __attribute__((unused,always_inline));
+p448_weak_reduce (
+    p448_t *inout
+) __attribute__((unused,always_inline));
              
 void
-p448_strong_reduce(p448_t *inout);
+p448_strong_reduce (
+    p448_t *inout
+);
 
 mask_t
-p448_is_zero(const p448_t *in);
+p448_is_zero (
+    const p448_t *in
+);
              
 static __inline__ void
-p448_bias(p448_t *inout, int amount)
-    __attribute__((unused,always_inline));
+p448_bias (
+    p448_t *inout,
+    int amount
+) __attribute__((unused,always_inline));
          
 void
-p448_mul(p448_t *__restrict__ out,
-         const p448_t *a,
-         const p448_t *b);
+p448_mul (
+    p448_t *__restrict__ out,
+    const p448_t *a,
+    const p448_t *b
+);
 
 void
-p448_mulw(p448_t *__restrict__ out,
-          const p448_t *a,
-          uint64_t b);
+p448_mulw (
+    p448_t *__restrict__ out,
+    const p448_t *a,
+    uint64_t b
+);
 
 void
-p448_sqr(p448_t *__restrict__ out,
-         const p448_t *a);
+p448_sqr (
+    p448_t *__restrict__ out,
+    const p448_t *a
+);
          
 static __inline__ void
-p448_sqrn(p448_t *__restrict__ y, const p448_t *x, int n)
-    __attribute__((unused,always_inline));
+p448_sqrn (
+    p448_t *__restrict__ y,
+    const p448_t *x,
+    int n
+) __attribute__((unused,always_inline));
 
 void
-p448_set_ui(p448_t *out,
-            uint64_t x) {
+p448_serialize (
+    uint8_t *serial,
+    const struct p448_t *x
+);
+
+void
+q448_serialize (
+    uint8_t *serial,
+    const word_t x[7]
+);
+
+mask_t
+q448_deserialize (
+    word_t x[7],
+    const uint8_t serial[56]
+);
+
+mask_t
+p448_deserialize (
+    p448_t *x,
+    const uint8_t serial[56]
+);
+
+/* -------------- Inline functions begin here -------------- */
+
+void
+p448_set_ui (
+    p448_t *out,
+    uint64_t x
+) {
     int i;
     out->limb[0] = x;
     for (i=1; i<8; i++) {
@@ -107,21 +161,29 @@ p448_set_ui(p448_t *out,
 }
             
 void
-p448_cond_swap(p448_t *a, p448_t *b, mask_t doswap) {
-  big_register_t *aa = (big_register_t*)a;
-  big_register_t *bb = (big_register_t*)b;
-  big_register_t m = doswap;
-  
-  unsigned int i;
-  for (i=0; i<sizeof(*a)/sizeof(*aa); i++) {
-      big_register_t x = m & (aa[i]^bb[i]);
-      aa[i] ^= x;
-      bb[i] ^= x;
-  }
+p448_cond_swap (
+    p448_t *a,
+    p448_t *b,
+    mask_t doswap
+) {
+    big_register_t *aa = (big_register_t*)a;
+    big_register_t *bb = (big_register_t*)b;
+    big_register_t m = doswap;
+
+    unsigned int i;
+    for (i=0; i<sizeof(*a)/sizeof(*aa); i++) {
+        big_register_t x = m & (aa[i]^bb[i]);
+        aa[i] ^= x;
+        bb[i] ^= x;
+    }
 }
 
 void
-p448_add(p448_t *out, const p448_t *a, const p448_t *b) {
+p448_add (
+    p448_t *out,
+    const p448_t *a,
+    const p448_t *b
+) {
     unsigned int i;
     for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
         ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)b)[i];
@@ -135,7 +197,11 @@ p448_add(p448_t *out, const p448_t *a, const p448_t *b) {
 }
 
 void
-p448_sub(p448_t *out, const p448_t *a, const p448_t *b) {
+p448_sub (
+    p448_t *out,
+    const p448_t *a,
+    const p448_t *b
+) {
     unsigned int i;
     for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
         ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] - ((const uint64xn_t*)b)[i];
@@ -149,7 +215,10 @@ p448_sub(p448_t *out, const p448_t *a, const p448_t *b) {
 }
 
 void
-p448_neg(p448_t *out, const p448_t *a) {
+p448_neg (
+    p448_t *out,
+    const p448_t *a
+) {
     unsigned int i;
     for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
         ((uint64xn_t*)out)[i] = -((const uint64xn_t*)a)[i];
@@ -182,22 +251,34 @@ p448_cond_neg(
 }
 
 void
-p448_addw(p448_t *a, uint64_t x) {
+p448_addw (
+    p448_t *a,
+    uint64_t x
+) {
   a->limb[0] += x;
 }
              
 void
-p448_subw(p448_t *a, uint64_t x) {
+p448_subw (
+    p448_t *a,
+    uint64_t x
+) {
   a->limb[0] -= x;
 }
 
 void
-p448_copy(p448_t *out, const p448_t *a) {
+p448_copy (
+    p448_t *out,
+    const p448_t *a
+) {
   *out = *a;
 }
 
 void
-p448_bias(p448_t *a, int amt) {
+p448_bias (
+    p448_t *a,
+    int amt
+) {
     uint64_t co1 = ((1ull<<56)-1)*amt, co2 = co1-amt;
     uint64x4_t lo = {co1,co1,co1,co1}, hi = {co2,co1,co1,co1};
     uint64x4_t *aa = (uint64x4_t*) a;
@@ -206,8 +287,10 @@ p448_bias(p448_t *a, int amt) {
 }
 
 void
-p448_weak_reduce(p448_t *a) {
-    /* TODO: use pshufb/palignr if anyone cares about speed of this */
+p448_weak_reduce (
+    p448_t *a
+) {
+    /* PERF: use pshufb/palignr if anyone cares about speed of this */
     uint64_t mask = (1ull<<56) - 1;
     uint64_t tmp = a->limb[7] >> 56;
     int i;
@@ -218,7 +301,12 @@ p448_weak_reduce(p448_t *a) {
     a->limb[0] = (a->limb[0] & mask) + tmp;
 }
 
-void p448_sqrn(p448_t *__restrict__ y, const p448_t *x, int n) {
+void
+p448_sqrn (
+    p448_t *__restrict__ y,
+    const p448_t *x,
+    int n
+) {
     p448_t tmp;
     assert(n>0);
     if (n&1) {

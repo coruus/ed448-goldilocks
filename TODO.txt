@@ -1,15 +1,8 @@
 Important work items for Ed448-Goldilocks:
 
-* Import SHA-512 or SHA-3.
-    * Decide which.
-    * Get a public-domain version which is 64-bit and 32-bit clean.
-    * Update LICENSE and README to reflect that SHA is not my code.
-    * Incorporate hashing into goldilocks_shared_secret.
-        * It's a pretty terrible shared secret right now.
-        * Decide on output size
-
 * Documentation: write high-level API docs, and internal docs to help
   other implementors.
+    * Partial progress on Doxygenating the code.
 
 * Documentation: write a spec or add to Watson's
 
@@ -37,12 +30,13 @@ Important work items for Ed448-Goldilocks:
 
 * Testing:
     * Corner-case testing
-    * more bulk random testing
+    * More bulk random testing
+    * Negative testing.
     * SAGE-(auto?)-generated test vectors
     * Test the Barrett fields
 
 * Safety: add static analysis attributes for compilers that support them
-    * EG, warn on ignored return types
+    * Most functions now have warn on ignored return.
 
 * Safety:
     * Check for init() if it's still required once we've done the above
@@ -65,16 +59,18 @@ Important work items for Ed448-Goldilocks:
     * Scalarmul with other cofactor modes.
 
 * High-level API:
-    * Signatures.
-        * Decide on strictness level.
-        
     * SPAKE2 Elligator Edition?  Maybe write a paper first.
     
     * Elligator.
         * Need to write Elligator inverse.  Might not be Elligator-2S.
     
+    * FHMQV? Is this patented?
+    
     * What low-level APIs to expose?
         * Edwards points with add, sub, scalarmul, =, ==, ser/deser?
+
+* Portability: test and make clean with other compilers
+    * Using a fair amount of __attribute__ code.
 
 * Portability: try to make the vector code as portable as possible
     * Currently using clang ext_vector_length.
@@ -89,8 +85,7 @@ Important work items for Ed448-Goldilocks:
     * Run through the SAGE tool to generate new bias & bound.
 
 * Portability: make the outer layers of the code 32-bit clean.
-    * I don't think that there are endian bugs, but who knows?
-    
+    * There are endian bugs in the signing algorithm.
     * NEON and vectorless constant-time comparison.
 
 * Performance: write and incorporate some extra routines
@@ -99,6 +94,11 @@ Important work items for Ed448-Goldilocks:
 
 * Performance: fixed parameters?
     * Perhaps useful for comb precomputation.
+
+* Performance: Improve SHA512.
+    * Improve portability.
+    * Improve speed.
+    * Decide what things to stir into hashes for various functions.
     
 * Performance: improve the Barrett field code.
     * Support other primes?

@@ -1,0 +1,31 @@
+
+March 5, 2014:
+    First revision.
+    
+    Private keys are now longer.  They now store a copy of the public key, and
+    a secret symmetric key for signing purposes.
+    
+    Signatures are now supported, though like everything else in this library,
+    their format is not stable.  They use a deterministic Schnorr mode,
+    similar to EdDSA.  Precomputed low-latency signing is not supported (yet?).
+    The hash function is SHA-512.
+    
+    The deterministic hashing mode needs to be changed to HMAC (TODO!).  It's
+    currently envelope-MAC.
+    
+    Probably in the future there will be a distinction between ECDH key and
+    signing keys (and possibly also MQV keys etc).
+    
+    Began renaming internal functions.  Removing p448_ prefixes from EC point
+    operations.  Trying to put the verb first.  For example,
+    "p448_isogeny_un_to_tw" is now called "twist_and_double".
+    
+    Began documenting with Doxygen.  Use "make doc" to make a very incomplete
+    documentation directory.
+    
+    There have been many other internal changes.
+
+Feb 21, 2014:
+    Initial import and benchmarking scripts.
+    
+    Keygen and ECDH are implemented, but there's no hash function.

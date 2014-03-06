@@ -3,7 +3,9 @@
  * Released under the MIT License.  See LICENSE.txt for license information.
  */
 
-/* cRandom intrinsics header. */
+/** @file crandom.h
+ * @brief cRandom intrinsics header.
+ */
 
 #ifndef __CRANDOM_INTRINSICS_H__
 #define __CRANDOM_INTRINSICS_H__ 1
@@ -22,6 +24,7 @@
 #define XOP    16
 #define AVX    32
 #define AVX2   64
+#define RDRAND 128
 
 INTRINSIC u_int64_t rdtsc() {
   u_int64_t out = 0;
@@ -31,6 +34,15 @@ INTRINSIC u_int64_t rdtsc() {
   return out;
 }
 
+/**
+ * Return x unchanged, but confuse the compiler.
+ *
+ * This is mainly for use in test scripts, to prevent the value from
+ * being constant-folded or removed by dead code elimination.
+ *
+ * @param x A 64-bit number.
+ * @return The same number in a register.
+ */
 INTRINSIC u_int64_t opacify(u_int64_t x) {
   __asm__ volatile("mov %0, %0" : "+r"(x));
   return x;
@@ -87,6 +99,12 @@ INTRINSIC ssereg sse2_rotate(int r, ssereg a) {
 #ifdef __AES__
 /* don't include intrinsics file, because not all platforms have it */
 #  define MIGHT_HAVE_AESNI 1
+#  ifndef MIGHT_HAVE_RDRAND
+#    define MIGHT_HAVE_RDRAND 1
+#  endif
+#  ifndef MUST_HAVE_RDRAND
+#    define MUST_HAVE_RDRAND 0
+#  endif
 #  ifndef MUST_HAVE_AESNI
 #    define MUST_HAVE_AESNI 0
 #  endif
@@ -112,6 +130,8 @@ INTRINSIC ssereg aesenclast(ssereg subkey, ssereg block) {
 #else
 #  define MIGHT_HAVE_AESNI 0
 #  define MUST_HAVE_AESNI 0
+#  define MIGHT_HAVE_RDRAND 0
+#  define MUST_HAVE_RDRAND 0
 #endif
 
 #ifdef __XOP__
@@ -131,20 +151,22 @@ INTRINSIC ssereg xop_rotate(int amount, ssereg x) {
 #endif
 
 #define MIGHT_MASK \
-  ( SSE2  * MIGHT_HAVE_SSE2   \
-  | SSSE3 * MIGHT_HAVE_SSSE3  \
-  | AESNI * MIGHT_HAVE_AESNI  \
-  | XOP   * MIGHT_HAVE_XOP    \
-  | AVX   * MIGHT_HAVE_AVX    \
-  | AVX2  * MIGHT_HAVE_AVX2)
+  ( SSE2   * MIGHT_HAVE_SSE2   \
+  | SSSE3  * MIGHT_HAVE_SSSE3  \
+  | AESNI  * MIGHT_HAVE_AESNI  \
+  | XOP    * MIGHT_HAVE_XOP    \
+  | AVX    * MIGHT_HAVE_AVX    \
+  | RDRAND * MIGHT_HAVE_RDRAND \
+  | AVX2   * MIGHT_HAVE_AVX2)
 
 #define MUST_MASK \
-  ( SSE2  * MUST_HAVE_SSE2   \
-  | SSSE3 * MUST_HAVE_SSSE3  \
-  | AESNI * MUST_HAVE_AESNI  \
-  | XOP   * MUST_HAVE_XOP    \
-  | AVX   * MUST_HAVE_AVX    \
-  | AVX2  * MUST_HAVE_AVX2 )
+  ( SSE2   * MUST_HAVE_SSE2   \
+  | SSSE3  * MUST_HAVE_SSSE3  \
+  | AESNI  * MUST_HAVE_AESNI  \
+  | XOP    * MUST_HAVE_XOP    \
+  | AVX    * MUST_HAVE_AVX    \
+  | RDRAND * MUST_HAVE_RDRAND \
+  | AVX2   * MUST_HAVE_AVX2 )
 
 #define MIGHT_HAVE(feature) ((MIGHT_MASK & feature) == feature)
 #define MUST_HAVE(feature) ((MUST_MASK & feature) == feature)

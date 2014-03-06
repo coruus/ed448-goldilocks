@@ -7,6 +7,7 @@
 
 #include "intrinsics.h"
 #include "crandom.h"
+#include <stdio.h>
 
 volatile unsigned int crandom_features = 0;
 
@@ -26,10 +27,59 @@ unsigned int crandom_detect_features() {
     
     a=0x80000001; __asm__("cpuid" : "+a"(a), "=b"(b), "=c"(c), "=d"(d));
     if (c & 1<<11) out |= XOP;
+    if (c & 1<<30) out |= RDRAND;
 # endif
   
   return out;
 }
+
+
+
+INTRINSIC u_int64_t rdrand(int abort_on_fail) {
+    uint64_t out = 0;
+    int tries = 1000;
+    
+    if (HAVE(RDRAND)) {
+    # if defined(__x86_64__)
+        u_int64_t out, a=0;
+        for (; tries && !a; tries--) {
+            __asm__ __volatile__ (
+                "rdrand %0\n\tsetc %%al"
+                    : "=r"(out), "+a"(a) :: "cc"
+            );
+        }
+    # elif (defined(__i386__))
+        u_int32_t reg, a=0;
+        uint64_t out;
+        for (; tries && !a; tries--) {
+            __asm__ __volatile__ (
+                "rdrand %0\n\tsetc %%al"
+                    : "=r"(reg), "+a"(a) :: "cc"
+            );
+        }
+        out = reg; a = 0;
+        for (; tries && !a; tries--) {
+            __asm__ __volatile__ (
+                "rdrand %0\n\tsetc %%al"
+                    : "=r"(reg), "+a"(a) :: "cc"
+            );
+        }
+        out = out << 32 | reg;
+        return out;
+    # else
+        abort(); // whut
+    # endif
+    } else {
+        tries = 0;
+    }
+    
+    if (abort_on_fail && !tries) {
+        abort();
+    }
+    
+    return out;
+}
+
 
 /* ------------------------------- Vectorized code ------------------------------- */
 #define shuffle(x,i) _mm_shuffle_epi32(x, \
@@ -278,7 +328,7 @@ crandom_init_from_file(
         return err ? err : -1;
     }
 
-    bzero(state->buffer, 96);
+    memset(state->buffer, 0, 96);
 
     state->magic = CRANDOM_MAGIC;
     state->reseeds_mandatory = reseeds_mandatory;
@@ -292,7 +342,7 @@ crandom_init_from_buffer(
     const char initial_seed[32]
 ) {
     memcpy(state->seed, initial_seed, 32);
-    bzero(state->buffer, 96);
+    memset(state->buffer, 0, 96);
     state->reseed_countdown = state->reseed_interval = state->fill = state->ctr = state->reseeds_mandatory = 0;
     state->randomfd = -1;
     state->magic = CRANDOM_MAGIC;
@@ -305,7 +355,9 @@ crandom_generate(
     unsigned long long length
 ) {
     /* the generator isn't seeded; maybe they ignored the return value of init_from_file */
-    if (unlikely(state->magic != CRANDOM_MAGIC)) abort();
+    if (unlikely(state->magic != CRANDOM_MAGIC)) {
+        abort();
+    }
 
     int ret = 0;
 
@@ -313,8 +365,13 @@ crandom_generate(
         if (unlikely(state->fill <= 0)) {
             uint64_t iv = 0;
             if (state->reseed_interval) {
-                /* it's nondeterministic, stir in some rdtsc() */
-                iv = rdtsc();
+                /* it's nondeterministic, stir in some rdrand() or rdtsc() */
+                if (HAVE(RDRAND)) {
+                    iv = rdrand(0);
+                    if (!iv) iv = rdtsc();
+                } else {
+                    iv = rdtsc();
+                }
 
                 state->reseed_countdown--;
                 if (unlikely(state->reseed_countdown <= 0)) {
@@ -335,11 +392,13 @@ crandom_generate(
                          * is basically over-engineering for caution.  Also, the user might ignore
                          * the return code, so we still need to fill the request.
                          *
-                         * Set reseed_countdown = 1 so we'll try again later.  If the user's perf
-                         * sucks as a result of ignoring the error code while calling us in a loop,
-                         * well, he gets what he deserves.
+                         * Set reseed_countdown = 1 so we'll try again later.  If the user's
+                         * performance sucks as a result of ignoring the error code while calling
+                         * us in a loop, well, that's life.
                          */
-                        if (state->reseeds_mandatory) abort();
+                        if (state->reseeds_mandatory) {
+                            abort();
+                        }
 
                         ret = errno;
                         if (ret == 0) ret = -1;
@@ -361,7 +420,7 @@ crandom_generate(
         unsigned long long copy = (length > state->fill) ? state->fill : length;
         state->fill -= copy;
         memcpy(output, state->buffer + state->fill, copy);
-        bzero(state->buffer + state->fill, copy);
+        memset(state->buffer + state->fill, 0, copy);
         output += copy; length -= copy;
     }
 
@@ -371,11 +430,13 @@ crandom_generate(
 void
 crandom_destroy(
     struct crandom_state_t *state
-) {
-    if (state->randomfd) close(state->randomfd);
-    /* Ignore the return value, because what would it mean?
-     * "Your random device, which you were reading over NFS, lost some data"?
-     */
+) { 
+    if (state->magic == CRANDOM_MAGIC && state->randomfd) {
+        (void) close(state->randomfd);
+        /* Ignore the return value from close(), because what would it mean?
+         * "Your random device, which you were reading over NFS, lost some data"?
+         */
+    }
 
-    bzero(state, sizeof(*state));
+    memset(state, 0, sizeof(*state));
 }

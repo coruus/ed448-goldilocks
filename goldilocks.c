@@ -1,11 +1,14 @@
 /* Copyright (c) 2014 Cryptography Research, Inc.
  * Released under the MIT License.  See LICENSE.txt for license information.
  */
+#include <errno.h>
+
 #include "goldilocks.h"
 #include "ec_point.h"
 #include "scalarmul.h"
 #include "barrett_field.h"
 #include "crandom.h"
+#include "sha512.h"
 
 #ifndef GOLDILOCKS_RANDOM_INIT_FILE
 #define GOLDILOCKS_RANDOM_INIT_FILE "/dev/urandom"
@@ -28,6 +31,14 @@ const struct affine_t goldilocks_base_point = {
     {{ 19, 0, 0, 0, 0, 0, 0, 0 }}
 };
 
+// /* TODO: direct */
+// void
+// transfer_and_serialize(struct p448_t *out, const struct tw_extensible_t *twext) {
+//     struct extensible_t ext;
+//     transfer_tw_to_un(&ext, twext);
+//     serialize_extensible(out, &ext);
+// }
+
 // FIXME: threading
 // TODO: autogen instead of init
 struct {
@@ -37,16 +48,17 @@ struct {
 } goldilocks_global;
 
 int
-goldilocks_init() {
+goldilocks_init () {
     struct extensible_t ext;
     struct tw_extensible_t text;
     
     /* Sanity check: the base point is on the curve. */
-    assert(p448_affine_validate(&goldilocks_base_point));
+    assert(validate_affine(&goldilocks_base_point));
     
     /* Convert it to twisted Edwards. */
     convert_affine_to_extensible(&ext, &goldilocks_base_point);
-    p448_isogeny_un_to_tw(&text, &ext);
+    twist(&text, &ext);
+    //p448_transfer_un_to_tw(&text, &ext);
     
     /* Precompute the tables. */
     precompute_for_combs(goldilocks_global.combs, &text, 5, 5, 18);
@@ -58,61 +70,6 @@ goldilocks_init() {
         GOLDILOCKS_RANDOM_RESEEDS_MANDATORY);
 }
 
-// TODO: move to a better place
-// TODO: word size
-void
-p448_serialize(uint8_t *serial, const struct p448_t *x) {
-    int i,j;
-    p448_t red;
-    p448_copy(&red, x);
-    p448_strong_reduce(&red);
-    for (i=0; i<8; i++) {
-        for (j=0; j<7; j++) {
-            serial[7*i+j] = red.limb[i];
-            red.limb[i] >>= 8;
-        }
-        assert(red.limb[i] == 0);
-    }
-}
-
-void
-q448_serialize(uint8_t *serial, const word_t x[7]) {
-    int i,j;
-    for (i=0; i<7; i++) {
-        for (j=0; j<8; j++) {
-            serial[8*i+j] = x[i]>>(8*j);
-        }
-    }
-}
-
-mask_t
-q448_deserialize(word_t x[7], const uint8_t serial[56]) {
-    int i,j;
-    for (i=0; i<7; i++) {
-        word_t out = 0;
-        for (j=0; j<8; j++) {
-            out |= ((word_t)serial[8*i+j])<<(8*j);
-        }
-        x[i] = out;
-    }
-    // TODO: check for reduction
-    return MASK_SUCCESS;
-}
-
-mask_t
-p448_deserialize(p448_t *x, const uint8_t serial[56]) {
-    int i,j;
-    for (i=0; i<8; i++) {
-        word_t out = 0;
-        for (j=0; j<7; j++) {
-            out |= ((word_t)serial[7*i+j])<<(8*j);
-        }
-        x->limb[i] = out;
-    }
-    // TODO: check for reduction
-    return MASK_SUCCESS;
-}
-
 static word_t
 q448_lo[4] = {
     0xdc873d6d54a7bb0dull,
@@ -121,10 +78,22 @@ q448_lo[4] = {
     0x000000008335dc16ull
 };
 
+static const struct p448_t
+sqrt_d_minus_1 = {{
+    0xd2e21836749f46ull,
+    0x888db42b4f0179ull,
+    0x5a189aabdeea38ull,
+    0x51e65ca6f14c06ull,
+    0xa49f7b424d9770ull,
+    0xdcac4628c5f656ull,
+    0x49443b8748734aull,
+    0x12fec0c0b25b7aull
+}};
+
 int
-goldilocks_keygen(
-    uint8_t private[56],
-    uint8_t public[56]
+goldilocks_keygen (
+    struct goldilocks_private_key_t *privkey,
+    struct goldilocks_public_key_t *pubkey
 ) {
     // TODO: check for init.  Also maybe take CRANDOM object?  API...
     word_t sk[448*2/WORD_BITS];
@@ -134,35 +103,197 @@ goldilocks_keygen(
     
     int ret = crandom_generate(&goldilocks_global.rand, (unsigned char *)sk, sizeof(sk));
     barrett_reduce(sk,sizeof(sk)/sizeof(sk[0]),0,q448_lo,7,4,62); // TODO word size
-    q448_serialize(private, sk);
+    q448_serialize(privkey->opaque, sk);
     
     edwards_comb(&exta, sk, goldilocks_global.combs, 5, 5, 18);
-    isogeny_and_serialize(&pk, &exta);
-    p448_serialize(public, &pk);
+    //transfer_and_serialize_qtor(&pk, &sqrt_d_minus_1, &exta);
+    untwist_and_double_and_serialize(&pk, &exta);
     
-    return ret;
+    p448_serialize(pubkey->opaque, &pk);
+    memcpy(&privkey->opaque[56], pubkey->opaque, 56);
+    
+    int ret2 = crandom_generate(&goldilocks_global.rand, &privkey->opaque[112], 32);
+    if (!ret) ret = ret2;
+    
+    return ret ? GOLDI_ENODICE : GOLDI_EOK;
 }
 
 int
-goldilocks_shared_secret(
-    uint8_t shared[56],
-    const uint8_t private[56],
-    const uint8_t public[56]
+goldilocks_shared_secret (
+    uint8_t shared[64],
+    const struct goldilocks_private_key_t *my_privkey,
+    const struct goldilocks_public_key_t *your_pubkey
 ) {
-    // TODO: SHA
     word_t sk[448/WORD_BITS];
     struct p448_t pk;
     
-    mask_t succ = p448_deserialize(&pk,public);
-    succ &= q448_deserialize(sk,private);
+    mask_t succ = p448_deserialize(&pk,your_pubkey->opaque), msucc = -1;
+    
+#ifdef EXPERIMENT_ECDH_STIR_IN_PUBKEYS
+    struct p448_t sum, prod;
+    msucc &= p448_deserialize(&sum,&my_privkey->opaque[56]);
+    p448_mul(&prod,&pk,&sum);
+    p448_add(&sum,&pk,&sum);
+#endif
+    
+    msucc &= q448_deserialize(sk,my_privkey->opaque);
     succ &= p448_montgomery_ladder(&pk,&pk,sk,446,2);
     
     p448_serialize(shared,&pk);
-    // TODO: hash
     
-    if (succ) {
-        return 0;
-    } else {
-        return -1;
+    /* obliterate records of our failure by adjusting with obliteration key */
+    struct sha512_ctx_t ctx;
+    sha512_init(&ctx);
+
+#ifdef EXPERIMENT_ECDH_OBLITERATE_CT
+    uint8_t oblit[40];
+    unsigned i;
+    for (i=0; i<8; i++) {
+        oblit[i] = "noshared"[i] & ~(succ&msucc);
     }
+    for (i=0; i<32; i++) {
+        oblit[8+i] = my_privkey->opaque[112+i] & ~(succ&msucc);
+    }
+    sha512_update(&ctx, oblit, 40);
+#endif
+    
+#ifdef EXPERIMENT_ECDH_STIR_IN_PUBKEYS
+    /* stir in the sum and product of the pubkeys. */
+    uint8_t a_pk[56];
+    p448_serialize(a_pk, &sum);
+    sha512_update(&ctx, a_pk, 56);
+    p448_serialize(a_pk, &prod);
+    sha512_update(&ctx, a_pk, 56);
+#endif
+       
+    /* stir in the shared key and finish */
+    sha512_update(&ctx, shared, 56);
+    sha512_final(&ctx, shared);
+    
+    return (GOLDI_ECORRUPT & ~msucc)
+        | (GOLDI_EINVAL & msucc &~ succ)
+        | (GOLDI_EOK & msucc & succ);
+}
+
+int
+goldilocks_sign (
+    uint8_t signature_out[56*2],
+    const uint8_t *message,
+    uint64_t message_len,
+    const struct goldilocks_private_key_t *privkey
+) {
+    
+    /* challenge = H(pk, [nonceG], message).  FIXME: endian. */
+    word_t skw[448/WORD_BITS];
+    mask_t succ = q448_deserialize(skw,privkey->opaque);
+    if (!succ) {
+        memset(skw,0,sizeof(skw));
+        return GOLDI_ECORRUPT;
+    }
+        
+    /* Derive a nonce.  TODO: use HMAC. FIXME: endian.  FUTURE: factor. */
+    word_t tk[512/WORD_BITS];
+    struct sha512_ctx_t ctx;
+    sha512_init(&ctx);
+    sha512_update(&ctx, (const unsigned char *)"signonce", 8);
+    sha512_update(&ctx, &privkey->opaque[112], 32);
+    sha512_update(&ctx, message, message_len);
+    sha512_update(&ctx, &privkey->opaque[112], 32);
+    sha512_final(&ctx, (unsigned char *)tk);
+    barrett_reduce(tk,512/WORD_BITS,0,q448_lo,7,4,62); // TODO word size
+    
+    /* 4[nonce]G */
+    uint8_t signature_tmp[56];
+    struct tw_extensible_t exta;
+    struct p448_t gsk;
+    edwards_comb(&exta, tk, goldilocks_global.combs, 5, 5, 18);
+    double_tw_extensible(&exta);
+    untwist_and_double_and_serialize(&gsk, &exta);
+    p448_serialize(signature_tmp, &gsk);
+    
+    word_t challenge[512/WORD_BITS];
+    sha512_update(&ctx, &privkey->opaque[56], 56);
+    sha512_update(&ctx, signature_tmp, 56);
+    sha512_update(&ctx, message, message_len);
+    sha512_final(&ctx, (unsigned char *)challenge);
+    
+    // reduce challenge and sub.
+    barrett_negate(challenge,512/WORD_BITS,q448_lo,7,4,62);
+
+    barrett_mac(
+        tk,512/WORD_BITS,
+        challenge,512/WORD_BITS,
+        skw,448/WORD_BITS,
+        q448_lo,7,4,62
+    );
+        
+    word_t carry = add_nr_ext_packed(tk,tk,512/WORD_BITS,tk,512/WORD_BITS,-1);
+    barrett_reduce(tk,512/WORD_BITS,carry,q448_lo,7,4,62);
+        
+    memcpy(signature_out, signature_tmp, 56);
+    q448_serialize(signature_out+56, tk);
+    memset((unsigned char *)tk,0,sizeof(tk));
+    memset((unsigned char *)skw,0,sizeof(skw));
+    memset((unsigned char *)challenge,0,sizeof(challenge));
+    
+    /* response = 2(nonce_secret - sk*challenge)
+     * Nonce = 8[nonce_secret]*G
+     * PK = 2[sk]*G, except doubled (TODO)
+     * so [2] ( [response]G + 2[challenge]PK ) = Nonce
+     */
+    
+    return 0;
+}
+
+int
+goldilocks_verify (
+    const uint8_t signature[56*2],
+    const uint8_t *message,
+    uint64_t message_len,
+    const struct goldilocks_public_key_t *pubkey
+) {
+    struct p448_t pk;
+    word_t s[448/WORD_BITS];
+    
+    mask_t succ = p448_deserialize(&pk,pubkey->opaque);
+    if (!succ) return EINVAL;
+    
+    succ = q448_deserialize(s, &signature[56]);
+    if (!succ) return EINVAL;
+    
+    /* challenge = H(pk, [nonceG], message).  FIXME: endian. */
+    word_t challenge[512/WORD_BITS];
+    struct sha512_ctx_t ctx;
+    sha512_init(&ctx);
+    sha512_update(&ctx, pubkey->opaque, 56);
+    sha512_update(&ctx, signature, 56);
+    sha512_update(&ctx, message, message_len);
+    sha512_final(&ctx, (unsigned char *)challenge);
+    barrett_reduce(challenge,512/WORD_BITS,0,q448_lo,7,4,62);
+    
+    struct p448_t eph;
+    struct tw_extensible_t pk_text;
+    
+    /* deserialize [nonce]G */
+    succ = p448_deserialize(&eph, signature);
+    if (!succ) return EINVAL;
+    
+    
+    // succ = affine_deserialize(&pk_aff,&pk);
+    // if (!succ) return EINVAL;
+    // 
+    // convert_affine_to_extensible(&pk_ext,&pk_aff);
+    // transfer_un_to_tw(&pk_text,&pk_ext);
+    succ = deserialize_and_twist_approx(&pk_text, &sqrt_d_minus_1, &pk);
+    if (!succ) return EINVAL;
+    
+    edwards_combo_var_fixed_vt( &pk_text, challenge, s, goldilocks_global.wnafs, 5 );
+    
+    untwist_and_double_and_serialize( &pk, &pk_text );
+    p448_sub(&eph, &eph, &pk);
+    p448_bias(&eph, 2);
+    
+    succ = p448_is_zero(&eph);
+    
+    return succ ? 0 : GOLDI_EINVAL;
 }

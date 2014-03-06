@@ -53,6 +53,13 @@ edwards_scalar_multiply(
     const uint64_t scalar[7]
     /* TODO? int nbits */
 );
+
+void
+edwards_scalar_multiply_vlook(
+    struct tw_extensible_t *working,
+    const uint64_t scalar[7]
+    /* TODO? int nbits */
+);
     
 mask_t
 precompute_for_combs(
@@ -73,8 +80,7 @@ edwards_comb(
     int s
 );
 
-/* TODO: void.  int is just for diagnostic purposes. */
-int
+void
 edwards_scalar_multiply_vt(
     struct tw_extensible_t *working,
     const uint64_t scalar[7]
@@ -95,8 +101,7 @@ precompute_for_wnaf(
     int tbits
 ); /* TODO: attr don't ignore... */
 
-/* TODO: void.  int is just for diagnostic purposes. */
-int
+void
 edwards_combo_var_fixed_vt(
     struct tw_extensible_t *working,
     const uint64_t scalar_var[7],

@@ -14,6 +14,7 @@
 #include "barrett_field.h"
 #include "crandom.h"
 #include "goldilocks.h"
+#include "sha512.h"
 
 word_t q448_lo[4] = {
     0xdc873d6d54a7bb0dull,
@@ -129,6 +130,23 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("rand448:     %5.1fns\n", when * 1e9 / i);
     
+    struct sha512_ctx_t sha;
+    uint8_t hashout[128];
+    when = now();
+    for (i=0; i<10000; i++) {
+        sha512_init(&sha);
+        sha512_final(&sha, hashout);
+    }
+    when = now() - when;
+    printf("sha512 1blk: %5.1fns\n", when * 1e9 / i);
+    
+    when = now();
+    for (i=0; i<10000; i++) {
+        sha512_update(&sha, hashout, 128);
+    }
+    when = now() - when;
+    printf("sha512 blk:  %5.1fns (%0.2f MB/s)\n", when * 1e9 / i, 128*i/when/1e6);
+    
     when = now();
     for (i=0; i<10000; i++) {
         p448_isr(&c, &a);
@@ -161,7 +179,7 @@ int main(int argc, char **argv) {
     for (i=0; i<100; i++) {
         p448_randomize(&crand, &a);
         elligator_2s_inject(&affine, &a);
-        if (!p448_affine_validate(&affine)) {
+        if (!validate_affine(&affine)) {
             printf("Elligator validation failure!\n");
             p448_print("a", &a);
             p448_print("x", &affine.x);
@@ -171,14 +189,14 @@ int main(int argc, char **argv) {
     
     when = now();
     for (i=0; i<10000; i++) {
-        affine_deserialize(&affine, &a);
+        deserialize_affine(&affine, &a);
     }
     when = now() - when;
     printf("decompress:  %5.1fµs\n", when * 1e6 / i);
     
     when = now();
     for (i=0; i<10000; i++) {
-        extensible_serialize(&a, &exta);
+        serialize_extensible(&a, &exta);
     }
     when = now() - when;
     printf("compress:    %5.1fµs\n", when * 1e6 / i);
@@ -186,8 +204,8 @@ int main(int argc, char **argv) {
     int goods = 0;
     for (i=0; i<100; i++) {
         p448_randomize(&crand, &a);
-        mask_t good = affine_deserialize(&affine, &a);
-        if (good & !p448_affine_validate(&affine)) {
+        mask_t good = deserialize_affine(&affine, &a);
+        if (good & !validate_affine(&affine)) {
             printf("Deserialize validation failure!\n");
             p448_print("a", &a);
             p448_print("x", &affine.x);
@@ -195,7 +213,7 @@ int main(int argc, char **argv) {
         } else if (good) {
             goods++;
             convert_affine_to_extensible(&exta,&affine);
-            extensible_serialize(&b, &exta);
+            serialize_extensible(&b, &exta);
             p448_sub(&c,&b,&a);
             p448_bias(&c,2);
             if (!p448_is_zero(&c)) {
@@ -203,7 +221,7 @@ int main(int argc, char **argv) {
                 p448_print("a", &a);
                 p448_print("x", &affine.x);
                 p448_print("y", &affine.y);
-                affine_deserialize(&affine, &b);
+                deserialize_affine(&affine, &b);
                 p448_print("b", &b);
                 p448_print("x", &affine.x);
                 p448_print("y", &affine.y);
@@ -230,52 +248,52 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("barrett red: %5.1fns\n", when * 1e9 / i);
-    
-    when = now();
-    for (i=0; i<100000; i++) {
-        barrett_mac(lsk,7,lsk,7,lsk,7,q448_lo,7,4,62);
-    }
-    when = now() - when;
-    printf("barrett mac: %5.1fns\n", when * 1e9 / i);
+    // 
+    // when = now();
+    // for (i=0; i<100000; i++) {
+    //     barrett_mac(lsk,7,lsk,7,lsk,7,q448_lo,7,4,62);
+    // }
+    // when = now() - when;
+    // printf("barrett mac: %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<1000000; i++) {
-        p448_tw_extensible_add_niels(&ext, &niels);
+        add_tw_niels_to_tw_extensible(&ext, &niels);
     }
     when = now() - when;
     printf("exti+niels:  %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<1000000; i++) {
-        p448_tw_extensible_add_pniels(&ext, &pniels);
+        add_tw_pniels_to_tw_extensible(&ext, &pniels);
     }
     when = now() - when;
     printf("exti+pniels: %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<1000000; i++) {
-        p448_tw_extensible_double(&ext);
+        double_tw_extensible(&ext);
     }
     when = now() - when;
     printf("exti dbl:    %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<1000000; i++) {
-        p448_isogeny_tw_to_un(&exta, &ext);
+        untwist_and_double(&exta, &ext);
     }
     when = now() - when;
     printf("i->a isog:   %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<1000000; i++) {
-        p448_isogeny_un_to_tw(&ext, &exta);
+        twist_and_double(&ext, &exta);
     }
     when = now() - when;
     printf("a->i isog:   %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<1000000; i++) {
-        p448_montgomery_step(&mb);
+        montgomery_step(&mb);
     }
     when = now() - when;
     printf("monty step:  %5.1fns\n", when * 1e9 / i);
@@ -295,14 +313,20 @@ int main(int argc, char **argv) {
     printf("edwards smz: %5.1fµs\n", when * 1e6 / i);
     
     when = now();
-    int sum = 0;
     for (i=0; i<1000; i++) {
-        q448_randomize(&crand, sk);
-        sum += edwards_scalar_multiply_vt(&ext,sk);
+        edwards_scalar_multiply_vlook(&ext,sk);
+        untwist_and_double_and_serialize(&a,&ext);
     }
     when = now() - when;
-    printf("edwards vtm: %5.1fµs (%0.2f avg bits = 1.5 + 448/%0.2f)\n",
-        when * 1e6 / i, 1.0*sum/i, 448.0*i/(sum-1.5*i));
+    printf("edwards svl: %5.1fµs\n", when * 1e6 / i);
+    
+    when = now();
+    for (i=0; i<1000; i++) {
+        q448_randomize(&crand, sk);
+        edwards_scalar_multiply_vt(&ext,sk);
+    }
+    when = now() - when;
+    printf("edwards vtm: %5.1fµs\n", when * 1e6 / i);
     
     struct tw_niels_t wnaft[1<<6];
     when = now();
@@ -351,23 +375,22 @@ int main(int argc, char **argv) {
     printf("edwards vt5: %5.1fµs\n", when * 1e6 / i);
     
     when = now();
-    sum = 0;
     for (i=0; i<1000; i++) {
         q448_randomize(&crand, sk);
         q448_randomize(&crand, tk);
-        sum += edwards_combo_var_fixed_vt(&ext,sk,tk,wnaft,5);
+        edwards_combo_var_fixed_vt(&ext,sk,tk,wnaft,5);
     }
     when = now() - when;
-    printf("vt vf combo: %5.1fµs (avg = %0.3f)\n", when * 1e6 / i, 1.0*sum/i);
+    printf("vt vf combo: %5.1fµs\n", when * 1e6 / i);
     
     when = now();
     for (i=0; i<1000; i++) {
-        affine_deserialize(&affine, &a);
+        deserialize_affine(&affine, &a);
         convert_affine_to_extensible(&exta,&affine);
-        p448_isogeny_un_to_tw(&ext,&exta);
+        twist_and_double(&ext,&exta);
         edwards_scalar_multiply(&ext,sk);
-        p448_isogeny_tw_to_un(&exta,&ext);
-        extensible_serialize(&b, &exta);
+        untwist_and_double(&exta,&ext);
+        serialize_extensible(&b, &exta);
     }
     when = now() - when;
     printf("edwards sm:  %5.1fµs\n", when * 1e6 / i);
@@ -376,10 +399,10 @@ int main(int argc, char **argv) {
 
     while (1) {
         p448_randomize(&crand, &a);
-        if (affine_deserialize(&affine, &a)) break;
+        if (deserialize_affine(&affine, &a)) break;
     }
     convert_affine_to_extensible(&exta,&affine);
-    p448_isogeny_un_to_tw(&ext,&exta);
+    twist_and_double(&ext,&exta);
     when = now();
     for (i=0; i<1000; i++) {
         precompute_for_combs(table, &ext, 5, 5, 18);
@@ -400,13 +423,6 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("com(3,5,30): %5.1fµs\n", when * 1e6 / i);
-    
-    when = now();
-    for (i=0; i<10000; i++) {
-        edwards_comb(&ext, sk, table, 2, 5, 45);
-    }
-    when = now() - when;
-    printf("com(2,5,45): %5.1fµs\n", when * 1e6 / i);
 
     when = now();
     for (i=0; i<10000; i++) {
@@ -419,8 +435,8 @@ int main(int argc, char **argv) {
     for (i=0; i<10000; i++) {
         q448_randomize(&crand, sk);
         edwards_comb(&ext, sk, table, 5, 5, 18);
-        p448_isogeny_tw_to_un(&exta,&ext);
-        extensible_serialize(&b, &exta);
+        untwist_and_double(&exta,&ext);
+        serialize_extensible(&b, &exta);
     }
     when = now() - when;
     printf("keygen:      %5.1fµs\n", when * 1e6 / i);
@@ -430,14 +446,15 @@ int main(int argc, char **argv) {
     int res = goldilocks_init();
     assert(!res);
     
-    uint8_t gpk[56],gsk[56],hsk[56],hpk[56];
+    struct goldilocks_public_key_t gpk,hpk;
+    struct goldilocks_private_key_t gsk,hsk;
     
     when = now();
     for (i=0; i<10000; i++) {
         if (i&1) {
-            res = goldilocks_keygen(gsk,gpk);
+            res = goldilocks_keygen(&gsk,&gpk);
         } else {
-            res = goldilocks_keygen(hsk,hpk);
+            res = goldilocks_keygen(&hsk,&hpk);
         }
         assert(!res);
     }
@@ -449,14 +466,14 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<10000; i++) {
         if (i&1) {
-            gres1 = goldilocks_shared_secret(ss1,gsk,hpk);
+            gres1 = goldilocks_shared_secret(ss1,&gsk,&hpk);
         } else {
-            gres2 = goldilocks_shared_secret(ss2,hsk,gpk);
+            gres2 = goldilocks_shared_secret(ss2,&hsk,&gpk);
         }
     }
     when = now() - when;
     printf("ecdh:        %5.1fµs\n", when * 1e6 / i);
-    if (gres1 || gres2 || memcmp(ss1,ss2,56)) {
+    if (gres1 || gres2 || memcmp(ss1,ss2,64)) {
         printf("[FAIL] %d %d\n",gres1,gres2);
         
         printf("ss1 = ");
@@ -470,9 +487,39 @@ int main(int argc, char **argv) {
         printf("\n");
     }
     
+    uint8_t sout[56*2];
+    const char *message = "hello world";
+    uint64_t message_len = strlen(message);
+    when = now();
+    for (i=0; i<10000; i++) {
+        res = goldilocks_sign(sout,(const unsigned char *)message,message_len,&gsk);
+        assert(!res);
+    }
+    when = now() - when;
+    printf("sign:        %5.1fµs\n", when * 1e6 / i);
+    
+    when = now();
+    for (i=0; i<10000; i++) {
+        res = goldilocks_verify(sout,(const unsigned char *)message,message_len,&gpk);
+    }
+    when = now() - when;
+    printf("verify:      %5.1fµs\n", when * 1e6 / i);
+    
     printf("\nTesting...\n");
     
+    
     int failures=0, successes = 0;
+    for (i=0; i<1000; i++) {
+        (void)goldilocks_keygen(&gsk,&gpk);
+        goldilocks_sign(sout,(const unsigned char *)message,message_len,&gsk);
+        res = goldilocks_verify(sout,(const unsigned char *)message,message_len,&gpk);
+        if (res) failures++;
+    }
+    if (failures) {
+        printf("FAIL %d/%d signature checks!\n", failures, i);
+    }
+    
+    failures=0; successes = 0;
     for (i=0; i<1000; i++) {
         p448_randomize(&crand, &a);
 		uint64_t two = 2;
@@ -501,14 +548,14 @@ int main(int argc, char **argv) {
         mask_t good;
         do {
             p448_randomize(&crand, &a);
-            good = affine_deserialize(&affine, &a);
+            good = deserialize_affine(&affine, &a);
         } while (!good);
         
         convert_affine_to_extensible(&exta,&affine);
-        p448_isogeny_un_to_tw(&ext,&exta);
-        p448_isogeny_tw_to_un(&exta,&ext);
-        extensible_serialize(&b, &exta);
-        isogeny_and_serialize(&c, &ext);
+        twist_and_double(&ext,&exta);
+        untwist_and_double(&exta,&ext);
+        serialize_extensible(&b, &exta);
+        untwist_and_double_and_serialize(&c, &ext);
         
         p448_sub(&d,&b,&c);
         p448_bias(&d,2);
@@ -536,12 +583,12 @@ int main(int argc, char **argv) {
         mask_t good = p448_montgomery_ladder(&b,&a,&four,3,0);
         good &= p448_montgomery_ladder(&c,&b,sk,448,0);
         
-        mask_t goodb = affine_deserialize(&affine, &a);
+        mask_t goodb = deserialize_affine(&affine, &a);
         convert_affine_to_extensible(&exta,&affine);
-        p448_isogeny_un_to_tw(&ext,&exta);
+        twist_and_double(&ext,&exta);
         edwards_scalar_multiply(&ext,sk);
-        p448_isogeny_tw_to_un(&exta,&ext);
-        extensible_serialize(&b, &exta);
+        untwist_and_double(&exta,&ext);
+        serialize_extensible(&b, &exta);
         
         p448_sub(&d,&b,&c);
         p448_bias(&d,2);
@@ -573,14 +620,14 @@ int main(int argc, char **argv) {
         good &= p448_montgomery_ladder(&c,&b,sk,448,0);
         if (!good) continue;
         
-        affine_deserialize(&affine, &a);
+        deserialize_affine(&affine, &a);
         convert_affine_to_extensible(&exta,&affine);
-        p448_isogeny_un_to_tw(&ext,&exta);
+        twist_and_double(&ext,&exta);
         
         precompute_for_combs(table, &ext, 5, 5, 18);
         edwards_comb(&ext, sk, table, 5, 5, 18);
-        p448_isogeny_tw_to_un(&exta,&ext);
-        extensible_serialize(&b, &exta);
+        untwist_and_double(&exta,&ext);
+        serialize_extensible(&b, &exta);
         
         p448_sub(&d,&b,&c);
         p448_bias(&d,2);
@@ -606,21 +653,21 @@ int main(int argc, char **argv) {
         q448_randomize(&crand, sk);
 		if (!i) bzero(&sk, sizeof(sk));
         
-        mask_t good = affine_deserialize(&affine, &a);
+        mask_t good = deserialize_affine(&affine, &a);
         if (!good) continue;
         
         convert_affine_to_extensible(&exta,&affine);
-        p448_isogeny_un_to_tw(&ext,&exta);
+        twist_and_double(&ext,&exta);
         struct tw_extensible_t exu;
         copy_tw_extensible(&exu, &ext);
         
         edwards_scalar_multiply(&ext,sk);
-        p448_isogeny_tw_to_un(&exta,&ext);
-        extensible_serialize(&b, &exta);
+        untwist_and_double(&exta,&ext);
+        serialize_extensible(&b, &exta);
         
         edwards_scalar_multiply_vt(&exu,sk);
-        p448_isogeny_tw_to_un(&exta,&exu);
-        extensible_serialize(&c, &exta);
+        untwist_and_double(&exta,&exu);
+        serialize_extensible(&c, &exta);
         
         p448_sub(&d,&b,&c);
         p448_bias(&d,2);
@@ -646,22 +693,22 @@ int main(int argc, char **argv) {
         q448_randomize(&crand, sk);
 		if (!i) bzero(&sk, sizeof(sk));
         
-        mask_t good = affine_deserialize(&affine, &a);
+        mask_t good = deserialize_affine(&affine, &a);
         if (!good) continue;
         
         convert_affine_to_extensible(&exta,&affine);
-        p448_isogeny_un_to_tw(&ext,&exta);
+        twist_and_double(&ext,&exta);
         struct tw_extensible_t exu;
         copy_tw_extensible(&exu, &ext);
         
         edwards_scalar_multiply(&ext,sk);
-        p448_isogeny_tw_to_un(&exta,&ext);
-        extensible_serialize(&b, &exta);
+        untwist_and_double(&exta,&ext);
+        serialize_extensible(&b, &exta);
 
         precompute_for_wnaf(wnaft,&exu,5);
         edwards_scalar_multiply_vt_pre(&exu,sk,wnaft,5);
-        p448_isogeny_tw_to_un(&exta,&exu);
-        extensible_serialize(&c, &exta);
+        untwist_and_double(&exta,&exu);
+        serialize_extensible(&c, &exta);
         
         p448_sub(&d,&b,&c);
         p448_bias(&d,2);
@@ -695,15 +742,15 @@ int main(int argc, char **argv) {
         mask_t good;
         do {
             p448_randomize(&crand, &a);
-            good = affine_deserialize(&affine, &a);
+            good = deserialize_affine(&affine, &a);
             convert_affine_to_extensible(&exta,&affine);
-            p448_isogeny_un_to_tw(&ext,&exta);
+            twist_and_double(&ext,&exta);
         } while (!good);
         do {
             p448_randomize(&crand, &aa);
-            good = affine_deserialize(&affine, &aa);
+            good = deserialize_affine(&affine, &aa);
             convert_affine_to_extensible(&exta,&affine);
-            p448_isogeny_un_to_tw(&exu,&exta);
+            twist_and_double(&exu,&exta);
         } while (!good);
         p448_randomize(&crand, &aa);
         
@@ -717,14 +764,14 @@ int main(int argc, char **argv) {
         edwards_scalar_multiply(&exv,sk);
         edwards_scalar_multiply(&exw,tk);
         convert_tw_extensible_to_tw_pniels(&pniels, &exw);
-        p448_tw_extensible_add_pniels(&exv,&pniels);
-        p448_isogeny_tw_to_un(&exta,&exv);
-        extensible_serialize(&b, &exta);
+        add_tw_pniels_to_tw_extensible(&exv,&pniels);
+        untwist_and_double(&exta,&exv);
+        serialize_extensible(&b, &exta);
 
         precompute_for_wnaf(wnaft,&exu,5);
         edwards_combo_var_fixed_vt(&ext,sk,tk,wnaft,5);
-        p448_isogeny_tw_to_un(&exta,&exv);
-        extensible_serialize(&c, &exta);
+        untwist_and_double(&exta,&exv);
+        serialize_extensible(&c, &exta);
         
         p448_sub(&d,&b,&c);
         p448_bias(&d,2);

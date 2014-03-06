@@ -44,6 +44,16 @@ sub_nr_ext_packed(
     int nwords_c,
     word_t mask
 );
+    
+void
+barrett_negate (
+    word_t *a,
+    int nwords_a,
+    const word_t *p_lo,
+    int nwords_p,
+    int nwords_lo,
+    int p_shift
+);
 
 /*
  * If doMac, accum = accum + a*b mod p.

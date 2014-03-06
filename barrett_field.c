@@ -110,6 +110,42 @@ widemac(
 }
 
 void
+barrett_negate (
+    word_t *a,
+    int nwords_a,
+    const word_t *p_lo,
+    int nwords_p,
+    int nwords_lo,
+    int p_shift
+) {
+    int i;
+    dsword_t carry = 0;
+    
+    barrett_reduce(a,nwords_a,0,p_lo,nwords_p,nwords_lo,p_shift);
+    
+    /* Have p = 2^big - p_lo.  Want p - a = 2^big - p_lo - a */
+    
+    for (i=0; i<nwords_lo; i++) {
+        a[i] = carry = carry - p_lo[i] - a[i];
+        carry >>= WORD_BITS;
+    }
+    for (; i<nwords_p; i++) {
+        a[i] = carry = carry - a[i];
+        if (i<nwords_p-1) {
+            carry >>= WORD_BITS;
+        }
+    }
+    
+    a[nwords_p-1] = carry = carry + (((word_t)1) << p_shift);
+    
+    for (; i<nwords_a; i++) {
+        assert(!a[i]);
+    }
+    
+    assert(!(carry>>64));
+}
+
+void
 barrett_reduce(
     word_t *a,
     int nwords_a,
@@ -195,14 +231,6 @@ barrett_mul_or_mac(
         tmp[i] = 0;
     }
     
-    if (doMac) {
-        for (i=0; i<nwords_accum; i++) {
-            tmp[i] = accum[i];
-        }
-
-        barrett_reduce(tmp, nwords_tmp, 0, p_lo, nwords_p, nwords_lo, p_shift);
-    }
-    
     for (bpos=nwords_b-1; bpos >= 0; bpos--) {
         /* Invariant at the beginning of the loop: the high word is unused. */
         assert(tmp[nwords_tmp-1] == 0);
@@ -211,6 +239,7 @@ barrett_mul_or_mac(
         for (i=nwords_tmp-2; i>=0; i--) {
             tmp[i+1] = tmp[i];
         }
+        tmp[0] = 0;
 
         /* mac and reduce */
         word_t carry = widemac(tmp, nwords_tmp, a, nwords_a, b[bpos], 0);
@@ -221,6 +250,11 @@ barrett_mul_or_mac(
         
         /* at this point, the number of words used is nwords_p <= nwords_tmp-1,
          * so the high word is again clear */
+    }
+    
+    if (doMac) {
+        word_t cout = add_nr_packed(tmp, accum, nwords_accum);
+        barrett_reduce(tmp, nwords_tmp, cout, p_lo, nwords_p, nwords_lo, p_shift);
     }
     
     for (i=0; i<nwords_tmp && i<nwords_accum; i++) {

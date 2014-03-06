@@ -1,10 +1,14 @@
-/* Copyright (c) 2014 Cryptography Research, Inc.
- * Released under the MIT License.  See LICENSE.txt for license information.
+/**
+ * @file ec_point.h
+ * @copyright
+ *   Copyright (c) 2014 Cryptography Research, Inc.  \n
+ *   Released under the MIT License.  See LICENSE.txt for license information.
+ * @author Mike Hamburg
+ * @warning This file was automatically generated.
  */
 
-/* This file was generated with the assistance of a tool written in SAGE. */
-#ifndef __CC_INCLUDED_P448_EDWARDS_H__
-#define __CC_INCLUDED_P448_EDWARDS_H__
+#ifndef __CC_INCLUDED_EC_POINT_H__
+#define __CC_INCLUDED_EC_POINT_H__
 
 #include "p448.h"
 
@@ -12,28 +16,28 @@
 extern "C" {
 #endif
 
-/*
+/**
  * Affine point on an Edwards curve.
  */
 struct affine_t {
     struct p448_t x, y;
 };
 
-/*
+/**
  * Affine point on a twisted Edwards curve.
  */
 struct tw_affine_t {
     struct p448_t x, y;
 };
 
-/*
+/**
  * Montgomery buffer.
  */
 struct montgomery_t {
     struct p448_t z0, xd, zd, xa, za;
 };
 
-/*
+/**
  * Extensible coordinates for Edwards curves, suitable for
  * accumulators.
  * 
@@ -55,7 +59,7 @@ struct extensible_t {
     struct p448_t x, y, z, t, u;
 };
 
-/*
+/**
  * Extensible coordinates for twisted Edwards curves,
  * suitable for accumulators.
  */
@@ -63,16 +67,18 @@ struct tw_extensible_t {
     struct p448_t x, y, z, t, u;
 };
 
-/*
- * Niels coordinates for twisted Edwards curves.  Good for
- * mixed readdition; suitable for fixed tables.
+/**
+ * Niels coordinates for twisted Edwards curves.
+ * 
+ * Good for mixed readdition; suitable for fixed tables.
  */
 struct tw_niels_t {
     struct p448_t a, b, c;
 };
 
-/*
+/**
  * Projective niels coordinates for twisted Edwards curves.
+ * 
  * Good for readdition; suitable for temporary tables.
  */
 struct tw_pniels_t {
@@ -81,7 +87,7 @@ struct tw_pniels_t {
 };
 
 
-/*
+/**
  * Auto-generated copy method.
  */
 static __inline__ void
@@ -90,7 +96,7 @@ copy_affine (
     const struct affine_t* ds
 ) __attribute__((unused,always_inline));
 
-/*
+/**
  * Auto-generated copy method.
  */
 static __inline__ void
@@ -99,7 +105,7 @@ copy_tw_affine (
     const struct tw_affine_t* ds
 ) __attribute__((unused,always_inline));
 
-/*
+/**
  * Auto-generated copy method.
  */
 static __inline__ void
@@ -108,7 +114,7 @@ copy_montgomery (
     const struct montgomery_t* ds
 ) __attribute__((unused,always_inline));
 
-/*
+/**
  * Auto-generated copy method.
  */
 static __inline__ void
@@ -117,7 +123,7 @@ copy_extensible (
     const struct extensible_t* ds
 ) __attribute__((unused,always_inline));
 
-/*
+/**
  * Auto-generated copy method.
  */
 static __inline__ void
@@ -126,7 +132,7 @@ copy_tw_extensible (
     const struct tw_extensible_t* ds
 ) __attribute__((unused,always_inline));
 
-/*
+/**
  * Auto-generated copy method.
  */
 static __inline__ void
@@ -135,7 +141,7 @@ copy_tw_niels (
     const struct tw_niels_t* ds
 ) __attribute__((unused,always_inline));
 
-/*
+/**
  * Auto-generated copy method.
  */
 static __inline__ void
@@ -144,7 +150,7 @@ copy_tw_pniels (
     const struct tw_pniels_t* ds
 ) __attribute__((unused,always_inline));
 
-/*
+/**
  * Returns 1/sqrt(+- x).
  * 
  * The Legendre symbol of the result is the same as that of the
@@ -158,7 +164,7 @@ p448_isr (
     const struct p448_t* x
 );
 
-/*
+/**
  * Returns 1/x.
  * 
  * If x=0, returns 0.
@@ -169,56 +175,80 @@ p448_inverse (
     const struct p448_t* x
 );
 
-/*
+/**
  * Add two points on a twisted Edwards curve, one in Extensible form
  * and the other in half-Niels form.
  */
 void
-p448_tw_extensible_add_niels (
+add_tw_niels_to_tw_extensible (
     struct tw_extensible_t*  d,
     const struct tw_niels_t* e
 );
 
-/*
+/**
+ * Add two points on a twisted Edwards curve, one in Extensible form
+ * and the other in half-Niels form.
+ */
+void
+sub_tw_niels_from_tw_extensible (
+    struct tw_extensible_t*  d,
+    const struct tw_niels_t* e
+);
+
+/**
  * Add two points on a twisted Edwards curve, one in Extensible form
  * and the other in projective Niels form.
  */
 void
-p448_tw_extensible_add_pniels (
+add_tw_pniels_to_tw_extensible (
     struct tw_extensible_t*   e,
     const struct tw_pniels_t* a
 );
 
-/*
+/**
+ * Add two points on a twisted Edwards curve, one in Extensible form
+ * and the other in projective Niels form.
+ */
+void
+sub_tw_pniels_from_tw_extensible (
+    struct tw_extensible_t*   e,
+    const struct tw_pniels_t* a
+);
+
+/**
  * Double a point on a twisted Edwards curve, in "extensible" coordinates.
  */
 void
-p448_tw_extensible_double (
+double_tw_extensible (
     struct tw_extensible_t* a
 );
 
-/*
+/**
  * Double a point on an Edwards curve, in "extensible" coordinates.
  */
 void
-p448_extensible_double (
+double_extensible (
     struct extensible_t* a
 );
 
-/*
- * 4-isogeny from untwisted to twisted.
+/**
+ * Double a point, and transfer it to the twisted curve.
+ * 
+ * That is, apply the 4-isogeny.
  */
 void
-p448_isogeny_un_to_tw (
+twist_and_double (
     struct tw_extensible_t*    b,
     const struct extensible_t* a
 );
 
-/*
- * Dual 4-isogeny from twisted to untwisted.
+/**
+ * Double a point, and transfer it to the untwisted curve.
+ * 
+ * That is, apply the dual isogeny.
  */
 void
-p448_isogeny_tw_to_un (
+untwist_and_double (
     struct extensible_t*          b,
     const struct tw_extensible_t* a
 );
@@ -260,47 +290,80 @@ convert_tw_niels_to_tw_extensible (
 );
 
 void
-p448_montgomery_step (
+montgomery_step (
     struct montgomery_t* a
 );
 
 void
-p448_montgomery_serialize (
+serialize_montgomery (
     struct p448_t*             sign,
     struct p448_t*             ser,
     const struct montgomery_t* a,
     const struct p448_t*       sbz
 );
 
-/*
- * Serialize a point on an Edwards curve
- * The serialized form would be sqrt((z-y)/(z+y)) with sign of xz
+/**
+ * Serialize a point on an Edwards curve.
+ * 
+ * The serialized form would be sqrt((z-y)/(z+y)) with sign of xz.
+ * 
  * It would be on 4y^2/(1-d) = x^3 + 2(1+d)/(1-d) * x^2 + x.
+ * 
  * But 4/(1-d) isn't square, so we need to twist it:
+ * 
  * -x is on 4y^2/(d-1) = x^3 + 2(d+1)/(d-1) * x^2 + x
  */
 void
-extensible_serialize (
+serialize_extensible (
     struct p448_t*             b,
     const struct extensible_t* a
 );
 
-/*
+/**
  * 
  */
 void
-isogeny_and_serialize (
+untwist_and_double_and_serialize (
     struct p448_t*                b,
     const struct tw_extensible_t* a
 );
 
-/*
- * Deserialize a point to an untwisted affine curve
+/**
+ * Expensive transfer from untwisted to twisted.  Roughly equivalent to halve and isogeny.
+ * Correctly transfers point of order 2.
+ * 
+ * Can't have x=+1 (it's not even).  There is code to fix the exception that would otherwise
+ * occur at (0,1).
+ * 
+ * Input point must be even.
+ */
+void
+twist (
+    struct tw_extensible_t*    b,
+    const struct extensible_t* a
+);
+
+/**
+ * Deserialize a point to an untwisted affine curve.
  */
 mask_t
-affine_deserialize (
+deserialize_affine (
     struct affine_t*     a,
     const struct p448_t* sz
+);
+
+/**
+ * Deserialize a point and transfer it to the twist.
+ * 
+ * Not guaranteed to preserve the 4-torsion component.
+ * 
+ * Refuses to deserialize +-1, which are the points of order 2.
+ */
+mask_t
+deserialize_and_twist_approx (
+    struct tw_extensible_t* a,
+    const struct p448_t*    sdm1,
+    const struct p448_t*    sz
 );
 
 void
@@ -343,17 +406,17 @@ elligator_2s_inject (
 );
 
 mask_t
-p448_affine_validate (
+validate_affine (
     const struct affine_t* a
 );
 
-/*
+/**
  * Check the invariants for struct tw_extensible_t.
  * PERF: This function was automatically generated
  * with no regard for speed.
  */
 mask_t
-p448_tw_extensible_validate (
+validate_tw_extensible (
     const struct tw_extensible_t* ext
 );
 
@@ -437,4 +500,4 @@ copy_tw_pniels (
 }; /* extern "C" */
 #endif
 
-#endif /* __CC_INCLUDED_P448_EDWARDS_H__ */
+#endif /* __CC_INCLUDED_EC_POINT_H__ */

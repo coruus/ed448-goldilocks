@@ -30,7 +30,7 @@ p448_montgomery_ladder(
             mask_t flip = -((w>>i)&1);
             p448_cond_swap(&mont.xa,&mont.xd,flip^pflip);
             p448_cond_swap(&mont.za,&mont.zd,flip^pflip);
-            p448_montgomery_step(&mont);
+            montgomery_step(&mont);
             pflip = flip;
         }
         n = 63;
@@ -39,35 +39,35 @@ p448_montgomery_ladder(
     p448_cond_swap(&mont.za,&mont.zd,pflip);
     
     for (j=0; j<n_extra_doubles; j++) {
-        p448_montgomery_step(&mont);
+        montgomery_step(&mont);
     }
     
     struct p448_t sign;
-    p448_montgomery_serialize(&sign, out, &mont, in);
+    serialize_montgomery(&sign, out, &mont, in);
     
     p448_addw(&sign,1);
     return ~p448_is_zero(&sign);
 }
 
 static __inline__ void
-niels_cond_negate(
+cond_negate_tw_niels(
     struct tw_niels_t *n,
     mask_t doNegate
 ) {
     p448_cond_swap(&n->a, &n->b, doNegate);
-    p448_cond_neg(&n->c, doNegate); /* TODO: bias amt? */
+    p448_cond_neg(&n->c, doNegate);
 }
 
 static __inline__ void
-pniels_cond_negate(
+cond_negate_tw_pniels(
     struct tw_pniels_t *n,
     mask_t doNegate
 ) {
-    niels_cond_negate(&n->n, doNegate);
+    cond_negate_tw_niels(&n->n, doNegate);
 }
 
 void    
-constant_time_lookup_pniels(
+constant_time_lookup_tw_pniels(
     struct tw_pniels_t *out,
     const struct tw_pniels_t *in,
     int nin,
@@ -89,7 +89,7 @@ constant_time_lookup_pniels(
 }
 
 static __inline__ void    
-constant_time_lookup_niels(
+constant_time_lookup_tw_niels(
     struct tw_niels_t *out,
     const struct tw_niels_t *in,
     int nin,
@@ -165,7 +165,7 @@ edwards_scalar_multiply(
 
     struct tw_extensible_t tabulator;
     copy_tw_extensible(&tabulator, working);
-    p448_tw_extensible_double(&tabulator);
+    double_tw_extensible(&tabulator);
 
     struct tw_pniels_t pn, multiples[8];
     convert_tw_extensible_to_tw_pniels(&pn, &tabulator);
@@ -173,7 +173,7 @@ edwards_scalar_multiply(
 
     int i;
     for (i=1; i<8; i++) {
-        p448_tw_extensible_add_pniels(working, &pn);
+        add_tw_pniels_to_tw_extensible(working, &pn);
         convert_tw_extensible_to_tw_pniels(&multiples[i], working);
     }
 
@@ -182,24 +182,92 @@ edwards_scalar_multiply(
         inv = (bits>>3)-1;
     bits ^= inv;
     
-    constant_time_lookup_pniels(&pn, multiples, 8, bits&7);
-    pniels_cond_negate(&pn, inv);
+    constant_time_lookup_tw_pniels(&pn, multiples, 8, bits&7);
+    cond_negate_tw_pniels(&pn, inv);
     convert_tw_pniels_to_tw_extensible(working, &pn);
 		
 
     for (i-=4; i>=0; i-=4) {
-        p448_tw_extensible_double(working);
-        p448_tw_extensible_double(working);
-        p448_tw_extensible_double(working);
-        p448_tw_extensible_double(working);
+        double_tw_extensible(working);
+        double_tw_extensible(working);
+        double_tw_extensible(working);
+        double_tw_extensible(working);
 
         bits = scalar2[i/64] >> (i%64) & 0xF;
         inv = (bits>>3)-1;
         bits ^= inv;
     
-        constant_time_lookup_pniels(&pn, multiples, 8, bits&7);
-        pniels_cond_negate(&pn, inv);
-        p448_tw_extensible_add_pniels(working, &pn);
+        constant_time_lookup_tw_pniels(&pn, multiples, 8, bits&7);
+        cond_negate_tw_pniels(&pn, inv);
+        add_tw_pniels_to_tw_extensible(working, &pn);
+    }
+}
+
+void
+edwards_scalar_multiply_vlook(
+    struct tw_extensible_t *working,
+    const uint64_t scalar[7]
+) {
+
+    const int nbits=448; /* HACK? */
+    word_t prepared_data[14] = {
+        0x9595b847fdf73126ull,
+        0x9bb9b8a856af5200ull,
+        0xb3136e22f37d5c4full,
+        0x0000000189a19442ull,
+        0x0000000000000000ull,
+        0x0000000000000000ull,
+        0x4000000000000000ull,
+
+        0x721cf5b5529eec33ull,
+        0x7a4cf635c8e9c2abull,
+        0xeec492d944a725bfull,
+        0x000000020cd77058ull,
+        0x0000000000000000ull,
+        0x0000000000000000ull,
+        0x0000000000000000ull
+    }; /* TODO: split off */
+    
+    uint64_t scalar2[7];
+    convert_to_signed_window_form(scalar2,scalar,prepared_data,7);
+
+    struct tw_extensible_t tabulator;
+    copy_tw_extensible(&tabulator, working);
+    double_tw_extensible(&tabulator);
+
+    struct tw_pniels_t pn, multiples[8];
+    convert_tw_extensible_to_tw_pniels(&pn, &tabulator);
+    convert_tw_extensible_to_tw_pniels(&multiples[0], working);
+
+    int i;
+    for (i=1; i<8; i++) {
+        add_tw_pniels_to_tw_extensible(working, &pn);
+        convert_tw_extensible_to_tw_pniels(&multiples[i], working);
+    }
+
+    i = nbits - 4;
+    int bits = scalar2[i/64] >> (i%64) & 0xF,
+        inv = (bits>>3)-1;
+    bits ^= inv;
+
+	copy_tw_pniels(&pn, &multiples[bits&7]);
+    cond_negate_tw_pniels(&pn, inv);
+    convert_tw_pniels_to_tw_extensible(working, &pn);
+		
+
+    for (i-=4; i>=0; i-=4) {
+        double_tw_extensible(working);
+        double_tw_extensible(working);
+        double_tw_extensible(working);
+        double_tw_extensible(working);
+
+        bits = scalar2[i/64] >> (i%64) & 0xF;
+        inv = (bits>>3)-1;
+        bits ^= inv;
+    
+		copy_tw_pniels(&pn, &multiples[bits&7]);
+        cond_negate_tw_pniels(&pn, inv);
+        add_tw_pniels_to_tw_extensible(working, &pn);
     }
 }
 
@@ -240,7 +308,7 @@ edwards_comb(
     struct tw_niels_t ni;
     
     for (i=0; i<s; i++) {
-        if (i) p448_tw_extensible_double(working);
+        if (i) double_tw_extensible(working);
         
         for (j=0; j<n; j++) {
             int tab = 0;
@@ -260,10 +328,10 @@ edwards_comb(
             tab ^= invert;
             tab &= (1<<(t-1)) - 1;
             
-            constant_time_lookup_niels(&ni, table + (j<<(t-1)), 1<<(t-1), tab);
-            niels_cond_negate(&ni, invert);
+            constant_time_lookup_tw_niels(&ni, table + (j<<(t-1)), 1<<(t-1), tab);
+            cond_negate_tw_niels(&ni, invert);
             if (i||j) {
-                p448_tw_extensible_add_niels(working, &ni);
+                add_tw_niels_to_tw_extensible(working, &ni);
             } else {
                 convert_tw_niels_to_tw_extensible(working, &ni);
             }
@@ -334,7 +402,7 @@ precompute_for_combs(
         for (j=0; j<t; j++) {
             if (j) {
                 convert_tw_extensible_to_tw_pniels(&pn_tmp, &working);
-                p448_tw_extensible_add_pniels(&start, &pn_tmp);
+                add_tw_pniels_to_tw_extensible(&start, &pn_tmp);
             } else {
                 copy_tw_extensible(&start, &working);
             }
@@ -343,13 +411,13 @@ precompute_for_combs(
                 break;
             }
 
-            p448_tw_extensible_double(&working);
+            double_tw_extensible(&working);
             if (j<t-1) {
                 convert_tw_extensible_to_tw_pniels(&doubles[j], &working);
             }
 
             for (k=0; k<s-1; k++) {
-                p448_tw_extensible_double(&working);
+                double_tw_extensible(&working);
             }
         }
 
@@ -370,13 +438,10 @@ precompute_for_combs(
             
             if (gray & (1<<k)) {
                 /* start += doubles[k] */
-                p448_tw_extensible_add_pniels(&start, &doubles[k]);
+                add_tw_pniels_to_tw_extensible(&start, &doubles[k]);
             } else {
                 /* start -= doubles[k] */
-                /* PERF: uncond negate */
-                copy_tw_pniels(&pn_tmp, &doubles[k]);
-                pniels_cond_negate(&pn_tmp, -1);
-                p448_tw_extensible_add_pniels(&start, &pn_tmp);
+                sub_tw_pniels_from_tw_extensible(&start, &doubles[k]);
             }
             
             
@@ -435,16 +500,16 @@ precompute_for_wnaf(
     copy_tw_niels(&out[0], &tmp.n);
 
     if (tbits > 0) {
-        p448_tw_extensible_double(&base);
+        double_tw_extensible(&base);
         convert_tw_extensible_to_tw_pniels(&twop, &base);
-        p448_tw_extensible_add_pniels(&base, &tmp);
+        add_tw_pniels_to_tw_extensible(&base, &tmp);
         
         convert_tw_extensible_to_tw_pniels(&tmp, &base);
         p448_copy(&zs[1], &tmp.z);
         copy_tw_niels(&out[1], &tmp.n);
 
         for (i=2; i < 1<<tbits; i++) {
-            p448_tw_extensible_add_pniels(&base, &twop);
+            add_tw_pniels_to_tw_extensible(&base, &twop);
             convert_tw_extensible_to_tw_pniels(&tmp, &base);
             p448_copy(&zs[i], &tmp.z);
             copy_tw_niels(&out[i], &tmp.n);
@@ -474,6 +539,10 @@ precompute_for_wnaf(
     return -1;
 }
 
+/**
+ * @cond internal
+ * Control for variable-time scalar multiply algorithms.
+ */
 struct smvt_control {
   int power, addend;
 };
@@ -537,20 +606,20 @@ prepare_wnaf_table(
 
     if (tbits == 0) return;
 
-    p448_tw_extensible_double(working);
+    double_tw_extensible(working);
     struct tw_pniels_t twop;
     convert_tw_extensible_to_tw_pniels(&twop, working);
 
-    p448_tw_extensible_add_pniels(working, &output[0]);
+    add_tw_pniels_to_tw_extensible(working, &output[0]);
     convert_tw_extensible_to_tw_pniels(&output[1], working);
 
     for (int i=2; i < 1<<tbits; i++) {
-        p448_tw_extensible_add_pniels(working, &twop);
+        add_tw_pniels_to_tw_extensible(working, &twop);
         convert_tw_extensible_to_tw_pniels(&output[i], working);
     }
 }
 
-int
+void
 edwards_scalar_multiply_vt(
     struct tw_extensible_t *working,
     const uint64_t scalar[7]
@@ -570,31 +639,25 @@ edwards_scalar_multiply_vt(
         convert_tw_pniels_to_tw_extensible(working, &precmp[control[0].addend >> 1]);
     } else {
         set_identity_tw_extensible(working);
-        return control_bits;
+        return;
     }
   
     int conti = 1, i;
-  
-    struct tw_pniels_t neg;
     for (i = control[0].power - 1; i >= 0; i--) {
-        p448_tw_extensible_double(working);
+        double_tw_extensible(working);
 
         if (i == control[conti].power) {
             assert(control[conti].addend);
 
             if (control[conti].addend > 0) {
-                p448_tw_extensible_add_pniels(working, &precmp[control[conti].addend >> 1]);
+                add_tw_pniels_to_tw_extensible(working, &precmp[control[conti].addend >> 1]);
             } else {
-                /* PERF: uncond negate */
-                copy_tw_pniels(&neg, &precmp[(-control[conti].addend) >> 1]);
-                pniels_cond_negate(&neg, -1);
-                p448_tw_extensible_add_pniels(working, &neg);
+                sub_tw_pniels_from_tw_extensible(working, &precmp[(-control[conti].addend) >> 1]);
             }
             conti++;
             assert(conti <= control_bits);
         }
     }
-    return control_bits; /* TODO: don't return anything, this is just for testing */
 }
 
 void
@@ -620,21 +683,16 @@ edwards_scalar_multiply_vt_pre(
     }
   
     int conti = 1, i;
-  
-    struct tw_niels_t neg;
     for (i = control[0].power - 1; i >= 0; i--) {
-        p448_tw_extensible_double(working);
+        double_tw_extensible(working);
 
         if (i == control[conti].power) {
             assert(control[conti].addend);
 
             if (control[conti].addend > 0) {
-                p448_tw_extensible_add_niels(working, &precmp[control[conti].addend >> 1]);
+                add_tw_niels_to_tw_extensible(working, &precmp[control[conti].addend >> 1]);
             } else {
-                /* PERF: uncond negate */
-                copy_tw_niels(&neg, &precmp[(-control[conti].addend) >> 1]);
-                niels_cond_negate(&neg, -1);
-                p448_tw_extensible_add_niels(working, &neg);
+                sub_tw_niels_from_tw_extensible(working, &precmp[(-control[conti].addend) >> 1]);
             }
             conti++;
             assert(conti <= control_bits);
@@ -642,7 +700,7 @@ edwards_scalar_multiply_vt_pre(
     }
 }
 
-int
+void
 edwards_combo_var_fixed_vt(
     struct tw_extensible_t *working,
     const uint64_t scalar_var[7],
@@ -671,7 +729,7 @@ edwards_combo_var_fixed_vt(
         contv++;
     } else if (i == control_pre[0].power && i >=0 ) {
         convert_tw_pniels_to_tw_extensible(working, &precmp_var[control_var[0].addend >> 1]);
-        p448_tw_extensible_add_niels(working, &precmp[control_pre[0].addend >> 1]);
+        add_tw_niels_to_tw_extensible(working, &precmp[control_pre[0].addend >> 1]);
         contv++; contp++;
     } else {
         i = control_pre[0].power;
@@ -681,24 +739,19 @@ edwards_combo_var_fixed_vt(
     
     if (i < 0) {
         set_identity_tw_extensible(working);
-        return ncb_pre;
+        return;
     }
     
-    struct tw_pniels_t pneg;
-    struct tw_niels_t neg;
     for (i--; i >= 0; i--) {
-        p448_tw_extensible_double(working);
+        double_tw_extensible(working);
 
         if (i == control_var[contv].power) {
             assert(control_var[contv].addend);
 
             if (control_var[contv].addend > 0) {
-                p448_tw_extensible_add_pniels(working, &precmp_var[control_var[contv].addend >> 1]);
+                add_tw_pniels_to_tw_extensible(working, &precmp_var[control_var[contv].addend >> 1]);
             } else {
-                /* PERF: uncond negate */
-                copy_tw_pniels(&pneg, &precmp_var[(-control_var[contv].addend) >> 1]);
-                pniels_cond_negate(&pneg, -1);
-                p448_tw_extensible_add_pniels(working, &pneg);
+                sub_tw_pniels_from_tw_extensible(working, &precmp_var[(-control_var[contv].addend) >> 1]);
             }
             contv++;
         }
@@ -707,12 +760,9 @@ edwards_combo_var_fixed_vt(
             assert(control_pre[contp].addend);
 
             if (control_pre[contp].addend > 0) {
-                p448_tw_extensible_add_niels(working, &precmp[control_pre[contp].addend >> 1]);
+                add_tw_niels_to_tw_extensible(working, &precmp[control_pre[contp].addend >> 1]);
             } else {
-                /* PERF: uncond negate */
-                copy_tw_niels(&neg, &precmp[(-control_pre[contp].addend) >> 1]);
-                niels_cond_negate(&neg, -1);
-                p448_tw_extensible_add_niels(working, &neg);
+                sub_tw_niels_from_tw_extensible(working, &precmp[(-control_pre[contp].addend) >> 1]);
             }
             contp++;
         }
@@ -720,8 +770,6 @@ edwards_combo_var_fixed_vt(
     
     assert(contv == ncb_var);
     assert(contp == ncb_pre);
-    
-    return ncb_pre;
 }
 
 
