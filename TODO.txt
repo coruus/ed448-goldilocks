@@ -23,7 +23,7 @@ Important work items for Ed448-Goldilocks:
     * Word_t, mask_t, bigregister_t, etc.
     * Generate asm intrinsics with a script?
 
-* Bugfix: make sure that init() and randomization are thread-safe.
+* [DONE] Bugfix: make sure that init() and randomization are thread-safe.
 
 * Security: check on deserialization that points are < p.
     * Check also that they're nonzero or otherwise non-pathological?
@@ -80,30 +80,29 @@ Important work items for Ed448-Goldilocks:
 * Portability: make the inner layers of the code 32-bit clean.
     * Write new versions of the field code.
         * 28-bit limbs give less headroom for carries.
-        * NEON and vectorless ARM.
+        * Now have a vectorless ARM version; need NEON.
+        * Improve speed of 32-bit field code.
     
     * Run through the SAGE tool to generate new bias & bound.
 
-* Portability: make the outer layers of the code 32-bit clean.
-    * There are endian bugs in the signing algorithm.
-    * NEON and vectorless constant-time comparison.
+* [DONE] Portability: make the outer layers of the code 32-bit clean.
 
-* Performance: write and incorporate some extra routines
-    * Deserialize_and_isogeny
-    * Unconditional negate (or just plain subtract)
-
-* Performance: fixed parameters?
+* Performance/flexibility: decide which parameters should be hard-coded.
     * Perhaps useful for comb precomputation.
 
 * Performance: Improve SHA512.
-    * Improve portability.
+    * [DONE?] Improve portability.
     * Improve speed.
+        * Except not, because this adds too much code size.
+        * Link OpenSSL if a fast SHA is desired.
+
+* Protocol:
     * Decide what things to stir into hashes for various functions.
     
 * Performance: improve the Barrett field code.
     * Support other primes?
     * Capture prime shape into a struct instead of passing 3 params.
-    * Make 32-bit clean.  (SAGE?)
+    * [DONE] Make 32-bit clean.
 
 * Automation:
     * Improve the SAGE tool to cover more cases
@@ -111,6 +110,10 @@ Important work items for Ed448-Goldilocks:
         * Constant-time selection
         * Intrinsics code
         * Field code?
+    
+    * SAGE tool is impossibly slow on 32-bit
+         * Currently stuck on Elligator after 19 hours.
+         * [FIXED] at least for now.
         
     * Vector-mul-chains
     * Negation "bubble pushing" optimization

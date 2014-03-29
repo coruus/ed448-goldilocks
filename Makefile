@@ -2,61 +2,101 @@
 # Released under the MIT License.  See LICENSE.txt for license information.
 
 CC = clang
-CFLAGS = -O3 -std=c99 -pedantic -Wall -Wextra -Werror  \
-  -mssse3 -maes -mavx2 -DMUST_HAVE_AVX2 -mbmi2 \
-  -ffunction-sections -fdata-sections -fomit-frame-pointer -fPIC \
-  -DEXPERIMENT_ECDH_OBLITERATE_CT=1 -DEXPERIMENT_ECDH_STIR_IN_PUBKEYS=1
+LD = clang
 
-.PHONY: clean all runbench todo doc
+ARCH = arch_x86_64
+
+WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
+	-Wgcc-compat -Wmissing-declarations
+INCFLAGS = -Isrc/include -Iinclude -Isrc/$(ARCH)
+LANGFLAGS = -std=c99
+GENFLAGS = -ffunction-sections -fdata-sections -fomit-frame-pointer -fPIC
+OFLAGS = -O3
+#XFLAGS = -DN_TESTS_BASE=1000
+ARCHFLAGS = -mssse3 -maes -mavx2 -DMUST_HAVE_AVX2 -mbmi2
+#ARCHFLAGS = -m32 -mcpu=cortex-a9 -mfpu=vfpv3-d16
+
+CFLAGS = $(LANGFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XFLAGS)
+LDFLAGS = $(ARCHFLAGS)
+ASFLAGS = $(ARCHFLAGS)
+
+.PHONY: clean all test bench todo doc lib
 .PRECIOUS: build/%.s
-	
+
 HEADERS= Makefile $(shell find . -name "*.h") build/timestamp
 
 LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
   build/p448.o build/ec_point.o build/scalarmul.o build/sha512.o
 
-all: bench
+TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
+	build/test_pointops.o
 
-bench: *.h *.c
-	$(CC) $(CFLAGS) -o $@ *.c
-	
+BENCHCOMPONENTS=build/bench.o
+
+all: lib build/test build/bench
+
+scan: clean
+	scan-build --use-analyzer=`which clang` \
+		 -enable-checker deadcode -enable-checker llvm \
+		 -enable-checker osx -enable-checker security -enable-checker unix \
+		make build/bench build/test build/goldilocks.so
+
+build/bench: $(LIBCOMPONENTS) $(BENCHCOMPONENTS)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+build/test: $(LIBCOMPONENTS) $(TESTCOMPONENTS)
+	$(LD) $(LDFLAGS) -o $@ $^
+
+lib: build/goldilocks.so
+
+build/goldilocks.so: $(LIBCOMPONENTS)
+	rm -f $@
+	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
+		  -exported_symbols_list src/exported.sym \
+		  $(LIBCOMPONENTS)
+
 build/timestamp:
 	mkdir -p build
 	touch $@
 
 build/%.o: build/%.s
-	$(CC) -c -o $@ $<
+	$(CC) $(ASFLAGS) -c -o $@ $<
 
-build/%.s: %.c $(HEADERS)
+build/%.s: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<
 
-build/goldilocks.so: $(LIBCOMPONENTS)
-	rm -f $@
-	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
-		  -exported_symbols_list exported.sym \
-		  $(LIBCOMPONENTS)
+build/%.s: test/%.c $(HEADERS)
+	$(CC) $(CFLAGS) -S -c -o $@ $<
+
+build/%.s: src/$(ARCH)/%.c $(HEADERS)
+	$(CC) $(CFLAGS) -S -c -o $@ $<
 
 doc/timestamp:
 	mkdir -p doc
 	touch $@
 
-doc: Doxyfile doc/timestamp *.c *.h
+doc: Doxyfile doc/timestamp src/*.c src/include/*.h src/$(ARCH)/*.c src/$(ARCH)/*.h
 	doxygen
 
 todo::
-	@egrep --color=auto -w -i 'hack|todo|fixme|bug|xxx|perf|future|remove' *.h *.c
+	@(find * -name '*.h'; find * -name '*.c') | xargs egrep --color=auto -w \
+		'HACK|TODO|FIXME|BUG|XXX|PERF|FUTURE|REMOVE'
 	@echo '============================='
 	@(for i in FIXME BUG XXX TODO HACK PERF FUTURE REMOVE; do \
-	  egrep -w -i $$i *.h *.c > /dev/null || continue; \
+	  (find * -name '*.h'; find * -name '*.c') | xargs egrep -w $$i > /dev/null || continue; \
 	  /bin/echo -n $$i'       ' | head -c 10; \
-	  egrep -w -i $$i *.h *.c | wc -l; \
+	  (find * -name '*.h'; find * -name '*.c') | xargs egrep -w $$i| wc -l; \
 	done)
 	@echo '============================='
 	@echo -n 'Total     '
-	@egrep -w -i 'hack|todo|fixme|bug|xxx|perf|future|remove' *.h *.c | wc -l
+	@(find * -name '*.h'; find * -name '*.c') | xargs egrep -w \
+		'HACK|TODO|FIXME|BUG|XXX|PERF|FUTURE|REMOVE' | wc -l
 
-runbench: bench
+bench: build/bench
+	./$<
+
+test: build/test
 	./$<
 
 clean:
-	rm -fr build bench *.o *.s
+	rm -fr build doc
