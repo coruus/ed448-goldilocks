@@ -1,3 +1,46 @@
+May 3, 2104:
+    Minor changes to internal routines mean that this version is not
+    compatible with the previous one.
+
+    Added ARM NEON code.
+    
+    Added the ability to precompute multiples of a partner's public key.  This
+    takes slightly longer than a signature verification, but reduces future
+    verifications with the precomputed key by ~63% and ECDH by ~70%.
+    
+        goldilocks_precompute_public_key
+        goldilocks_destroy_precomputed_public_key
+        goldilocks_verify_precomputed
+        goldilocks_shared_secret_precomputed
+    
+    The precomputation feature are is protected by a macro
+        GOLDI_IMPLEMENT_PRECOMPUTED_KEYS
+    which can be #defined to 0 to compile these functions out.  Unlike most
+    of Goldilocks' functions, goldilocks_precompute_public_key uses malloc()
+    (and goldilocks_destroy_precomputed_public_key uses free()).
+    
+    Changed private keys to be derived from just the symmetric part.  This
+    means that you can compress them to 32 bytes for cold storage, or derive
+    keypairs from crypto secrets from other systems.
+        goldilocks_derive_private_key
+        goldilocks_underive_private_key
+        goldilocks_private_to_public
+    
+    Fixed a number of bugs related to vector alignment on Sandy Bridge, which
+    has AVX but uses SSE2 alignment (because it doesn't have AVX2).  Maybe I
+    should just switch it to use AVX2 alignment?
+    
+    Beginning to factor out curve-specific magic, so as to build other curves
+    with the Goldilocks framework.  That would enable fair tests against eg
+    E-521, Ed25519 etc.  Still would be a lot of work.
+    
+    More thorough testing of arithmetic.  Now uses GMP for testing framework,
+    but not in the actual library.
+    
+    Added some high-level tests for the whole library, including some (bs)
+    negative testing.  Obviously, effective negative testing is a very difficult
+    proposition in a crypto library.
+
 March 29, 2014:
     Added a test directory with various tests.  Currently testing SHA512 Monte
     Carlo, compatibility of the different scalarmul functions, and some

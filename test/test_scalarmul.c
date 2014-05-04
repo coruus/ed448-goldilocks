@@ -159,6 +159,92 @@ single_scalarmul_compatibility_test (
     return ret;
 }
 
+static int
+single_linear_combo_test (
+    const struct p448_t *base1,
+    const word_t *scalar1,
+    int nbits1,
+    const struct p448_t *base2,
+    const word_t *scalar2,
+    int nbits2
+) {
+    /* MAGIC */
+    const struct p448_t
+    sqrt_d_minus_1 = {{
+        U58LE(0xd2e21836749f46),
+        U58LE(0x888db42b4f0179),
+        U58LE(0x5a189aabdeea38),
+        U58LE(0x51e65ca6f14c06),
+        U58LE(0xa49f7b424d9770),
+        U58LE(0xdcac4628c5f656),
+        U58LE(0x49443b8748734a),
+        U58LE(0x12fec0c0b25b7a)
+    }};
+    
+    struct tw_extensible_t text1, text2, working;
+    struct tw_pniels_t pn;
+    struct p448_t result_comb, result_combo, result_wnaf;
+    
+    mask_t succ = 
+        deserialize_and_twist_approx(&text1, &sqrt_d_minus_1, base1)
+      & deserialize_and_twist_approx(&text2, &sqrt_d_minus_1, base2);
+    if (!succ) return 1;
+    
+    struct fixed_base_table_t t1, t2;
+    struct tw_niels_t wnaf[32];
+    memset(&t1,0,sizeof(t1));
+    memset(&t2,0,sizeof(t2));
+    
+    succ = precompute_fixed_base(&t1, &text1, 5, 5, 18, NULL);
+    succ &= precompute_fixed_base(&t2, &text2, 6, 3, 25, NULL);
+    succ &= precompute_fixed_base_wnaf(wnaf, &text2, 5);
+    
+    if (!succ) {
+        destroy_fixed_base(&t1);
+        destroy_fixed_base(&t2);
+        return -1;
+    }
+    
+    /* use the dedicated wNAF linear combo algorithm */
+    copy_tw_extensible(&working, &text1);
+    linear_combo_var_fixed_vt(&working, scalar1, nbits1, scalar2, nbits2, wnaf, 5);
+    untwist_and_double_and_serialize(&result_wnaf, &working);
+    
+    /* use the dedicated combs algorithm */
+    succ &= linear_combo_combs_vt(&working, scalar1, nbits1, &t1, scalar2, nbits2, &t2);
+    untwist_and_double_and_serialize(&result_combo, &working);
+    
+    /* use two combs */
+    succ &= scalarmul_fixed_base(&working, scalar1, nbits1, &t1);
+    convert_tw_extensible_to_tw_pniels(&pn, &working);
+    succ &= scalarmul_fixed_base(&working, scalar2, nbits2, &t2);
+    add_tw_pniels_to_tw_extensible(&working, &pn);
+    untwist_and_double_and_serialize(&result_comb, &working);
+    
+    mask_t consistent = MASK_SUCCESS;
+    consistent &= p448_eq(&result_combo, &result_wnaf);
+    consistent &= p448_eq(&result_comb,  &result_wnaf);
+    
+    if (!succ || !consistent) {
+        youfail();
+        printf("    Failed linear combo consistency test with nbits=%d,%d.\n",nbits1,nbits2);
+
+        p448_print("    base1", base1);
+        scalar_print("    scal1", scalar1, (nbits1+WORD_BITS-1)/WORD_BITS);
+        p448_print("    base2", base2);
+        scalar_print("    scal2", scalar2, (nbits1+WORD_BITS-1)/WORD_BITS);
+        p448_print("    combs", &result_comb);
+        p448_print("    combo", &result_combo);
+        p448_print("    wNAFs", &result_wnaf);
+        return -1;
+    }
+    
+    destroy_fixed_base(&t1);
+    destroy_fixed_base(&t2);
+    
+    return 0;
+}
+
 /* 0 = succeed, 1 = inval, -1 = fail */
 static int
 single_scalarmul_commutativity_test (
@@ -235,6 +321,49 @@ int test_scalarmul_commutativity () {
                 if (!succ) continue;
             
                 int ret = single_scalarmul_commutativity_test (&base, scalar1, i, i%3, scalar2, j, j%3);
+                got = !ret;
+                if (ret == -1) return -1;
+            }
+
+            if (!got) {
+                youfail();
+                printf("    Unlikely: rejected 128 scalars in a row.\n");
+                return -1;
+            }
+            
+        }
+    }
+    
+    return 0;
+}
+
+int test_linear_combo () {
+    int i,j,k,got;
+    
+    struct crandom_state_t crand;
+    crandom_init_from_buffer(&crand, "scalarmul_linear_combos_test RNG");
+    
+    for (i=0; i<=448; i+=7) {
+        for (j=0; j<=448; j+=7) {
+            got = 0;
+            
+            for (k=0; k<128 && !got; k++) {
+                uint8_t ser[56];
+                word_t scalar1[7], scalar2[7];
+                crandom_generate(&crand, (uint8_t *)scalar1, sizeof(scalar1));
+                crandom_generate(&crand, (uint8_t *)scalar2, sizeof(scalar2));
+            
+                p448_t base1;
+                crandom_generate(&crand, ser, sizeof(ser));
+                mask_t succ = p448_deserialize(&base1, ser);
+                if (!succ) continue;
+                
+                p448_t base2;
+                crandom_generate(&crand, ser, sizeof(ser));
+                succ = p448_deserialize(&base2, ser);
+                if (!succ) continue;
+            
+                int ret = single_linear_combo_test (&base1, scalar1, i, &base2, scalar2, j);
                 got = !ret;
                 if (ret == -1) return -1;
             }

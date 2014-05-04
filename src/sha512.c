@@ -2,12 +2,8 @@
  * Copyright (c) 2014 Cryptography Research, Inc.
  * Released under the MIT License.  See LICENSE.txt for license information.
  */
-#ifndef __APPLE__
-#define _BSD_SOURCE
-#include <endian.h>
-#endif
-
 #include "sha512.h"
+#include "word.h"
 
 #include <string.h>
 #include <assert.h>
@@ -19,14 +15,6 @@ rotate_r (
 ) {
   return (x >> d) | (x << (64-d));
 }
-
-#ifdef __APPLE__
-static inline uint64_t
-htobe64 (uint64_t x) {
-    __asm__ ("bswapq %0" : "+r"(x));
-    return x;
-}
-#endif
 
 static const uint64_t
 sha512_init_state[8] = {

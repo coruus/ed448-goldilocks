@@ -4,13 +4,13 @@
 #ifndef __P448_H__
 #define __P448_H__ 1
 
+#include "word.h"
+
 #include <stdint.h>
 #include <assert.h>
 
-#include "word.h"
-
 typedef struct p448_t {
-  uint64_t limb[8];
+  uint32_t limb[16];
 } __attribute__((aligned(32))) p448_t;
 
 #ifdef __cplusplus
@@ -59,13 +59,13 @@ p448_cond_neg (
 static __inline__ void
 p448_addw (
     p448_t *a,
-    uint64_t x
+    uint32_t x
 ) __attribute__((unused,always_inline));
              
 static __inline__ void
 p448_subw (
     p448_t *a,
-    uint64_t x
+    uint32_t x
 ) __attribute__((unused,always_inline));
              
 static __inline__ void
@@ -94,7 +94,7 @@ p448_bias (
     p448_t *inout,
     int amount
 ) __attribute__((unused,always_inline));
-         
+
 void
 p448_mul (
     p448_t *__restrict__ out,
@@ -173,8 +173,9 @@ p448_set_ui (
     uint64_t x
 ) {
     int i;
-    out->limb[0] = x;
-    for (i=1; i<8; i++) {
+    out->limb[0] = x & ((1<<28)-1);
+    out->limb[1] = x>>28;
+    for (i=2; i<16; i++) {
       out->limb[i] = 0;
     }
 }
@@ -187,7 +188,7 @@ p448_cond_swap (
 ) {
     big_register_t *aa = (big_register_t*)a;
     big_register_t *bb = (big_register_t*)b;
-    big_register_t m = doswap;
+    big_register_t m = br_set_to_mask(doswap);
 
     unsigned int i;
     for (i=0; i<sizeof(*a)/sizeof(*aa); i++) {
@@ -204,8 +205,8 @@ p448_add (
     const p448_t *b
 ) {
     unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
-        ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)b)[i];
+    for (i=0; i<sizeof(*out)/sizeof(uint32xn_t); i++) {
+        ((uint32xn_t*)out)[i] = ((const uint32xn_t*)a)[i] + ((const uint32xn_t*)b)[i];
     }
     /*
     unsigned int i;
@@ -222,8 +223,8 @@ p448_sub (
     const p448_t *b
 ) {
     unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
-        ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] - ((const uint64xn_t*)b)[i];
+    for (i=0; i<sizeof(*out)/sizeof(uint32xn_t); i++) {
+        ((uint32xn_t*)out)[i] = ((const uint32xn_t*)a)[i] - ((const uint32xn_t*)b)[i];
     }
     /*
     unsigned int i;
@@ -235,12 +236,12 @@ p448_sub (
 
 void
 p448_neg (
-    struct p448_t *out,
+    p448_t *out,
     const p448_t *a
 ) {
     unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
-        ((uint64xn_t*)out)[i] = -((const uint64xn_t*)a)[i];
+    for (i=0; i<sizeof(*out)/sizeof(uint32xn_t); i++) {
+        ((uint32xn_t*)out)[i] = -((const uint32xn_t*)a)[i];
     }
     /*
     unsigned int i;
@@ -252,14 +253,14 @@ p448_neg (
 
 void
 p448_cond_neg(
-    struct p448_t *a,
+    p448_t *a,
     mask_t doNegate
 ) {
     unsigned int i;
     struct p448_t negated;
     big_register_t *aa = (big_register_t *)a;
     big_register_t *nn = (big_register_t*)&negated;
-    big_register_t m = doNegate;
+    big_register_t m = br_set_to_mask(doNegate);
     
     p448_neg(&negated, a);
     p448_bias(&negated, 2);
@@ -272,7 +273,7 @@ p448_cond_neg(
 void
 p448_addw (
     p448_t *a,
-    uint64_t x
+    uint32_t x
 ) {
   a->limb[0] += x;
 }
@@ -280,7 +281,7 @@ p448_addw (
 void
 p448_subw (
     p448_t *a,
-    uint64_t x
+    uint32_t x
 ) {
   a->limb[0] -= x;
 }
@@ -290,10 +291,7 @@ p448_copy (
     p448_t *out,
     const p448_t *a
 ) {
-    unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(big_register_t); i++) {
-        ((big_register_t *)out)[i] = ((const big_register_t *)a)[i];
-    }
+  *out = *a;
 }
 
 void
@@ -301,39 +299,25 @@ p448_bias (
     p448_t *a,
     int amt
 ) {
-    uint64_t co1 = ((1ull<<56)-1)*amt, co2 = co1-amt;
-    
-#if __AVX2__
-    uint64x4_t lo = {co1,co1,co1,co1}, hi = {co2,co1,co1,co1};
-    uint64x4_t *aa = (uint64x4_t*) a;
-    aa[0] += lo;
-    aa[1] += hi;
-#elif __SSE2__
-    uint64x2_t lo = {co1,co1}, hi = {co2,co1};
-    uint64x2_t *aa = (uint64x2_t*) a;
+    uint32_t co1 = ((1ull<<28)-1)*amt, co2 = co1-amt;
+    uint32x4_t lo = {co1,co1,co1,co1}, hi = {co2,co1,co1,co1};
+    uint32x4_t *aa = (uint32x4_t*) a;
     aa[0] += lo;
     aa[1] += lo;
     aa[2] += hi;
     aa[3] += lo;
-#else
-    unsigned int i;
-    for (i=0; i<sizeof(*a)/sizeof(uint64_t); i++) {
-        a->limb[i] += (i==4) ? co2 : co1;
-    }
-#endif
 }
 
 void
 p448_weak_reduce (
     p448_t *a
 ) {
-    /* PERF: use pshufb/palignr if anyone cares about speed of this */
-    uint64_t mask = (1ull<<56) - 1;
-    uint64_t tmp = a->limb[7] >> 56;
+    uint64_t mask = (1ull<<28) - 1;
+    uint64_t tmp = a->limb[15] >> 28;
     int i;
-    a->limb[4] += tmp;
-    for (i=7; i>0; i--) {
-        a->limb[i] = (a->limb[i] & mask) + (a->limb[i-1]>>56);
+    a->limb[8] += tmp;
+    for (i=15; i>0; i--) {
+        a->limb[i] = (a->limb[i] & mask) + (a->limb[i-1]>>28);
     }
     a->limb[0] = (a->limb[0] & mask) + tmp;
 }

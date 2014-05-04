@@ -12,7 +12,9 @@
 
 #include <sys/types.h>
 
+#if __i386__ || __x86_64__
 #include <immintrin.h>
+#endif
 
 #define INTRINSIC \
   static __inline__ __attribute__((__gnu_inline__, __always_inline__, unused))

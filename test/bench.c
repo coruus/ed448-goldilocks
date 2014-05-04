@@ -17,23 +17,28 @@
 #include "goldilocks.h"
 #include "sha512.h"
 
-double now() {
+static __inline__ void
+ignore_result ( int result ) {
+    (void)result;
+}
+
+static double now() {
   struct timeval tv;
   gettimeofday(&tv, NULL);
   
   return tv.tv_sec + tv.tv_usec/1000000.0;
 }
 
-void p448_randomize( struct crandom_state_t *crand, struct p448_t *a ) {
+static void p448_randomize( struct crandom_state_t *crand, struct p448_t *a ) {
     crandom_generate(crand, (unsigned char *)a, sizeof(*a));
     p448_strong_reduce(a);
 }
 
-void q448_randomize( struct crandom_state_t *crand, word_t sk[448/WORD_BITS] ) {
+static void q448_randomize( struct crandom_state_t *crand, word_t sk[448/WORD_BITS] ) {
     crandom_generate(crand, (unsigned char *)sk, 448/8);
 }
 
-void p448_print( const char *descr, const struct p448_t *a ) {
+static void p448_print( const char *descr, const struct p448_t *a ) {
     p448_t b;
     p448_copy(&b, a);
     p448_strong_reduce(&b);
@@ -45,17 +50,21 @@ void p448_print( const char *descr, const struct p448_t *a ) {
     printf("\n");
 }
 
-void p448_print_full( const char *descr, const struct p448_t *a ) {
+static void __attribute__((unused))
+p448_print_full (
+    const char *descr,
+    const struct p448_t *a
+) {
     int j;
     printf("%s = 0x", descr);
     for (j=15; j>=0; j--) {
         printf("%02" PRIxWORD "_" PRIxWORD58 " ",
-            a->limb[j]>>28, a->limb[j]&(1<<28)-1);
+            a->limb[j]>>28, a->limb[j]&((1<<28)-1));
     }
     printf("\n");
 }
 
-void q448_print( const char *descr, const word_t secret[448/WORD_BITS] ) {
+static void q448_print( const char *descr, const word_t secret[448/WORD_BITS] ) {
     int j;
     printf("%s = 0x", descr);
     for (j=448/WORD_BITS-1; j>=0; j--) {
@@ -295,7 +304,7 @@ int main(int argc, char **argv) {
 	
     when = now();
     for (i=0; i<nbase/10; i++) {
-        (void)montgomery_ladder(&a,&b,sk,448,0);
+        ignore_result(montgomery_ladder(&a,&b,sk,448,0));
     }
     when = now() - when;
     printf("full ladder: %5.1fµs\n", when * 1e6 / i);
@@ -310,10 +319,17 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         scalarmul_vlook(&ext,sk);
-        untwist_and_double_and_serialize(&a,&ext);
     }
     when = now() - when;
     printf("edwards svl: %5.1fµs\n", when * 1e6 / i);
+    
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        scalarmul(&ext,sk);
+        untwist_and_double_and_serialize(&a,&ext);
+    }
+    when = now() - when;
+    printf("edwards smc: %5.1fµs\n", when * 1e6 / i);
     
     when = now();
     for (i=0; i<nbase/10; i++) {
@@ -326,7 +342,7 @@ int main(int argc, char **argv) {
     struct tw_niels_t wnaft[1<<6];
     when = now();
     for (i=0; i<nbase/10; i++) {
-        (void)precompute_fixed_base_wnaf(wnaft,&ext,6);
+        ignore_result(precompute_fixed_base_wnaf(wnaft,&ext,6));
     }
     when = now() - when;
     printf("wnaf6 pre:   %5.1fµs\n", when * 1e6 / i);
@@ -341,7 +357,7 @@ int main(int argc, char **argv) {
     
     when = now();
     for (i=0; i<nbase/10; i++) {
-        (void)precompute_fixed_base_wnaf(wnaft,&ext,4);
+        ignore_result(precompute_fixed_base_wnaf(wnaft,&ext,4));
     }
     when = now() - when;
     printf("wnaf4 pre:   %5.1fµs\n", when * 1e6 / i);
@@ -356,7 +372,7 @@ int main(int argc, char **argv) {
 
     when = now();
     for (i=0; i<nbase/10; i++) {
-        (void)precompute_fixed_base_wnaf(wnaft,&ext,5);
+        ignore_result(precompute_fixed_base_wnaf(wnaft,&ext,5));
     }
     when = now() - when;
     printf("wnaf5 pre:   %5.1fµs\n", when * 1e6 / i);
@@ -401,7 +417,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         if (i) destroy_fixed_base(&t_5_5_18);
-        (void)precompute_fixed_base(&t_5_5_18, &ext, 5, 5, 18, NULL);
+        ignore_result(precompute_fixed_base(&t_5_5_18, &ext, 5, 5, 18, NULL));
     }
     when = now() - when;
     printf("pre(5,5,18): %5.1fµs\n", when * 1e6 / i);
@@ -409,7 +425,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         if (i) destroy_fixed_base(&t_3_5_30);
-        (void)precompute_fixed_base(&t_3_5_30, &ext, 3, 5, 30, NULL);
+        ignore_result(precompute_fixed_base(&t_3_5_30, &ext, 3, 5, 30, NULL));
     }
     when = now() - when;
     printf("pre(3,5,30): %5.1fµs\n", when * 1e6 / i);
@@ -417,7 +433,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         if (i) destroy_fixed_base(&t_5_3_30);
-        (void)precompute_fixed_base(&t_5_3_30, &ext, 5, 3, 30, NULL);
+        ignore_result(precompute_fixed_base(&t_5_3_30, &ext, 5, 3, 30, NULL));
     }
     when = now() - when;
     printf("pre(5,3,30): %5.1fµs\n", when * 1e6 / i);
@@ -425,15 +441,15 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         if (i) destroy_fixed_base(&t_15_3_10);
-        (void)precompute_fixed_base(&t_15_3_10, &ext, 15, 3, 10, NULL);
+        ignore_result(precompute_fixed_base(&t_15_3_10, &ext, 15, 3, 10, NULL));
     }
     when = now() - when;
-    printf("pre(15,3,10): %5.1fµs\n", when * 1e6 / i);
+    printf("pre(15,3,10):%5.1fµs\n", when * 1e6 / i);
     
     when = now();
     for (i=0; i<nbase/10; i++) {
         if (i) destroy_fixed_base(&t_8_4_14);
-        (void)precompute_fixed_base(&t_8_4_14, &ext, 8, 4, 14, NULL);
+        ignore_result(precompute_fixed_base(&t_8_4_14, &ext, 8, 4, 14, NULL));
     }
     when = now() - when;
     printf("pre(8,4,14): %5.1fµs\n", when * 1e6 / i);
@@ -471,7 +487,7 @@ int main(int argc, char **argv) {
         scalarmul_fixed_base(&ext, sk, 448, &t_15_3_10);
     }
     when = now() - when;
-    printf("com(15,3,10): %5.1fµs\n", when * 1e6 / i);
+    printf("com(15,3,10):%5.1fµs\n", when * 1e6 / i);
     
     printf("\nGoldilocks:\n");
     
@@ -494,7 +510,7 @@ int main(int argc, char **argv) {
     printf("keygen:      %5.1fµs\n", when * 1e6 / i);
     
     uint8_t ss1[64],ss2[64];
-    int gres1,gres2;
+    int gres1=0,gres2=0;
     when = now();
     for (i=0; i<nbase; i++) {
         if (i&1) {
@@ -540,18 +556,43 @@ int main(int argc, char **argv) {
     
     when = now();
     for (i=0; i<nbase; i++) {
-        res = goldilocks_verify(sout,(const unsigned char *)message,message_len,&gpk);
-        (void)res;
+        int ver = goldilocks_verify(sout,(const unsigned char *)message,message_len,&gpk);
+        assert(!ver);
     }
     when = now() - when;
     printf("verify:      %5.1fµs\n", when * 1e6 / i);
+    
+    struct goldilocks_precomputed_public_key_t *pre = NULL;
+    when = now();
+    for (i=0; i<nbase; i++) {
+        goldilocks_destroy_precomputed_public_key(pre);
+        pre = goldilocks_precompute_public_key(&gpk);
+    }
+    when = now() - when;
+    printf("precompute:  %5.1fµs\n", when * 1e6 / i);
+    
+    when = now();
+    for (i=0; i<nbase; i++) {
+        int ver = goldilocks_verify_precomputed(sout,(const unsigned char *)message,message_len,pre);
+        assert(!ver);
+    }
+    when = now() - when;
+    printf("verify pre:  %5.1fµs\n", when * 1e6 / i);
+    
+    when = now();
+    for (i=0; i<nbase; i++) {
+        int ret = goldilocks_shared_secret_precomputed(ss1,&gsk,pre);
+        assert(!ret);
+    }
+    when = now() - when;
+    printf("ecdh pre:    %5.1fµs\n", when * 1e6 / i);
     
     printf("\nTesting...\n");
     
     
     int failures=0, successes = 0;
     for (i=0; i<nbase/10; i++) {
-        (void)goldilocks_keygen(&gsk,&gpk);
+        ignore_result(goldilocks_keygen(&gsk,&gpk));
         goldilocks_sign(sout,(const unsigned char *)message,message_len,&gsk);
         res = goldilocks_verify(sout,(const unsigned char *)message,message_len,&gpk);
         if (res) failures++;
@@ -574,9 +615,9 @@ int main(int argc, char **argv) {
         y = (hword_t)y;
         word_t z=x*y;
         
-	(void)montgomery_ladder(&b,&a,&x,WORD_BITS,0);
-        (void)montgomery_ladder(&c,&b,&y,WORD_BITS,0);
-        (void)montgomery_ladder(&b,&a,&z,WORD_BITS,0);
+    	ignore_result(montgomery_ladder(&b,&a,&x,WORD_BITS,0));
+        ignore_result(montgomery_ladder(&c,&b,&y,WORD_BITS,0));
+        ignore_result(montgomery_ladder(&b,&a,&z,WORD_BITS,0));
         
         p448_sub(&d,&b,&c);
         p448_bias(&d,2);
@@ -655,7 +696,7 @@ int main(int argc, char **argv) {
         untwist_and_double(&exta,&exv);
         serialize_extensible(&b, &exta);
 
-        (void)precompute_fixed_base_wnaf(wnaft,&exu,5);
+        ignore_result(precompute_fixed_base_wnaf(wnaft,&exu,5));
         linear_combo_var_fixed_vt(&ext,sk,448,tk,448,wnaft,5);
         untwist_and_double(&exta,&exv);
         serialize_extensible(&c, &exta);

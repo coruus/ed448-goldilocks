@@ -33,9 +33,15 @@ void youfail();
 
 int test_sha512_monte_carlo();
 
+int test_linear_combo ();
+
 int test_scalarmul_compatibility ();
 
 int test_scalarmul_commutativity ();
+
+int test_arithmetic ();
+
+int test_goldilocks ();
 
 int test_pointops ();
 

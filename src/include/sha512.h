@@ -10,6 +10,8 @@
 extern "C" {
 #endif
 
+#define SHA512_OUTPUT_BYTES 64
+
 /**
  * SHA512 hashing context.
  *
@@ -37,7 +39,7 @@ sha512_update (
 void
 sha512_final (
     struct sha512_ctx_t *ctx,
-    uint8_t result[64]
+    uint8_t result[SHA512_OUTPUT_BYTES]
 );
     
 #ifdef __cplusplus

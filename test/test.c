@@ -6,7 +6,7 @@
 
 int failed_tests, n_tests, failed_this_test, running_a_test;
 
-void end_test() {
+static void end_test() {
     if (!failed_this_test) {
         printf("[PASS]\n");
     }
@@ -14,7 +14,7 @@ void end_test() {
     running_a_test = 0;
 }
 
-void begin_test(const char *name) {
+static void begin_test(const char *name) {
     if (running_a_test) end_test();
     printf("%s...%*s",name,(int)(30-strlen(name)),"");
     fflush(stdout);
@@ -110,8 +110,9 @@ int main(int argc, char **argv) {
     (void) argv;
     
     n_tests = running_a_test = failed_tests = 0;
-    begin_test("SHA-512 NIST Monte Carlo");
-    test_sha512_monte_carlo();
+
+    begin_test("Arithmetic");
+    test_arithmetic();
 
     begin_test("EC point operations");
     test_pointops();
@@ -121,6 +122,15 @@ int main(int argc, char **argv) {
     
     begin_test("Scalarmul commutativity");
     test_scalarmul_commutativity();
+    
+    begin_test("Linear combo");
+    test_linear_combo();
+    
+    begin_test("SHA-512 NIST Monte Carlo");
+    test_sha512_monte_carlo();
+    
+    begin_test("Goldilocks complete system");
+    test_goldilocks();
     
     if (running_a_test) end_test();
     printf("\n");

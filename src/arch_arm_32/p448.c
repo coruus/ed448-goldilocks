@@ -28,6 +28,8 @@ smlal (
     const uint32_t a,
     const uint32_t b
 ) {
+
+#ifdef  __ARMEL__
     uint32_t lo = *acc, hi = (*acc)>>32;
     
     __asm__ __volatile__ ("smlal %[lo], %[hi], %[a], %[b]"
@@ -35,6 +37,9 @@ smlal (
         : [a]"r"(a), [b]"r"(b));
     
     *acc = lo + (((uint64_t)hi)<<32);
+#else
+    *acc += (int64_t)(int32_t)a * (int64_t)(int32_t)b;
+#endif
 }
 
 static inline void __attribute__((gnu_inline,always_inline))
@@ -43,6 +48,7 @@ smlal2 (
     const uint32_t a,
     const uint32_t b
 ) {
+#ifdef __ARMEL__
     uint32_t lo = *acc, hi = (*acc)>>32;
     
     __asm__ __volatile__ ("smlal %[lo], %[hi], %[a], %[b]"
@@ -50,6 +56,9 @@ smlal2 (
         : [a]"r"(a), [b]"r"(2*b));
     
     *acc = lo + (((uint64_t)hi)<<32);
+#else
+    *acc += (int64_t)(int32_t)a * (int64_t)(int32_t)(b * 2);
+#endif
 }
 
 static inline void __attribute__((gnu_inline,always_inline))
@@ -58,6 +67,7 @@ smull (
     const uint32_t a,
     const uint32_t b
 ) {
+#ifdef __ARMEL__
     uint32_t lo, hi;
     
     __asm__ __volatile__ ("smull %[lo], %[hi], %[a], %[b]"
@@ -65,6 +75,9 @@ smull (
         : [a]"r"(a), [b]"r"(b));
     
     *acc = lo + (((uint64_t)hi)<<32);
+#else
+    *acc = (int64_t)(int32_t)a * (int64_t)(int32_t)b;
+#endif
 }
 
 static inline void __attribute__((gnu_inline,always_inline))
@@ -73,6 +86,7 @@ smull2 (
     const uint32_t a,
     const uint32_t b
 ) {
+#ifdef __ARMEL__
     uint32_t lo, hi;
     
     __asm__ /*__volatile__*/ ("smull %[lo], %[hi], %[a], %[b]"
@@ -80,6 +94,9 @@ smull2 (
         : [a]"r"(a), [b]"r"(2*b));
     
     *acc = lo + (((uint64_t)hi)<<32);
+#else
+    *acc = (int64_t)(int32_t)a * (int64_t)(int32_t)(b * 2);
+#endif
 }
 
 void
@@ -760,13 +777,13 @@ p448_mulw (
     const p448_t *as,
     uint64_t b
 ) {
-    const uint32_t bhi = b>>28, blo = b & (1<<28)-1;
+    uint32_t mask = (1ull<<28)-1;  
+    const uint32_t bhi = b>>28, blo = b & mask;
     
     const uint32_t *a = as->limb;
     uint32_t *c = cs->limb;
 
     uint64_t accum0, accum8;
-    uint32_t mask = (1ull<<28)-1;  
 
     int i;
 
@@ -957,7 +974,7 @@ p448_deserialize (
         for (j=0; j<7; j++) {
             out |= ((uint64_t)serial[7*i+j])<<(8*j);
         }
-        x->limb[2*i] = out & (1ull<<28)-1;
+        x->limb[2*i] = out & ((1ull<<28)-1);
         x->limb[2*i+1] = out >> 28;
     }
     

@@ -17,13 +17,14 @@ p448_mul (
     __uint128_t accum0 = 0, accum1 = 0, accum2;
     uint64_t mask = (1ull<<56) - 1;  
 
-    uint64_t aa[4] __attribute__((aligned(32))), bb[4] __attribute__((aligned(32)));
+    uint64_t aa[4] __attribute__((aligned(32))), bb[4] __attribute__((aligned(32))), bbb[4] __attribute__((aligned(32)));
 
     /* For some reason clang doesn't vectorize this without prompting? */
     unsigned int i;
     for (i=0; i<sizeof(aa)/sizeof(uint64xn_t); i++) {
         ((uint64xn_t*)aa)[i] = ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)(&a[4]))[i];
-        ((uint64xn_t*)bb)[i] = ((const uint64xn_t*)b)[i] + ((const uint64xn_t*)(&b[4]))[i];     
+        ((uint64xn_t*)bb)[i] = ((const uint64xn_t*)b)[i] + ((const uint64xn_t*)(&b[4]))[i]; 
+        ((uint64xn_t*)bbb)[i] = ((const uint64xn_t*)bb)[i] + ((const uint64xn_t*)(&b[4]))[i];     
     }
     /*
     for (int i=0; i<4; i++) {
@@ -81,18 +82,15 @@ p448_mul (
     accum0 >>= 56;
     accum1 >>= 56;
 
-    accum2  = widemul(&aa[2],&bb[3]);
-    msb(&accum0, &a[2], &b[3]);
-    mac(&accum1, &a[6], &b[7]);
+    accum2  = widemul(&a[2],&b[7]);
+    mac(&accum0, &a[6], &bb[3]);
+    mac(&accum1, &aa[2], &bbb[3]);
 
-    mac(&accum2, &aa[3], &bb[2]);
-    msb(&accum0, &a[3], &b[2]);
-    mac(&accum1, &a[7], &b[6]);
+    mac(&accum2, &a[3], &b[6]);
+    mac(&accum0, &a[7], &bb[2]);
+    mac(&accum1, &aa[3], &bbb[2]);
 
-    accum1 += accum2;
-    accum0 += accum2;
-
-    accum2  = widemul(&a[0],&b[1]);
+    mac(&accum2, &a[0],&b[1]);
     mac(&accum1, &aa[0], &bb[1]);
     mac(&accum0, &a[4], &b[5]);
 
@@ -109,14 +107,11 @@ p448_mul (
     accum0 >>= 56;
     accum1 >>= 56;
 
-    accum2  = widemul(&aa[3],&bb[3]);
-    msb(&accum0, &a[3], &b[3]);
-    mac(&accum1, &a[7], &b[7]);
+    accum2  = widemul(&a[3],&b[7]);
+    mac(&accum0, &a[7], &bb[3]);
+    mac(&accum1, &aa[3], &bbb[3]);
 
-    accum1 += accum2;
-    accum0 += accum2;
-
-    accum2  = widemul(&a[0],&b[2]);
+    mac(&accum2, &a[0],&b[2]);
     mac(&accum1, &aa[0], &bb[2]);
     mac(&accum0, &a[4], &b[6]);
 
@@ -186,11 +181,9 @@ p448_mulw (
     c[3] = accum0 & mask; accum0 >>= 56;
     c[7] = accum4 & mask; accum4 >>= 56;
 
-    c[4] += accum0 + accum4;
-    c[0] += accum4;
+    // c[4] += accum0 + accum4;
+    // c[0] += accum4;
     
-    /*
-     * TODO: double-check that this is not necessary.
     accum0 += accum4 + c[4];
     c[4] = accum0 & mask;
     c[5] += accum0 >> 56;
@@ -198,7 +191,6 @@ p448_mulw (
     accum4 += c[0];
     c[0] = accum4 & mask;
     c[1] += accum4 >> 56;
-    */
 }
 
 void

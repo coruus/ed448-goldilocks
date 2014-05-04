@@ -12,13 +12,42 @@
 
 #include <stdint.h>
 
+#ifndef GOLDI_IMPLEMENT_PRECOMPUTED_KEYS
+/** If nonzero, implement precomputation for verify and ECDH. */
+#define GOLDI_IMPLEMENT_PRECOMPUTED_KEYS 1
+#endif
+
+/** The size of the Goldilocks field, in bits. */
+#define GOLDI_FIELD_BITS          448
+
+/** The size of the Goldilocks scalars, in bits. */
+#define GOLDI_SCALAR_BITS         446
+
+/** The same size, in bytes. */
+#define GOLDI_FIELD_BYTES         (GOLDI_FIELD_BITS/8)
+
+/** The size of a Goldilocks public key, in bytes. */
+#define GOLDI_PUBLIC_KEY_BYTES    GOLDI_FIELD_BYTES
+
+/** The extra bytes in a Goldilocks private key for the symmetric key. */
+#define GOLDI_SYMKEY_BYTES        32
+
+/** The size of a shared secret. */
+#define GOLDI_SHARED_SECRET_BYTES 64
+
+/** The size of a Goldilocks private key, in bytes. */
+#define GOLDI_PRIVATE_KEY_BYTES   (2*GOLDI_FIELD_BYTES + GOLDI_SYMKEY_BYTES)
+
+/** The size of a Goldilocks private key, in bytes. */
+#define GOLDI_SIGNATURE_BYTES     (2*GOLDI_FIELD_BYTES)
+
 /**
  * @brief Serialized form of a Goldilocks public key.
  *
  * @warning This isn't even my final form!
  */
 struct goldilocks_public_key_t {
-    uint8_t opaque[56]; /**< Serialized data. */
+    uint8_t opaque[GOLDI_PUBLIC_KEY_BYTES]; /**< Serialized data. */
 };
 
 /**
@@ -30,7 +59,7 @@ struct goldilocks_public_key_t {
  * @warning This isn't even my final form!
  */
 struct goldilocks_private_key_t {
-    uint8_t opaque[144]; /**< Serialized data. */
+    uint8_t opaque[GOLDI_PRIVATE_KEY_BYTES]; /**< Serialized data. */
 };
 
 #ifdef __cplusplus
@@ -72,7 +101,7 @@ static const int GOLDI_EALREADYINIT  = 44805;
  */
 int
 goldilocks_init ()
-__attribute__((warn_unused_result));
+__attribute__((warn_unused_result,visibility ("default")));
 
 
 /**
@@ -90,7 +119,40 @@ int
 goldilocks_keygen (
     struct goldilocks_private_key_t *privkey,
     struct goldilocks_public_key_t *pubkey
-) __attribute__((warn_unused_result,nonnull(1,2)));
+) __attribute__((warn_unused_result,nonnull(1,2),visibility ("default")));
+
+/**
+ * @brief Derive a key from its compressed form.
+ * @param [out] privkey The derived private key.
+ * @param [in] proto The compressed or proto-key, which must be 32 random bytes.
+ *
+ * @warning This isn't even my final form!
+ *
+ * @retval GOLDI_EOK Success.
+ * @retval GOLDI_EUNINIT You must call goldilocks_init() first.
+ */
+int
+goldilocks_derive_private_key (
+    struct goldilocks_private_key_t *privkey,
+    const unsigned char proto[GOLDI_SYMKEY_BYTES]
+) __attribute__((nonnull(1,2),visibility ("default")));
+
+/**
+ * @brief Compress a private key (by copying out the proto-key)
+ * @param [out] proto The proto-key.
+ * @param [in] privkey The private key.
+ *
+ * @warning This isn't even my final form!
+ * @todo test.
+ *
+ * @retval GOLDI_EOK Success.
+ * @retval GOLDI_EUNINIT You must call goldilocks_init() first.
+ */
+void
+goldilocks_underive_private_key (
+    unsigned char proto[GOLDI_SYMKEY_BYTES],
+    const struct goldilocks_private_key_t *privkey
+) __attribute__((nonnull(1,2),visibility ("default")));
 
 /**
  * @brief Extract the public key from a private key.
@@ -107,7 +169,7 @@ int
 goldilocks_private_to_public (
     struct goldilocks_public_key_t *pubkey,
     const struct goldilocks_private_key_t *privkey
-) __attribute__((nonnull(1,2)));
+) __attribute__((nonnull(1,2),visibility ("default")));
 
 /**
  * @brief Generate a Diffie-Hellman shared secret in constant time.
@@ -140,10 +202,10 @@ goldilocks_private_to_public (
  */
 int
 goldilocks_shared_secret (
-    uint8_t shared[64],
+    uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
     const struct goldilocks_private_key_t *my_privkey,
     const struct goldilocks_public_key_t *your_pubkey
-) __attribute__((warn_unused_result,nonnull(1,2,3)));
+) __attribute__((warn_unused_result,nonnull(1,2,3),visibility ("default")));
     
 /**
  * @brief Sign a message.
@@ -166,11 +228,11 @@ goldilocks_shared_secret (
  */
 int
 goldilocks_sign (
-    uint8_t signature_out[56*2],
+    uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
     const uint8_t *message,
     uint64_t message_len,
     const struct goldilocks_private_key_t *privkey
-) __attribute__((nonnull(1,2,4)));
+) __attribute__((nonnull(1,2,4),visibility ("default")));
 
 /**
  * @brief Verify a signature.
@@ -197,11 +259,108 @@ goldilocks_sign (
  */
 int
 goldilocks_verify (
-    const uint8_t signature[56*2],
+    const uint8_t signature[GOLDI_SIGNATURE_BYTES],
     const uint8_t *message,
     uint64_t message_len,
     const struct goldilocks_public_key_t *pubkey
-) __attribute__((warn_unused_result,nonnull(1,2,4)));
+) __attribute__((warn_unused_result,nonnull(1,2,4),visibility ("default")));
+
+#if GOLDI_IMPLEMENT_PRECOMPUTED_KEYS
+
+/** A public key which has been expanded by precomputation for higher speed. */
+struct goldilocks_precomputed_public_key_t;
+
+/**
+ * @brief Expand a public key by precomputation.
+ *
+ * @todo Give actual error returns, instead of ambiguous NULL.
+ *
+ * @warning This isn't even my final form!
+ *
+ * @param [in] pub The public key.
+ * @retval NULL We ran out of memory, or the 
+ */
+struct goldilocks_precomputed_public_key_t *
+goldilocks_precompute_public_key (
+    const struct goldilocks_public_key_t *pub
+) __attribute__((warn_unused_result,nonnull(1),visibility ("default")));
+
+/**
+ * @brief Overwrite an expanded public key with zeros, then destroy it.
+ *
+ * If the input is NULL, this function does nothing.
+ *
+ * @param [in] precom The public key.
+ */
+void
+goldilocks_destroy_precomputed_public_key (
+    struct goldilocks_precomputed_public_key_t *precom
+) __attribute__((visibility ("default")));
+
+/**
+ * @brief Verify a signature.
+ *
+ * This function is fairly strict.  It will correctly detect when
+ * the signature has the wrong cofactor component, or when the sig
+ * values aren't less than p or q.
+ *
+ * @warning This isn't even my final form!
+ *
+ * @param [in] signature The signature.
+ * @param [in] message The message to be verified.
+ * @param [in] message_len The length of the message to be verified.
+ * @param [in] pubkey The signer's public key, expanded by precomputation.
+ *
+ * @retval GOLDI_EOK Success.
+ * @retval GOLDI_EINVAL The public key or signature is corrupt.
+ * @retval GOLDI_EUNINIT You must call goldilocks_init() first.
+ */
+int
+goldilocks_verify_precomputed (
+   const uint8_t signature[GOLDI_SIGNATURE_BYTES],
+   const uint8_t *message,
+   uint64_t message_len,
+   const struct goldilocks_precomputed_public_key_t *pubkey
+) __attribute__((warn_unused_result,nonnull(1,2,4),visibility ("default")));
+   
+/**
+ * @brief Generate a Diffie-Hellman shared secret in constant time.
+ * Uses a precomputation on the other party's public key for efficiency.
+ *
+ * This function uses some compile-time flags whose merit remains to
+ * be decided.
+ *
+ * If the flag EXPERIMENT_ECDH_OBLITERATE_CT is set, prepend 40 bytes
+ * of zeros to the secret before hashing.  In the case that the other
+ * party's key is detectably corrupt, instead the symmetric part
+ * of the secret key is used to produce a pseudorandom value.
+ *
+ * If EXPERIMENT_ECDH_STIR_IN_PUBKEYS is set, the sum and product of
+ * the two parties' public keys is prepended to the hash.
+ *
+ * In the current version, this function can safely be run even without
+ * goldilocks_init().  But this property is not guaranteed for future
+ * versions, so call it anyway.
+ *
+ * @warning This isn't even my final form!
+ *
+ * @param [out] shared The shared secret established with the other party.
+ * @param [in] my_privkey My private key.
+ * @param [in] your_pubkey The other party's precomputed public key.
+ *
+ * @retval GOLDI_EOK Success.
+ * @retval GOLDI_ECORRUPT My key is corrupt.
+ * @retval GOLDI_EINVAL   The other party's key is corrupt.
+ * @retval GOLDI_EUNINIT You must call goldilocks_init() first.
+ */
+int
+goldilocks_shared_secret_precomputed (
+   uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
+   const struct goldilocks_private_key_t *my_privkey,
+   const struct goldilocks_precomputed_public_key_t *your_pubkey
+) __attribute__((warn_unused_result,nonnull(1,2,3),visibility ("default")));
+
+#endif /* GOLDI_IMPLEMENT_PRECOMPUTED_KEYS */
 
 #ifdef __cplusplus
 }; /* extern "C" */

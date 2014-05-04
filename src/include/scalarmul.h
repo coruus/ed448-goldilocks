@@ -26,7 +26,7 @@ struct fixed_base_table_t {
   struct tw_niels_t *table;
   
   /** Adjustments to the scalar in even and odd cases, respectively. */
-  word_t scalar_adjustments[2*(448/WORD_BITS)];
+  word_t scalar_adjustments[2*(448/WORD_BITS)];  /* MAGIC */
   
   /** The number of combs in the table. */
   unsigned int n;
@@ -103,7 +103,7 @@ montgomery_ladder (
 void
 scalarmul (
     struct tw_extensible_t *working,
-    const word_t scalar[448/WORD_BITS]
+    const word_t scalar[448/WORD_BITS] /* MAGIC */
     /* TODO? int nbits */
 );
     
@@ -124,7 +124,7 @@ scalarmul (
 void
 scalarmul_vlook (
     struct tw_extensible_t *working,
-    const word_t scalar[448/WORD_BITS]
+    const word_t scalar[448/WORD_BITS] /* MAGIC */
     /* TODO? int nbits */
 );
 
@@ -209,7 +209,7 @@ scalarmul_fixed_base (
 void
 scalarmul_vt (
     struct tw_extensible_t *working,
-    const word_t scalar[448/WORD_BITS]
+    const word_t scalar[448/WORD_BITS] /* MAGIC */
 );
 
 
@@ -274,12 +274,40 @@ scalarmul_fixed_base_wnaf_vt (
 void
 linear_combo_var_fixed_vt (
     struct tw_extensible_t *working,
-    const word_t scalar_var[448/WORD_BITS],
+    const word_t scalar_var[448/WORD_BITS], /* MAGIC */
     unsigned int nbits_var,
-    const word_t scalar_pre[448/WORD_BITS],
+    const word_t scalar_pre[448/WORD_BITS], /* MAGIC */
     unsigned int nbits_pre,
     const struct tw_niels_t *precmp,
     unsigned int table_bits_pre
+);
+
+/**
+ * Variable-time scalar linear combination of two fixed points.
+ *
+ * @warning This function takes variable time.  It is intended for
+ * signature verification.
+ *
+ * @param [out] working The output point.
+ * @param [in] scalar1 The first scalar.
+ * @param [in] nbits1 The number of bits in the first scalar.
+ * @param [in] table1 The first precomputed table.
+ * @param [in] scalar2 The second scalar.
+ * @param [in] nbits1 The number of bits in the second scalar.
+ * @param [in] table1 The second precomputed table.
+ *
+ * @retval MASK_SUCCESS Success.
+ * @retval MASK_FAILURE Failure, because eg the tables are too small.
+ */
+mask_t
+linear_combo_combs_vt (
+    struct tw_extensible_t *out,
+    const word_t scalar1[448/WORD_BITS],
+    unsigned int nbits1,
+    const struct fixed_base_table_t *table1,
+    const word_t scalar2[448/WORD_BITS],
+    unsigned int nbits2,
+    const struct fixed_base_table_t *table2
 );
 
 #ifdef __cplusplus
