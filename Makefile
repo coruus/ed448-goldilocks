@@ -11,6 +11,7 @@ else
 CC = gcc
 endif
 LD = $(CC)
+ASM ?= $(CC)
 
 ifneq (,$(findstring x86_64,$(MACHINE)))
 ARCH ?= arch_x86_64
@@ -99,7 +100,7 @@ build/timestamp:
 	touch $@
 
 build/%.o: build/%.s
-	$(CC) $(ASFLAGS) -c -o $@ $<
+	$(ASM) $(ASFLAGS) -c -o $@ $<
 
 build/%.s: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<

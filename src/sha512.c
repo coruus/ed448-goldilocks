@@ -163,9 +163,9 @@ sha512_final (
         sha512_process_block(ctx);
         fill = 0;
     }
-    memset(ctx->block + fill, 0, 112-fill);
-    *((uint64_t *)&ctx->block[112]) = 0;
-    *((uint64_t *)&ctx->block[120]) = htobe64((ctx->nbytes * 8));
+    memset(ctx->block + fill, 0, 120-fill);
+    uint64_t size = htobe64((ctx->nbytes * 8));
+    memcpy(&ctx->block[120], &size, sizeof(size));
     sha512_process_block(ctx);
     for (i=0; i<8; i++) {
         ctx->chain[i] = htobe64(ctx->chain[i]);

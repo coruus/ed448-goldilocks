@@ -71,18 +71,18 @@ static const mask_t MASK_FAILURE = 0, MASK_SUCCESS = -1;
 typedef uint32x4_t vecmask_t;
 #else
 /* FIXME this only works on clang */
-typedef uint64_t uint64x2_t __attribute__((ext_vector_type(2)));
-typedef int64_t  int64x2_t __attribute__((ext_vector_type(2)));
-typedef uint64_t uint64x4_t __attribute__((ext_vector_type(4)));
-typedef int64_t  int64x4_t __attribute__((ext_vector_type(4)));
-typedef uint32_t uint32x4_t __attribute__((ext_vector_type(4)));
-typedef int32_t  int32x4_t __attribute__((ext_vector_type(4)));
-typedef uint32_t uint32x2_t __attribute__((ext_vector_type(2)));
-typedef int32_t  int32x2_t __attribute__((ext_vector_type(2)));
-typedef uint32_t uint32x8_t __attribute__((ext_vector_type(8)));
-typedef int32_t  int32x8_t __attribute__((ext_vector_type(8)));
+typedef uint64_t uint64x2_t __attribute__((vector_size(16)));
+typedef int64_t  int64x2_t __attribute__((vector_size(16)));
+typedef uint64_t uint64x4_t __attribute__((vector_size(32)));
+typedef int64_t  int64x4_t __attribute__((vector_size(32)));
+typedef uint32_t uint32x2_t __attribute__((vector_size(8)));
+typedef int32_t  int32x2_t __attribute__((vector_size(8)));
+typedef uint32_t uint32x4_t __attribute__((vector_size(16)));
+typedef int32_t  int32x4_t __attribute__((vector_size(16)));
+typedef uint32_t uint32x8_t __attribute__((vector_size(32)));
+typedef int32_t  int32x8_t __attribute__((vector_size(32)));
 /* TODO: vector width for procs like ARM; gcc support */
-typedef word_t vecmask_t __attribute__((ext_vector_type(4)));
+typedef word_t vecmask_t __attribute__((vector_size(32)));
 #endif
 
 #if __AVX2__
@@ -111,14 +111,15 @@ br_set_to_mask(mask_t x) {
 #else
 static __inline__ big_register_t
 br_set_to_mask(mask_t x) {
-    return (big_register_t)x;
+    big_register_t out = {x,x,x,x,x,x,x,x};
+    return out;
 }
 #endif
 
 #if __AVX2__ || __SSE2__
 static __inline__ big_register_t
 br_is_zero(big_register_t x) {
-    return (big_register_t)(x == (big_register_t)0);
+    return (big_register_t)(x == br_set_to_mask(0));
 }
 #elif __ARM_NEON__
 static __inline__ big_register_t

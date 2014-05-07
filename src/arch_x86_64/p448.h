@@ -187,7 +187,7 @@ p448_cond_swap (
 ) {
     big_register_t *aa = (big_register_t*)a;
     big_register_t *bb = (big_register_t*)b;
-    big_register_t m = doswap;
+    big_register_t m = br_set_to_mask(doswap);
 
     unsigned int i;
     for (i=0; i<sizeof(*a)/sizeof(*aa); i++) {
@@ -259,7 +259,7 @@ p448_cond_neg(
     struct p448_t negated;
     big_register_t *aa = (big_register_t *)a;
     big_register_t *nn = (big_register_t*)&negated;
-    big_register_t m = doNegate;
+    big_register_t m = br_set_to_mask(doNegate);
     
     p448_neg(&negated, a);
     p448_bias(&negated, 2);
