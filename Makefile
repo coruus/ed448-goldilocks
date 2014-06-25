@@ -20,12 +20,10 @@ ARCH ?= arch_arm_32
 endif
 
 
-WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
-	 -Wmissing-declarations -Wunused-function $(EXWARN)
-	 
-	 
+WARNFLAGS = -pedantic -Wall -Wextra -Werror -Weverything -Wpedantic -Wunreachable-code \
+	 -Wmissing-declarations -Wunused-function -Wno-documentation -Wno-padded $(EXWARN)
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(ARCH)
-LANGFLAGS = -std=c99
+LANGFLAGS = -std=c11
 GENFLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
 OFLAGS = -O3
 
@@ -38,7 +36,8 @@ endif
 ARCHFLAGS += -mcpu=cortex-a9 # FIXME
 GENFLAGS = -DN_TESTS_BASE=1000 # sooooo sloooooow
 else
-ARCHFLAGS += -mssse3 -maes -mavx -mavx2 -DMUST_HAVE_AVX2 -mbmi2 #TODO
+#ARCHFLAGS += -mssse3 -maes -mavx -mavx2 -DMUST_HAVE_AVX2 -mbmi2 #TODO
+ARCHFLAGS += -march=native
 endif
 
 ifeq ($(CC),clang)

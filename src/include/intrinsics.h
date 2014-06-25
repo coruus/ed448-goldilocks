@@ -17,7 +17,7 @@
 #endif
 
 #define INTRINSIC \
-  static __inline__ __attribute__((__gnu_inline__, __always_inline__, unused))
+  static __inline__ __attribute__((__gnu_inline__, __always_inline__))
 
 #define GEN    1
 #define SSE2   2
