@@ -17,12 +17,12 @@ hexprint (
     const unsigned char *bytes,
     unsigned int nbytes
 );
-    
+
 void p448_print (
     const char *descr,
     const struct p448_t *a
 );
-    
+
 void scalar_print (
     const char *descr,
     const word_t *scalar,
