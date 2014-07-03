@@ -20,7 +20,7 @@ ARCH ?= arch_arm_32
 endif
 
 
-WARNFLAGS = -pedantic -Wall -Wextra -Werror -Weverything -Wpedantic -Wunreachable-code \
+WARNFLAGS = -pedantic -Wall -Wextra -Weverything -Wpedantic -Wunreachable-code \
 	 -Wmissing-declarations -Wunused-function -Wno-documentation -Wno-padded $(EXWARN)
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(ARCH)
 LANGFLAGS = -std=c11

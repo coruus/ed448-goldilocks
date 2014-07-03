@@ -57,7 +57,8 @@ static const word_t goldi_q448_lo[(224 + WORD_BITS - 1) / WORD_BITS] = {
     U64LE(0xde933d8d723a70aa),
     U64LE(0x3bb124b65129c96f),
     0x8335dc16};
-const struct barrett_prime_t goldi_q448 = {
+
+extern const struct barrett_prime_t goldi_q448 = {
     GOLDI_FIELD_WORDS,
     62 % WORD_BITS,
     sizeof(goldi_q448_lo) / sizeof(goldi_q448_lo[0]),
@@ -79,7 +80,7 @@ struct goldilocks_precomputed_public_key_t {
 };
 
 #ifndef USE_BIG_TABLES
-#if __ARM_NEON__
+#ifdef __ARM_NEON__
 #define USE_BIG_TABLES 1
 #else
 #define USE_BIG_TABLES (WORD_BITS == 64)
@@ -106,7 +107,7 @@ static inline mask_t goldilocks_check_init() {
   }
 }
 
-int goldilocks_init() {
+int goldilocks_init(void) {
   const char* res = compare_and_swap(&goldilocks_global.state, NULL, G_INITING);
   if (res == G_INITED)
     return GOLDI_EALREADYINIT;

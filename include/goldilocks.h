@@ -100,7 +100,7 @@ static const int GOLDI_EALREADYINIT  = 44805;
  * @retval Nonzero An error occurred.
  */
 int
-goldilocks_init ()
+goldilocks_init (void)
 __attribute__((warn_unused_result,visibility ("default")));
 
 
