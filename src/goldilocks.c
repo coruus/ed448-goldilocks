@@ -163,9 +163,8 @@ fail:
   return -1;
 }
 
-int goldilocks_derive_private_key(
-    struct goldilocks_private_key_t* privkey,
-    const unsigned char proto[GOLDI_SYMKEY_BYTES]) {
+int goldilocks_derive_private_key(struct goldilocks_private_key_t* privkey,
+                                  const unsigned char proto[GOLDI_SYMKEY_BYTES]) {
   if (!goldilocks_check_init()) {
     return GOLDI_EUNINIT;
   }
@@ -188,8 +187,7 @@ int goldilocks_derive_private_key(
   barrett_deserialize_and_reduce(sk, skb, SHA512_OUTPUT_BYTES, &goldi_q448);
   barrett_serialize(privkey->opaque, sk, GOLDI_FIELD_BYTES);
 
-  scalarmul_fixed_base(
-      &exta, sk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
+  scalarmul_fixed_base(&exta, sk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
   untwist_and_double_and_serialize(&pk, &exta);
 
   p448_serialize(&privkey->opaque[GOLDI_FIELD_BYTES], &pk);
@@ -197,9 +195,8 @@ int goldilocks_derive_private_key(
   return GOLDI_EOK;
 }
 
-void goldilocks_underive_private_key(
-    unsigned char proto[GOLDI_SYMKEY_BYTES],
-    const struct goldilocks_private_key_t* privkey) {
+void goldilocks_underive_private_key(unsigned char proto[GOLDI_SYMKEY_BYTES],
+                                     const struct goldilocks_private_key_t* privkey) {
   memcpy(proto, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
 }
 
@@ -236,9 +233,8 @@ int goldilocks_keygen(struct goldilocks_private_key_t* privkey,
   return ret ? GOLDI_ENODICE : GOLDI_EOK;
 }
 
-int goldilocks_private_to_public(
-    struct goldilocks_public_key_t* pubkey,
-    const struct goldilocks_private_key_t* privkey) {
+int goldilocks_private_to_public(struct goldilocks_public_key_t* pubkey,
+                                 const struct goldilocks_private_key_t* privkey) {
   struct p448_t pk;
   mask_t msucc = p448_deserialize(&pk, &privkey->opaque[GOLDI_FIELD_BYTES]);
 
@@ -324,19 +320,17 @@ static int goldilocks_shared_secret_core(
          (GOLDI_EOK & msucc & succ);
 }
 
-int goldilocks_shared_secret(
-    uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
-    const struct goldilocks_private_key_t* my_privkey,
-    const struct goldilocks_public_key_t* your_pubkey) {
+int goldilocks_shared_secret(uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
+                             const struct goldilocks_private_key_t* my_privkey,
+                             const struct goldilocks_public_key_t* your_pubkey) {
   return goldilocks_shared_secret_core(shared, my_privkey, your_pubkey, NULL);
 }
 
-static void goldilocks_derive_challenge(
-    word_t challenge[GOLDI_FIELD_WORDS],
-    const unsigned char pubkey[GOLDI_FIELD_BYTES],
-    const unsigned char gnonce[GOLDI_FIELD_BYTES],
-    const unsigned char* message,
-    uint64_t message_len) {
+static void goldilocks_derive_challenge(word_t challenge[GOLDI_FIELD_WORDS],
+                                        const unsigned char pubkey[GOLDI_FIELD_BYTES],
+                                        const unsigned char gnonce[GOLDI_FIELD_BYTES],
+                                        const unsigned char* message,
+                                        uint64_t message_len) {
   /* challenge = H(pk, [nonceG], message). */
   unsigned char sha_out[SHA512_OUTPUT_BYTES];
   struct sha512_ctx_t ctx;
@@ -345,8 +339,7 @@ static void goldilocks_derive_challenge(
   sha512_update(&ctx, gnonce, GOLDI_FIELD_BYTES);
   sha512_update(&ctx, message, message_len);
   sha512_final(&ctx, sha_out);
-  barrett_deserialize_and_reduce(
-      challenge, sha_out, sizeof(sha_out), &goldi_q448);
+  barrett_deserialize_and_reduce(challenge, sha_out, sizeof(sha_out), &goldi_q448);
 }
 
 int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
@@ -371,11 +364,9 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
   struct sha512_ctx_t ctx;
   sha512_init(&ctx);
   sha512_update(&ctx, (const unsigned char*)"signonce", 8);
-  sha512_update(
-      &ctx, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
+  sha512_update(&ctx, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
   sha512_update(&ctx, message, message_len);
-  sha512_update(
-      &ctx, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
+  sha512_update(&ctx, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
   sha512_final(&ctx, sha_out);
   barrett_deserialize_and_reduce(tk, sha_out, SHA512_OUTPUT_BYTES, &goldi_q448);
 
@@ -383,8 +374,7 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
   uint8_t signature_tmp[GOLDI_FIELD_BYTES];
   struct tw_extensible_t exta;
   struct p448_t gsk;
-  scalarmul_fixed_base(
-      &exta, tk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
+  scalarmul_fixed_base(&exta, tk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
   double_tw_extensible(&exta);
   untwist_and_double_and_serialize(&gsk, &exta);
   p448_serialize(signature_tmp, &gsk);
@@ -407,8 +397,7 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
               GOLDI_FIELD_WORDS,
               &goldi_q448);
 
-  word_t carry =
-      add_nr_ext_packed(tk, tk, GOLDI_FIELD_WORDS, tk, GOLDI_FIELD_WORDS, -1);
+  word_t carry = add_nr_ext_packed(tk, tk, GOLDI_FIELD_WORDS, tk, GOLDI_FIELD_WORDS, -1);
   barrett_reduce(tk, GOLDI_FIELD_WORDS, carry, &goldi_q448);
 
   memcpy(signature_out, signature_tmp, GOLDI_FIELD_BYTES);
@@ -446,8 +435,7 @@ int goldilocks_verify(const uint8_t signature[GOLDI_SIGNATURE_BYTES],
     return GOLDI_EINVAL;
 
   word_t challenge[GOLDI_FIELD_WORDS];
-  goldilocks_derive_challenge(
-      challenge, pubkey->opaque, signature, message, message_len);
+  goldilocks_derive_challenge(challenge, pubkey->opaque, signature, message, message_len);
 
   struct p448_t eph;
   struct tw_extensible_t pk_text;
@@ -536,8 +524,7 @@ int goldilocks_verify_precomputed(
   }
 
   word_t s[GOLDI_FIELD_WORDS];
-  mask_t succ =
-      barrett_deserialize(s, &signature[GOLDI_FIELD_BYTES], &goldi_q448);
+  mask_t succ = barrett_deserialize(s, &signature[GOLDI_FIELD_BYTES], &goldi_q448);
   if (!succ)
     return GOLDI_EINVAL;
 

@@ -43,22 +43,19 @@ mask_t montgomery_ladder(struct p448_t* out,
   return serialize_montgomery(out, &mont, in);
 }
 
-static __inline__ void cond_negate_tw_niels(struct tw_niels_t* n,
-                                            mask_t doNegate) {
+static __inline__ void cond_negate_tw_niels(struct tw_niels_t* n, mask_t doNegate) {
   p448_cond_swap(&n->a, &n->b, doNegate);
   p448_cond_neg(&n->c, doNegate);
 }
 
-static __inline__ void cond_negate_tw_pniels(struct tw_pniels_t* n,
-                                             mask_t doNegate) {
+static __inline__ void cond_negate_tw_pniels(struct tw_pniels_t* n, mask_t doNegate) {
   cond_negate_tw_niels(&n->n, doNegate);
 }
 
-static __inline__ void constant_time_lookup_tw_pniels(
-    struct tw_pniels_t* out,
-    const struct tw_pniels_t* in,
-    int nin,
-    int idx) {
+static __inline__ void constant_time_lookup_tw_pniels(struct tw_pniels_t* out,
+                                                      const struct tw_pniels_t* in,
+                                                      int nin,
+                                                      int idx) {
   big_register_t big_one = br_set_to_mask(1), big_i = br_set_to_mask(idx);
   big_register_t* o = (big_register_t*)out;
   const big_register_t* i = (const big_register_t*)in;
@@ -74,11 +71,10 @@ static __inline__ void constant_time_lookup_tw_pniels(
   }
 }
 
-static __inline__ void constant_time_lookup_tw_niels(
-    struct tw_niels_t* out,
-    const struct tw_niels_t* in,
-    int nin,
-    int idx) {
+static __inline__ void constant_time_lookup_tw_niels(struct tw_niels_t* out,
+                                                     const struct tw_niels_t* in,
+                                                     int nin,
+                                                     int idx) {
   big_register_t big_one = br_set_to_mask(1), big_i = br_set_to_mask(idx);
   big_register_t* o = (big_register_t*)out;
   const big_register_t* i = (const big_register_t*)in;
@@ -102,8 +98,8 @@ static void convert_to_signed_window_form(word_t* out,
   assert(nwords_pd <= nwords_scalar);
   mask_t mask = -(scalar[0] & 1);
 
-  word_t carry = add_nr_ext_packed(
-      out, scalar, nwords_scalar, prepared_data, nwords_pd, ~mask);
+  word_t carry =
+      add_nr_ext_packed(out, scalar, nwords_scalar, prepared_data, nwords_pd, ~mask);
   carry += add_nr_ext_packed(
       out, out, nwords_scalar, prepared_data + nwords_pd, nwords_pd, mask);
 
@@ -120,24 +116,22 @@ static void convert_to_signed_window_form(word_t* out,
   }
 }
 
-void scalarmul(struct tw_extensible_t* working,
-               const word_t scalar[448 / WORD_BITS]) {
+void scalarmul(struct tw_extensible_t* working, const word_t scalar[448 / WORD_BITS]) {
   const int nbits = 450; /* MAGIC */
-  word_t prepared_data[448 * 2 / WORD_BITS] = {
-      U64LE(0xebec9967f5d3f5c2),
-      U64LE(0x0aa09b49b16c9a02),
-      U64LE(0x7f6126aec172cd8e),
-      U64LE(0x00000007b027e54d),
-      U64LE(0x0000000000000000),
-      U64LE(0x0000000000000000),
-      U64LE(0x4000000000000000),
-      U64LE(0xc873d6d54a7bb0cf),
-      U64LE(0xe933d8d723a70aad),
-      U64LE(0xbb124b65129c96fd),
-      U64LE(0x00000008335dc163),
-      U64LE(0x0000000000000000),
-      U64LE(0x0000000000000000),
-      U64LE(0x0000000000000000)}; /* MAGIC */
+  word_t prepared_data[448 * 2 / WORD_BITS] = {U64LE(0xebec9967f5d3f5c2),
+                                               U64LE(0x0aa09b49b16c9a02),
+                                               U64LE(0x7f6126aec172cd8e),
+                                               U64LE(0x00000007b027e54d),
+                                               U64LE(0x0000000000000000),
+                                               U64LE(0x0000000000000000),
+                                               U64LE(0x4000000000000000),
+                                               U64LE(0xc873d6d54a7bb0cf),
+                                               U64LE(0xe933d8d723a70aad),
+                                               U64LE(0xbb124b65129c96fd),
+                                               U64LE(0x00000008335dc163),
+                                               U64LE(0x0000000000000000),
+                                               U64LE(0x0000000000000000),
+                                               U64LE(0x0000000000000000)}; /* MAGIC */
 
   word_t scalar2[448 / WORD_BITS];
   convert_to_signed_window_form(
@@ -177,8 +171,7 @@ void scalarmul(struct tw_extensible_t* working,
 
     bits = scalar2[i / WORD_BITS] >> (i % WORD_BITS);
 
-    if (i / WORD_BITS < 448 / WORD_BITS - 1 &&
-        i % WORD_BITS >= WORD_BITS - WINDOW) {
+    if (i / WORD_BITS < 448 / WORD_BITS - 1 && i % WORD_BITS >= WORD_BITS - WINDOW) {
       bits ^= scalar2[i / WORD_BITS + 1] << (WORD_BITS - (i % WORD_BITS));
     }
 
@@ -186,8 +179,7 @@ void scalarmul(struct tw_extensible_t* working,
     inv = (bits >> (WINDOW - 1)) - 1;
     bits ^= inv;
 
-    constant_time_lookup_tw_pniels(
-        &pn, multiples, NTABLE, bits & WINDOW_T_MASK);
+    constant_time_lookup_tw_pniels(&pn, multiples, NTABLE, bits & WINDOW_T_MASK);
     cond_negate_tw_pniels(&pn, inv);
     add_tw_pniels_to_tw_extensible(working, &pn);
   }
@@ -250,8 +242,7 @@ void scalarmul_vlook(struct tw_extensible_t* working,
 
     bits = scalar2[i / WORD_BITS] >> (i % WORD_BITS);
 
-    if (i / WORD_BITS < 448 / WORD_BITS - 1 &&
-        i % WORD_BITS >= WORD_BITS - WINDOW) {
+    if (i / WORD_BITS < 448 / WORD_BITS - 1 && i % WORD_BITS >= WORD_BITS - WINDOW) {
       bits ^= scalar2[i / WORD_BITS + 1] << (WORD_BITS - (i % WORD_BITS));
     }
 
@@ -265,11 +256,10 @@ void scalarmul_vlook(struct tw_extensible_t* working,
   }
 }
 
-static mask_t schedule_scalar_for_combs(
-    word_t* scalar2,
-    const word_t* scalar,
-    unsigned int nbits,
-    const struct fixed_base_table_t* table) {
+static mask_t schedule_scalar_for_combs(word_t* scalar2,
+                                        const word_t* scalar,
+                                        unsigned int nbits,
+                                        const struct fixed_base_table_t* table) {
   unsigned int i;
   unsigned int n = table->n, t = table->t, s = table->s;
 
@@ -294,11 +284,8 @@ static mask_t schedule_scalar_for_combs(
     scalar3[i] = 0;
   }
 
-  convert_to_signed_window_form(scalar2,
-                                scalar3,
-                                scalar2_words,
-                                table->scalar_adjustments,
-                                448 / WORD_BITS);
+  convert_to_signed_window_form(
+      scalar2, scalar3, scalar2_words, table->scalar_adjustments, 448 / WORD_BITS);
 
   return MASK_SUCCESS;
 }
@@ -468,10 +455,8 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
 
   struct tw_pniels_t* doubles =
       (struct tw_pniels_t*)malloc_vector(sizeof(*doubles) * (t - 1));
-  struct p448_t* zs =
-      (struct p448_t*)malloc_vector(sizeof(*zs) * (n << (t - 1)));
-  struct p448_t* zis =
-      (struct p448_t*)malloc_vector(sizeof(*zis) * (n << (t - 1)));
+  struct p448_t* zs = (struct p448_t*)malloc_vector(sizeof(*zs) * (n << (t - 1)));
+  struct p448_t* zis = (struct p448_t*)malloc_vector(sizeof(*zis) * (n << (t - 1)));
 
   struct tw_niels_t* table = prealloc;
   if (prealloc) {
@@ -503,8 +488,7 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
     adjustment[i] = -1;
   }
 
-  adjustment[(n * t * s) / WORD_BITS] += ((word_t)1)
-                                         << ((n * t * s) % WORD_BITS);
+  adjustment[(n * t * s) / WORD_BITS] += ((word_t)1) << ((n * t * s) % WORD_BITS);
 
   /* MAGIC: factor out somehow */
   const word_t goldi_q448_lo[(224 + WORD_BITS - 1) / WORD_BITS] = {
@@ -512,18 +496,17 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
       U64LE(0xde933d8d723a70aa),
       U64LE(0x3bb124b65129c96f),
       0x8335dc16};
-  const struct barrett_prime_t goldi_q448 = {
-      448 / WORD_BITS,
-      62 % WORD_BITS,
-      sizeof(goldi_q448_lo) / sizeof(word_t),
-      goldi_q448_lo};
+  const struct barrett_prime_t goldi_q448 = {448 / WORD_BITS,
+                                             62 % WORD_BITS,
+                                             sizeof(goldi_q448_lo) / sizeof(word_t),
+                                             goldi_q448_lo};
 
   /* The low adjustment is 2^nbits - 1 mod q */
   barrett_reduce(adjustment, adjustment_size, 0, &goldi_q448);
   word_t* low_adjustment =
               &out->scalar_adjustments[(448 / WORD_BITS) * (adjustment[0] & 1)],
-          *high_adjustment = &out->scalar_adjustments[(448 / WORD_BITS) *
-                                                      ((~adjustment[0]) & 1)];
+          *high_adjustment =
+              &out->scalar_adjustments[(448 / WORD_BITS) * ((~adjustment[0]) & 1)];
   for (i = 0; i < 448 / WORD_BITS; i++) {
     low_adjustment[i] = adjustment[i];
   }
@@ -536,8 +519,7 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
                           goldi_q448.nwords_lo,
                           -1);
   if (goldi_q448.p_shift) {
-    high_adjustment[goldi_q448.nwords_p - 1] += ((word_t)1)
-                                                << goldi_q448.p_shift;
+    high_adjustment[goldi_q448.nwords_p - 1] += ((word_t)1) << goldi_q448.p_shift;
   }
 
   /* OK, now compute the tables */
@@ -578,8 +560,7 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
         break;
       int delta = (j + 1) ^ ((j + 1) >> 1) ^ gray;
 
-      for (k = 0; delta > 1; k++)
-        delta >>= 1;
+      for (k = 0; delta > 1; k++) delta >>= 1;
 
       if (gray & (1 << k)) {
         /* start += doubles[k] */
@@ -627,8 +608,7 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
 
 void destroy_fixed_base(struct fixed_base_table_t* table) {
   if (table->table) {
-    memset(
-        table->table, 0, sizeof(*table->table) * (table->n << (table->t - 1)));
+    memset(table->table, 0, sizeof(*table->table) * (table->n << (table->t - 1)));
   }
   if (table->own_table) {
     free(table->table);
@@ -706,11 +686,10 @@ struct smvt_control {
   int power, addend;
 };
 
-static int recode_wnaf(
-    struct smvt_control* control, /* [nbits/(tableBits+1) + 3] */
-    const word_t* scalar,
-    unsigned int nbits,
-    unsigned int tableBits) {
+static int recode_wnaf(struct smvt_control* control, /* [nbits/(tableBits+1) + 3] */
+                       const word_t* scalar,
+                       unsigned int nbits,
+                       unsigned int tableBits) {
   int current = 0, i, j;
   unsigned int position = 0;
 
@@ -781,8 +760,7 @@ static void prepare_wnaf_table(struct tw_pniels_t* output,
   }
 }
 
-void scalarmul_vt(struct tw_extensible_t* working,
-                  const word_t scalar[448 / WORD_BITS]) {
+void scalarmul_vt(struct tw_extensible_t* working, const word_t scalar[448 / WORD_BITS]) {
   /* HACK: not 448? */
   const int nbits = 448, table_bits = 3;
   struct smvt_control control[nbits / (table_bits + 1) + 3];
@@ -795,8 +773,7 @@ void scalarmul_vt(struct tw_extensible_t* working,
   if (control_bits > 0) {
     assert(control[0].addend > 0);
     assert(control[0].power >= 0);
-    convert_tw_pniels_to_tw_extensible(working,
-                                       &precmp[control[0].addend >> 1]);
+    convert_tw_pniels_to_tw_extensible(working, &precmp[control[0].addend >> 1]);
   } else {
     set_identity_tw_extensible(working);
     return;
@@ -810,11 +787,9 @@ void scalarmul_vt(struct tw_extensible_t* working,
       assert(control[conti].addend);
 
       if (control[conti].addend > 0) {
-        add_tw_pniels_to_tw_extensible(working,
-                                       &precmp[control[conti].addend >> 1]);
+        add_tw_pniels_to_tw_extensible(working, &precmp[control[conti].addend >> 1]);
       } else {
-        sub_tw_pniels_from_tw_extensible(
-            working, &precmp[(-control[conti].addend) >> 1]);
+        sub_tw_pniels_from_tw_extensible(working, &precmp[(-control[conti].addend) >> 1]);
       }
       conti++;
       assert(conti <= control_bits);
@@ -849,11 +824,9 @@ void scalarmul_fixed_base_wnaf_vt(struct tw_extensible_t* working,
 
     assert(control[conti].addend);
     if (control[conti].addend > 0) {
-      add_tw_niels_to_tw_extensible(working,
-                                    &precmp[control[conti].addend >> 1]);
+      add_tw_niels_to_tw_extensible(working, &precmp[control[conti].addend >> 1]);
     } else {
-      sub_tw_niels_from_tw_extensible(working,
-                                      &precmp[(-control[conti].addend) >> 1]);
+      sub_tw_niels_from_tw_extensible(working, &precmp[(-control[conti].addend) >> 1]);
     }
   }
 
@@ -885,19 +858,16 @@ void linear_combo_var_fixed_vt(struct tw_extensible_t* working,
 
   i = control_var[0].power;
   if (i > control_pre[0].power) {
-    convert_tw_pniels_to_tw_extensible(working,
-                                       &precmp_var[control_var[0].addend >> 1]);
+    convert_tw_pniels_to_tw_extensible(working, &precmp_var[control_var[0].addend >> 1]);
     contv++;
   } else if (i == control_pre[0].power && i >= 0) {
-    convert_tw_pniels_to_tw_extensible(working,
-                                       &precmp_var[control_var[0].addend >> 1]);
+    convert_tw_pniels_to_tw_extensible(working, &precmp_var[control_var[0].addend >> 1]);
     add_tw_niels_to_tw_extensible(working, &precmp[control_pre[0].addend >> 1]);
     contv++;
     contp++;
   } else {
     i = control_pre[0].power;
-    convert_tw_niels_to_tw_extensible(working,
-                                      &precmp[control_pre[0].addend >> 1]);
+    convert_tw_niels_to_tw_extensible(working, &precmp[control_pre[0].addend >> 1]);
     contp++;
   }
 
@@ -913,11 +883,11 @@ void linear_combo_var_fixed_vt(struct tw_extensible_t* working,
       assert(control_var[contv].addend);
 
       if (control_var[contv].addend > 0) {
-        add_tw_pniels_to_tw_extensible(
-            working, &precmp_var[control_var[contv].addend >> 1]);
+        add_tw_pniels_to_tw_extensible(working,
+                                       &precmp_var[control_var[contv].addend >> 1]);
       } else {
-        sub_tw_pniels_from_tw_extensible(
-            working, &precmp_var[(-control_var[contv].addend) >> 1]);
+        sub_tw_pniels_from_tw_extensible(working,
+                                         &precmp_var[(-control_var[contv].addend) >> 1]);
       }
       contv++;
     }
@@ -926,11 +896,10 @@ void linear_combo_var_fixed_vt(struct tw_extensible_t* working,
       assert(control_pre[contp].addend);
 
       if (control_pre[contp].addend > 0) {
-        add_tw_niels_to_tw_extensible(working,
-                                      &precmp[control_pre[contp].addend >> 1]);
+        add_tw_niels_to_tw_extensible(working, &precmp[control_pre[contp].addend >> 1]);
       } else {
-        sub_tw_niels_from_tw_extensible(
-            working, &precmp[(-control_pre[contp].addend) >> 1]);
+        sub_tw_niels_from_tw_extensible(working,
+                                        &precmp[(-control_pre[contp].addend) >> 1]);
       }
       contp++;
     }

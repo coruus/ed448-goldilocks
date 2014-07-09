@@ -76,9 +76,7 @@ static __inline__ __uint128_t widemul2(const uint64_t* a, const uint64_t* b) {
 #endif
 }
 
-static __inline__ void mac(__uint128_t* acc,
-                           const uint64_t* a,
-                           const uint64_t* b) {
+static __inline__ void mac(__uint128_t* acc, const uint64_t* a, const uint64_t* b) {
   uint64_t lo = *acc, hi = *acc >> 64;
 
 #ifdef __BMI2__
@@ -172,9 +170,7 @@ static __inline__ void mac_rm(__uint128_t* acc, uint64_t a, const uint64_t* b) {
   *acc = (((__uint128_t)(hi)) << 64) | lo;
 }
 
-static __inline__ void mac2(__uint128_t* acc,
-                            const uint64_t* a,
-                            const uint64_t* b) {
+static __inline__ void mac2(__uint128_t* acc, const uint64_t* a, const uint64_t* b) {
   uint64_t lo = *acc, hi = *acc >> 64;
 
 #ifdef __BMI2__
@@ -203,9 +199,7 @@ static __inline__ void mac2(__uint128_t* acc,
   *acc = (((__uint128_t)(hi)) << 64) | lo;
 }
 
-static __inline__ void msb(__uint128_t* acc,
-                           const uint64_t* a,
-                           const uint64_t* b) {
+static __inline__ void msb(__uint128_t* acc, const uint64_t* a, const uint64_t* b) {
   uint64_t lo = *acc, hi = *acc >> 64;
 #ifdef __BMI2__
   uint64_t c, d;
@@ -230,9 +224,7 @@ static __inline__ void msb(__uint128_t* acc,
   *acc = (((__uint128_t)(hi)) << 64) | lo;
 }
 
-static __inline__ void msb2(__uint128_t* acc,
-                            const uint64_t* a,
-                            const uint64_t* b) {
+static __inline__ void msb2(__uint128_t* acc, const uint64_t* a, const uint64_t* b) {
   uint64_t lo = *acc, hi = *acc >> 64;
 #ifdef __BMI2__
   uint64_t c, d;
@@ -259,9 +251,7 @@ static __inline__ void msb2(__uint128_t* acc,
   *acc = (((__uint128_t)(hi)) << 64) | lo;
 }
 
-static __inline__ void mrs(__uint128_t* acc,
-                           const uint64_t* a,
-                           const uint64_t* b) {
+static __inline__ void mrs(__uint128_t* acc, const uint64_t* a, const uint64_t* b) {
   uint64_t c, d, lo = *acc, hi = *acc >> 64;
   __asm__ volatile(
       "movq %[a], %%rdx; "

@@ -164,8 +164,7 @@ void twist_and_double(struct tw_extensible_t* b, const struct extensible_t* a) {
   p448_mul(&b->y, &L0, &b->u);
 }
 
-void untwist_and_double(struct extensible_t* b,
-                        const struct tw_extensible_t* a) {
+void untwist_and_double(struct extensible_t* b, const struct tw_extensible_t* a) {
   struct p448_t L0;
   p448_sqr(&b->x, &a->x);
   p448_sqr(&b->z, &a->y);
@@ -185,8 +184,7 @@ void untwist_and_double(struct extensible_t* b,
   p448_mul(&b->y, &L0, &b->u);
 }
 
-void convert_tw_affine_to_tw_pniels(struct tw_pniels_t* b,
-                                    const struct tw_affine_t* a) {
+void convert_tw_affine_to_tw_pniels(struct tw_pniels_t* b, const struct tw_affine_t* a) {
   p448_sub(&b->n.a, &a->y, &a->x);
   p448_bias(&b->n.a, 2);
   p448_weak_reduce(&b->n.a);
@@ -209,8 +207,7 @@ void convert_tw_affine_to_tw_extensible(struct tw_extensible_t* b,
   p448_copy(&b->u, &a->y);
 }
 
-void convert_affine_to_extensible(struct extensible_t* b,
-                                  const struct affine_t* a) {
+void convert_affine_to_extensible(struct extensible_t* b, const struct affine_t* a) {
   p448_copy(&b->x, &a->x);
   p448_copy(&b->y, &a->y);
   p448_set_ui(&b->z, 1);
@@ -357,8 +354,7 @@ void serialize_extensible(struct p448_t* b, const struct extensible_t* a) {
   p448_mul(&L0, &L2, &L1);
 }
 
-void untwist_and_double_and_serialize(struct p448_t* b,
-                                      const struct tw_extensible_t* a) {
+void untwist_and_double_and_serialize(struct p448_t* b, const struct tw_extensible_t* a) {
   struct p448_t L0, L1, L2, L3;
   p448_mul(&L3, &a->y, &a->x);
   p448_add(b, &a->y, &a->x);
@@ -605,8 +601,7 @@ mask_t eq_affine(const struct affine_t* a, const struct affine_t* b) {
   return L2 & L1;
 }
 
-mask_t eq_extensible(const struct extensible_t* a,
-                     const struct extensible_t* b) {
+mask_t eq_extensible(const struct extensible_t* a, const struct extensible_t* b) {
   struct p448_t L0, L1, L2;
   mask_t L3, L4;
   p448_mul(&L2, &b->z, &a->x);

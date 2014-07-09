@@ -61,8 +61,7 @@ void p448_mul(p448_t* __restrict__ cs, const p448_t* as, const p448_t* bs) {
   uint32_t* c = cs->limb;
 
   const int32x2_t* val = (const int32x2_t*)a, *vbl = (const int32x2_t*)b,
-                   *vah = (const int32x2_t*)(&a[8]),
-                   *vbh = (const int32x2_t*)(&b[8]);
+                   *vah = (const int32x2_t*)(&a[8]), *vbh = (const int32x2_t*)(&b[8]);
 
   int32x2_t* vcl = (int32x2_t*)c, *vch = (int32x2_t*)(&c[8]),
              vmask = {(1 << 28) - 1, (1 << 28) - 1};

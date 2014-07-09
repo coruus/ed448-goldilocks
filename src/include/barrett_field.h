@@ -17,16 +17,16 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
 /**
  * @brief A Barrett-form prime, 2^k - c.
  * @todo Support primes of other forms.
  */
 struct barrett_prime_t {
-    uint32_t nwords_p;   /**< The number of bits in p, i.e. ceiling((k-1) / WORD_BITS) */
-    uint32_t p_shift;    /**< c mod WORD_BITS. */
-    uint32_t nwords_lo;  /**< The number of nonzero low words. */
-    const word_t *p_lo;  /**< The low words. */
+  uint32_t nwords_p;  /**< The number of bits in p, i.e. ceiling((k-1) / WORD_BITS) */
+  uint32_t p_shift;   /**< c mod WORD_BITS. */
+  uint32_t nwords_lo; /**< The number of nonzero low words. */
+  const word_t* p_lo; /**< The low words. */
 };
 
 /**
@@ -42,14 +42,11 @@ extern const struct barrett_prime_t goldi_q448;
  * @param [in] a_carry A high word to be carried into the computation.
  * @param [in] prime The Barrett prime.
  */
-void
-barrett_reduce(
-    word_t *a,
-    uint32_t nwords_a,
-    word_t a_carry,
-    const struct barrett_prime_t *prime
-);
-    
+void barrett_reduce(word_t* a,
+                    uint32_t nwords_a,
+                    word_t a_carry,
+                    const struct barrett_prime_t* prime);
+
 /**
  * out = a+(c&mask), returning a carry.
  *
@@ -61,16 +58,13 @@ barrett_reduce(
  * @param [in] mask A mask of whether to add or not.
  * @return A carry word.
  */
-word_t
-add_nr_ext_packed(
-    word_t *out,
-    const word_t *a,
-    uint32_t nwords_a,
-    const word_t *c,
-    uint32_t nwords_c,
-    word_t mask
-);
-  
+word_t add_nr_ext_packed(word_t* out,
+                         const word_t* a,
+                         uint32_t nwords_a,
+                         const word_t* c,
+                         uint32_t nwords_c,
+                         word_t mask);
+
 /**
  * out = a-(c&mask), returning a borrow.
  *
@@ -81,16 +75,13 @@ add_nr_ext_packed(
  * @param [in] nwords_c The number of words in c.
  * @param [in] mask A mask of whether to add or not.
  * @return A borrow word.
- */  
-word_t
-sub_nr_ext_packed(
-    word_t *out,
-    const word_t *a,
-    uint32_t nwords_a,
-    const word_t *c,
-    uint32_t nwords_c,
-    word_t mask
-);
+ */
+word_t sub_nr_ext_packed(word_t* out,
+                         const word_t* a,
+                         uint32_t nwords_a,
+                         const word_t* c,
+                         uint32_t nwords_c,
+                         word_t mask);
 
 /**
  * a -> reduce(-a) mod p
@@ -98,13 +89,8 @@ sub_nr_ext_packed(
  * @param [in] a The value to be reduced and negated.
  * @param [in] nwords_a The number of words in a.  Must be >= nwords_p.
  * @param [in] prime The prime.
- */   
-void
-barrett_negate (
-    word_t *a,
-    uint32_t nwords_a,
-    const struct barrett_prime_t *prime
-);
+ */
+void barrett_negate(word_t* a, uint32_t nwords_a, const struct barrett_prime_t* prime);
 
 /*
  * If doMac, accum = accum + a*b mod p.
@@ -113,75 +99,45 @@ barrett_negate (
  * This function is not __restrict__; you may pass accum,
  * a, b, etc all from the same location.
  */
-void
-barrett_mul_or_mac(
-    word_t *accum,
-    uint32_t nwords_accum,
+void barrett_mul_or_mac(word_t* accum,
+                        uint32_t nwords_accum,
+                        const word_t* a,
+                        uint32_t nwords_a,
+                        const word_t* b,
+                        uint32_t nwords_b,
+                        const struct barrett_prime_t* prime,
+                        mask_t doMac);
 
-    const word_t *a,
-    uint32_t nwords_a,
-
-    const word_t *b,
-    uint32_t nwords_b,
-
-    const struct barrett_prime_t *prime,
-    
-    mask_t doMac
-);
-    
-static inline void
-barrett_mul(
-    word_t *out,
-    int nwords_out,
-
-    const word_t *a,
-    uint32_t nwords_a,
-
-    const word_t *b,
-    uint32_t nwords_b,
-
-    const struct barrett_prime_t *prime
-) {
-    barrett_mul_or_mac(out,nwords_out,a,nwords_a,b,nwords_b,prime,0);
-}
-    
-static inline void
-barrett_mac(
-    word_t *out,
-    uint32_t nwords_out,
-
-    const word_t *a,
-    uint32_t nwords_a,
-
-    const word_t *b,
-    uint32_t nwords_b,
-
-    const struct barrett_prime_t *prime
-) {
-    barrett_mul_or_mac(out,nwords_out,a,nwords_a,b,nwords_b,prime,-1);
+static inline void barrett_mul(word_t* out,
+                               int nwords_out,
+                               const word_t* a,
+                               uint32_t nwords_a,
+                               const word_t* b,
+                               uint32_t nwords_b,
+                               const struct barrett_prime_t* prime) {
+  barrett_mul_or_mac(out, nwords_out, a, nwords_a, b, nwords_b, prime, 0);
 }
 
-mask_t
-barrett_deserialize (
-    word_t *x,
-    const uint8_t *serial,
-    const struct barrett_prime_t *prime
-);
+static inline void barrett_mac(word_t* out,
+                               uint32_t nwords_out,
+                               const word_t* a,
+                               uint32_t nwords_a,
+                               const word_t* b,
+                               uint32_t nwords_b,
+                               const struct barrett_prime_t* prime) {
+  barrett_mul_or_mac(out, nwords_out, a, nwords_a, b, nwords_b, prime, -1);
+}
 
-void
-barrett_serialize (
-    uint8_t *serial,
-    const word_t *x,
-    uint32_t nserial
-);
-    
-void
-barrett_deserialize_and_reduce (
-    word_t *x,
-    const uint8_t *serial,
-    uint32_t nserial,
-    const struct barrett_prime_t *prime
-);
+mask_t barrett_deserialize(word_t* x,
+                           const uint8_t* serial,
+                           const struct barrett_prime_t* prime);
+
+void barrett_serialize(uint8_t* serial, const word_t* x, uint32_t nserial);
+
+void barrett_deserialize_and_reduce(word_t* x,
+                                    const uint8_t* serial,
+                                    uint32_t nserial,
+                                    const struct barrett_prime_t* prime);
 
 #ifdef __cplusplus
 }; /* extern "C" */

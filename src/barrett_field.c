@@ -25,9 +25,7 @@ word_t add_nr_ext_packed(word_t* out,
   return carry;
 }
 
-static __inline__ word_t add_nr_packed(word_t* a,
-                                       const word_t* c,
-                                       uint32_t nwords) {
+static __inline__ word_t add_nr_packed(word_t* a, const word_t* c, uint32_t nwords) {
   uint32_t i;
   dword_t carry = 0;
   for (i = 0; i < nwords; i++) {
@@ -87,9 +85,7 @@ static word_t widemac(word_t* accum,
   return carry;
 }
 
-void barrett_negate(word_t* a,
-                    uint32_t nwords_a,
-                    const struct barrett_prime_t* prime) {
+void barrett_negate(word_t* a, uint32_t nwords_a, const struct barrett_prime_t* prime) {
   uint32_t i;
   dsword_t carry = 0;
 
@@ -159,8 +155,8 @@ void barrett_reduce(word_t* a,
   assert(nwords_left_in_a == prime->nwords_p - 1);
 
   /* OK, but it still isn't reduced.  Add and subtract p_lo. */
-  word_t cout = add_nr_ext_packed(
-      a, a, prime->nwords_p, prime->p_lo, prime->nwords_lo, -1);
+  word_t cout =
+      add_nr_ext_packed(a, a, prime->nwords_p, prime->p_lo, prime->nwords_lo, -1);
   if (prime->p_shift) {
     cout = (cout << (WORD_BITS - prime->p_shift)) +
            (a[prime->nwords_p - 1] >> prime->p_shift);
@@ -168,8 +164,7 @@ void barrett_reduce(word_t* a,
   }
 
   /* mask = carry-1: if no carry then do sub, otherwise don't */
-  sub_nr_ext_packed(
-      a, a, prime->nwords_p, prime->p_lo, prime->nwords_lo, cout - 1);
+  sub_nr_ext_packed(a, a, prime->nwords_p, prime->p_lo, prime->nwords_lo, cout - 1);
 }
 
 /* PERF: This function is horribly slow.  Enough to break 1%. */
@@ -184,8 +179,7 @@ void barrett_mul_or_mac(word_t* accum,
   assert(nwords_accum >= prime->nwords_p);
 
   /* nwords_tmp = max(nwords_a + 1, nwords_p + 1, nwords_accum if doMac); */
-  uint32_t nwords_tmp =
-      (nwords_a > prime->nwords_p) ? nwords_a : prime->nwords_p;
+  uint32_t nwords_tmp = (nwords_a > prime->nwords_p) ? nwords_a : prime->nwords_p;
   nwords_tmp++;
   assert(nwords_tmp > 0); /* scan-build: prevent underflow. */
   if (nwords_tmp < nwords_accum && doMac)

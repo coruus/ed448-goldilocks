@@ -24,7 +24,8 @@
 #include <immintrin.h>
 #endif
 
-#if (__SIZEOF_INT128__ == 16 && __SIZEOF_SIZE_T__ == 8 && (__SIZEOF_LONG__==8 || __POINTER_WIDTH__==64) && !GOLDI_FORCE_32_BIT)
+#if (__SIZEOF_INT128__ == 16 && __SIZEOF_SIZE_T__ == 8 && \
+     (__SIZEOF_LONG__ == 8 || __POINTER_WIDTH__ == 64) && !GOLDI_FORCE_32_BIT)
 /* It's a 64-bit machine if:
  * // limits.h thinks so
  * __uint128_t exists
@@ -41,7 +42,7 @@ typedef int64_t sword_t;
 typedef __int128_t dsword_t;
 #define PRIxWORD PRIx64
 #define PRIxWORDfull "%016" PRIx64
-#define PRIxWORD58   "%014" PRIx64
+#define PRIxWORD58 "%014" PRIx64
 #define U64LE(x) x##ull
 #define U58LE(x) x##ull
 #define letohWORD letoh64
@@ -54,9 +55,9 @@ typedef int32_t sword_t;
 typedef int64_t dsword_t;
 #define PRIxWORD PRIx32
 #define PRIxWORDfull "%08" PRIx32
-#define PRIxWORD58   "%07" PRIx32
-#define U64LE(x) (x##ull)&((1ull<<32)-1), (x##ull)>>32
-#define U58LE(x) (x##ull)&((1ull<<28)-1), (x##ull)>>28
+#define PRIxWORD58 "%07" PRIx32
+#define U64LE(x) (x##ull) & ((1ull << 32) - 1), (x##ull) >> 32
+#define U58LE(x) (x##ull) & ((1ull << 28) - 1), (x##ull) >> 28
 #define letohWORD letoh32
 #endif
 
@@ -65,22 +66,20 @@ typedef int64_t dsword_t;
 typedef word_t mask_t;
 static const mask_t MASK_FAILURE = 0, MASK_SUCCESS = -1;
 
-
-
 #ifdef __ARM_NEON__
 typedef uint32x4_t vecmask_t;
 #else
 /* FIXME this only works on clang */
 typedef uint64_t uint64x2_t __attribute__((ext_vector_type(2)));
-typedef int64_t  int64x2_t __attribute__((ext_vector_type(2)));
+typedef int64_t int64x2_t __attribute__((ext_vector_type(2)));
 typedef uint64_t uint64x4_t __attribute__((ext_vector_type(4)));
-typedef int64_t  int64x4_t __attribute__((ext_vector_type(4)));
+typedef int64_t int64x4_t __attribute__((ext_vector_type(4)));
 typedef uint32_t uint32x4_t __attribute__((ext_vector_type(4)));
-typedef int32_t  int32x4_t __attribute__((ext_vector_type(4)));
+typedef int32_t int32x4_t __attribute__((ext_vector_type(4)));
 typedef uint32_t uint32x2_t __attribute__((ext_vector_type(2)));
-typedef int32_t  int32x2_t __attribute__((ext_vector_type(2)));
+typedef int32_t int32x2_t __attribute__((ext_vector_type(2)));
 typedef uint32_t uint32x8_t __attribute__((ext_vector_type(8)));
-typedef int32_t  int32x8_t __attribute__((ext_vector_type(8)));
+typedef int32_t int32x8_t __attribute__((ext_vector_type(8)));
 /* TODO: vector width for procs like ARM; gcc support */
 typedef word_t vecmask_t __attribute__((ext_vector_type(4)));
 #endif
@@ -102,53 +101,43 @@ typedef uint32_t uint32xn_t;
 typedef uint32_t big_register_t;
 #endif
 
-
 #ifdef __ARM_NEON__
-static __inline__ big_register_t
-br_set_to_mask(mask_t x) {
-    return vdupq_n_u32(x);
+static __inline__ big_register_t br_set_to_mask(mask_t x) {
+  return vdupq_n_u32(x);
 }
 #else
-static __inline__ big_register_t
-br_set_to_mask(mask_t x) {
-    return (big_register_t)x;
+static __inline__ big_register_t br_set_to_mask(mask_t x) {
+  return (big_register_t)x;
 }
 #endif
 
 #if __AVX2__ || __SSE2__
-static __inline__ big_register_t
-br_is_zero(big_register_t x) {
-    return (big_register_t)(x == (big_register_t)0);
+static __inline__ big_register_t br_is_zero(big_register_t x) {
+  return (big_register_t)(x == (big_register_t)0);
 }
 #elif __ARM_NEON__
-static __inline__ big_register_t
-br_is_zero(big_register_t x) {
-    return vceqq_u32(x,x^x);
+static __inline__ big_register_t br_is_zero(big_register_t x) {
+  return vceqq_u32(x, x ^ x);
 }
 #else
-static __inline__ mask_t
-br_is_zero(word_t x) {
-    return (((dword_t)x) - 1)>>WORD_BITS;
+static __inline__ mask_t br_is_zero(word_t x) {
+  return (((dword_t)x) - 1) >> WORD_BITS;
 }
 #endif
-
-
-
 
 #ifdef __APPLE__
-static inline uint64_t
-htobe64 (uint64_t x) {
-    __asm__ ("bswapq %0" : "+r"(x));
-    return x;
+static inline uint64_t htobe64(uint64_t x) {
+  __asm__("bswapq %0" : "+r"(x));
+  return x;
 }
-static inline uint64_t
-htole64 (uint64_t x) { return x; }
+static inline uint64_t htole64(uint64_t x) {
+  return x;
+}
 
-static inline uint64_t
-letoh64 (uint64_t x) { return x; }
+static inline uint64_t letoh64(uint64_t x) {
+  return x;
+}
 #endif
-
-
 
 /**
  * Allocate memory which is sufficiently aligned to be used for the
@@ -161,22 +150,18 @@ letoh64 (uint64_t x) { return x; }
  * @return A suitable pointer, which can be free'd with free(),
  * or NULL if no memory can be allocated.
  */
-static __inline__ void *
-malloc_vector (
-    size_t size
-) __attribute__((always_inline, unused));
+static __inline__ void* malloc_vector(size_t size) __attribute__((always_inline, unused));
 
-void *
-malloc_vector(size_t size) {
-    void *out = NULL;
-    
-    int ret = posix_memalign(&out, sizeof(big_register_t), size);
-    
-    if (ret) {
-        return NULL;
-    } else {
-        return out;
-    }
+void* malloc_vector(size_t size) {
+  void* out = NULL;
+
+  int ret = posix_memalign(&out, sizeof(big_register_t), size);
+
+  if (ret) {
+    return NULL;
+  } else {
+    return out;
+  }
 }
 
 #endif /* __WORD_H__ */

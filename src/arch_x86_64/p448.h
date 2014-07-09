@@ -65,9 +65,7 @@ void p448_serialize(uint8_t* serial, const struct p448_t* x);
 
 mask_t p448_deserialize(p448_t* x, const uint8_t serial[56]);
 
-static __inline__ void p448_mask(struct p448_t* a,
-                                 const struct p448_t* b,
-                                 mask_t mask)
+static __inline__ void p448_mask(struct p448_t* a, const struct p448_t* b, mask_t mask)
     __attribute__((unused, always_inline));
 
 /**
@@ -110,8 +108,7 @@ void p448_cond_swap(p448_t* a, p448_t* b, mask_t doswap) {
 void p448_add(p448_t* out, const p448_t* a, const p448_t* b) {
   unsigned int i;
   for (i = 0; i < sizeof(*out) / sizeof(uint64xn_t); i++) {
-    ((uint64xn_t*)out)[i] =
-        ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)b)[i];
+    ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)b)[i];
   }
   /*
   unsigned int i;
@@ -124,8 +121,7 @@ void p448_add(p448_t* out, const p448_t* a, const p448_t* b) {
 void p448_sub(p448_t* out, const p448_t* a, const p448_t* b) {
   unsigned int i;
   for (i = 0; i < sizeof(*out) / sizeof(uint64xn_t); i++) {
-    ((uint64xn_t*)out)[i] =
-        ((const uint64xn_t*)a)[i] - ((const uint64xn_t*)b)[i];
+    ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] - ((const uint64xn_t*)b)[i];
   }
   /*
   unsigned int i;

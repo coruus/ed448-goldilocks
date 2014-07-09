@@ -12,18 +12,15 @@ void p448_mul(p448_t* __restrict__ cs, const p448_t* as, const p448_t* bs) {
   __uint128_t accum0 = 0, accum1 = 0, accum2;
   uint64_t mask = (1ull << 56) - 1;
 
-  uint64_t aa[4] __attribute__((aligned(32))),
-      bb[4] __attribute__((aligned(32))), bbb[4] __attribute__((aligned(32)));
+  uint64_t aa[4] __attribute__((aligned(32))), bb[4] __attribute__((aligned(32))),
+      bbb[4] __attribute__((aligned(32)));
 
   /* For some reason clang doesn't vectorize this without prompting? */
   unsigned int i;
   for (i = 0; i < sizeof(aa) / sizeof(uint64xn_t); i++) {
-    ((uint64xn_t*)aa)[i] =
-        ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)(&a[4]))[i];
-    ((uint64xn_t*)bb)[i] =
-        ((const uint64xn_t*)b)[i] + ((const uint64xn_t*)(&b[4]))[i];
-    ((uint64xn_t*)bbb)[i] =
-        ((const uint64xn_t*)bb)[i] + ((const uint64xn_t*)(&b[4]))[i];
+    ((uint64xn_t*)aa)[i] = ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)(&a[4]))[i];
+    ((uint64xn_t*)bb)[i] = ((const uint64xn_t*)b)[i] + ((const uint64xn_t*)(&b[4]))[i];
+    ((uint64xn_t*)bbb)[i] = ((const uint64xn_t*)bb)[i] + ((const uint64xn_t*)(&b[4]))[i];
   }
   /*
   for (int i=0; i<4; i++) {
@@ -207,8 +204,7 @@ void p448_sqr(p448_t* __restrict__ cs, const p448_t* as) {
   /* For some reason clang doesn't vectorize this without prompting? */
   unsigned int i;
   for (i = 0; i < sizeof(aa) / sizeof(uint64xn_t); i++) {
-    ((uint64xn_t*)aa)[i] =
-        ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)(&a[4]))[i];
+    ((uint64xn_t*)aa)[i] = ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)(&a[4]))[i];
   }
 
   accum2 = widemul(&a[0], &a[3]);

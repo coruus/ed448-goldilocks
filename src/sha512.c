@@ -127,10 +127,9 @@ static inline uint64_t maj(uint64_t h1, uint64_t h2, uint64_t h3) {
 }
 
 static void sha512_process_block(struct sha512_ctx_t* ctx) {
-  uint64_t i, tmp, a, b, *w = (uint64_t*)ctx->block, *state = ctx->chain,
-                         h0 = state[0], h1 = state[1], h2 = state[2],
-                         h3 = state[3], h4 = state[4], h5 = state[5],
-                         h6 = state[6], h7 = state[7];
+  uint64_t i, tmp, a, b, *w = (uint64_t*)ctx->block, *state = ctx->chain, h0 = state[0],
+                         h1 = state[1], h2 = state[2], h3 = state[3], h4 = state[4],
+                         h5 = state[5], h6 = state[6], h7 = state[7];
 
   /* Clang doesn't unswitch this automatically */
   for (i = 0; i < 16; i++) {
@@ -183,9 +182,7 @@ void sha512_init(struct sha512_ctx_t* ctx) {
   memset(ctx->block, 0, sizeof(ctx->block));
 }
 
-void sha512_update(struct sha512_ctx_t* ctx,
-                   const unsigned char* data,
-                   uint64_t bytes) {
+void sha512_update(struct sha512_ctx_t* ctx, const unsigned char* data, uint64_t bytes) {
   assert(ctx->nbytes < 1ull << 56);
   assert(bytes < 1ull << 56);
 

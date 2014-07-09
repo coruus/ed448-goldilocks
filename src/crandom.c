@@ -82,8 +82,7 @@ INTRINSIC u_int64_t rdrand(int abort_on_fail) {
 /* ------------------------------- Vectorized code
  * ------------------------------- */
 #define shuffle(x, i) \
-  _mm_shuffle_epi32(  \
-      x, i + ((i + 1) & 3) * 4 + ((i + 2) & 3) * 16 + ((i + 3) & 3) * 64)
+  _mm_shuffle_epi32(x, i + ((i + 1) & 3) * 4 + ((i + 2) & 3) * 16 + ((i + 3) & 3) * 64)
 
 #define add _mm_add_epi32
 #define add64 _mm_add_epi64
@@ -94,10 +93,7 @@ INTRINSIC u_int64_t rdrand(int abort_on_fail) {
 #define NEED_CONV (!MUST_HAVE(SSE2))
 
 #if NEED_XOP
-static __inline__ void quarter_round_xop(ssereg* a,
-                                         ssereg* b,
-                                         ssereg* c,
-                                         ssereg* d) {
+static __inline__ void quarter_round_xop(ssereg* a, ssereg* b, ssereg* c, ssereg* d) {
   *a = add(*a, *b);
   *d = xop_rotate(16, *d ^ *a);
   *c = add(*c, *d);
@@ -121,10 +117,7 @@ INTRINSIC ssereg ssse3_rotate_16(ssereg a) {
   return _mm_shuffle_epi8(a, shuffle16);
 }
 
-static __inline__ void quarter_round_ssse3(ssereg* a,
-                                           ssereg* b,
-                                           ssereg* c,
-                                           ssereg* d) {
+static __inline__ void quarter_round_ssse3(ssereg* a, ssereg* b, ssereg* c, ssereg* d) {
   *a = add(*a, *b);
   *d = ssse3_rotate_16(*d ^ *a);
   *c = add(*c, *d);
@@ -137,10 +130,7 @@ static __inline__ void quarter_round_ssse3(ssereg* a,
 #endif /* MIGHT_HAVE(SSSE3) && !MUST_HAVE(XOP) */
 
 #if NEED_SSE2
-static __inline__ void quarter_round_sse2(ssereg* a,
-                                          ssereg* b,
-                                          ssereg* c,
-                                          ssereg* d) {
+static __inline__ void quarter_round_sse2(ssereg* a, ssereg* b, ssereg* c, ssereg* d) {
   *a = add(*a, *b);
   *d = sse2_rotate(16, *d ^ *a);
   *c = add(*c, *d);
@@ -225,17 +215,16 @@ static void crandom_chacha_expand(u_int64_t iv,
     ssereg* key = (ssereg*)key_;
     ssereg* output = (ssereg*)output_;
 
-    ssereg a1 = key[0], a2 = a1, aa = a1, b1 = key[1], b2 = b1, bb = b1,
-           c1 = {iv, ctr}, c2 = {iv, ctr + 1}, cc = c1,
-           d1 = {0x3320646e61707865ull, 0x6b20657479622d32ull}, d2 = d1,
-           dd = d1, p = {0, 1};
+    ssereg a1 = key[0], a2 = a1, aa = a1, b1 = key[1], b2 = b1, bb = b1, c1 = {iv, ctr},
+           c2 = {iv, ctr + 1}, cc = c1,
+           d1 = {0x3320646e61707865ull, 0x6b20657479622d32ull}, d2 = d1, dd = d1,
+           p = {0, 1};
 
     int i, r;
 #if (NEED_XOP)
     if (HAVE(XOP)) {
       for (i = 0; i < output_size; i += 128) {
-        for (r = nr; r > 0; r -= 2)
-          DOUBLE_ROUND(quarter_round_xop);
+        for (r = nr; r > 0; r -= 2) DOUBLE_ROUND(quarter_round_xop);
         OUTPUT_FUNCTION;
       }
       return;
@@ -244,8 +233,7 @@ static void crandom_chacha_expand(u_int64_t iv,
 #if (NEED_SSSE3)
     if (HAVE(SSSE3)) {
       for (i = 0; i < output_size; i += 128) {
-        for (r = nr; r > 0; r -= 2)
-          DOUBLE_ROUND(quarter_round_ssse3);
+        for (r = nr; r > 0; r -= 2) DOUBLE_ROUND(quarter_round_ssse3);
         OUTPUT_FUNCTION;
       }
       return;
@@ -254,8 +242,7 @@ static void crandom_chacha_expand(u_int64_t iv,
 #if (NEED_SSE2)
     if (HAVE(SSE2)) {
       for (i = 0; i < output_size; i += 128) {
-        for (r = nr; r > 0; r -= 2)
-          DOUBLE_ROUND(quarter_round_sse2);
+        for (r = nr; r > 0; r -= 2) DOUBLE_ROUND(quarter_round_sse2);
         OUTPUT_FUNCTION;
       }
       return;
