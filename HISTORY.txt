@@ -1,4 +1,52 @@
-May 3, 2104:
+July 11, 2014:
+    This is mostly a cleanup release.
+
+    Added CRANDOM_MIGHT_IS_MUST config flag (default: 1).  When set, this
+    causes crandom to assume that all features in the target arch will
+    be available, instead of detecting them.  This makes sense because
+    the rest of the Goldilocks code is not (yet?) able to detect features.
+    Also, I'd like to submit this to SUPERCOP eventually, and SUPERCOP won't
+    pass -DMUST_HAVE_XXX on the command line the way the Makefile here did.
+    
+    Flag EXPERIMENT_CRANDOM_BUFFER_CUTOFF_BYTES to disable the crandom
+    output buffer.  This buffer improves performance (very marginally at
+    Goldilocks sizes), but can cause problems with forking and VM
+    snapshotting.  By default, the buffer is now disabled.
+    
+    I've slightly tweaked the Elligator implementation (which is still
+    unused) to make it easier to invert.  This makes anything using Elligator
+    (i.e. nothing) incompatible with previous releases.
+    
+    I've been factoring "magic" constants such as curve orders, window sizes,
+    etc into a few headers, to reduce the effort to port the code to other
+    primes, curves, etc.  For example, I could test the Microsoft curves, and
+    something like:
+        x^2 + y^2 = 1 +- 5382[45] x^2 y^2 mod 2^480-2^240-1
+    ("Goldeneye"? "Ridinghood"?) might be a reasonable thing to try for
+    64-bit CPUs.
+    
+    In a similar vein, most of the internal code has been changed to say
+    "field" instead of p448, so that a future version of magic.h can decide
+    which field header to include.
+    
+    You can now `make bat` to create an eBAT in build/ed448-goldilocks.  This
+    is only minimally tested, though, because SUPERCOP doesn't work on my
+    machine and I'm too lazy to reverse engineer it.  It sets a new macro,
+    SUPERCOP_WONT_LET_ME_OPEN_FILES, which causes goldilocks_init() to fall
+    back to something horribly insecure if crandom_init_from_file raises
+    EMFILE.
+    
+    Slightly improved documentation.
+    
+    Removed some old commented-out code; restored the /* C-style */ comment
+    discipline.
+    
+    The AMD-64 version should now be GCC clean, at least for reasonably
+    recent GCC (tested on OS X.9.3, Haswell, gcc-4.9).
+    
+    History no longer says "2104".
+
+May 3, 2014:
     Minor changes to internal routines mean that this version is not
     compatible with the previous one.
 

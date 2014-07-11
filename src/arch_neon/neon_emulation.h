@@ -8,8 +8,11 @@
  *
  * This lets you test and debug NEON code on x86.
  */
+
 #ifndef __NEON_EMULATION_H__
 #define __NEON_EMULATION_H__ 1
+
+/** @cond internal */
 
 #include "word.h"
 
@@ -146,5 +149,7 @@ static inline int64x2_t vmull_lane_s32 (
     int64x2_t xx = { x.x, x.y }, yy = { y.x, y.y };
     return xx*(lane?yy.yy:yy.xx);
 }
+
+/** @endcond */
 
 #endif /* __NEON_EMULATION_H__ */

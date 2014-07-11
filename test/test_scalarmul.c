@@ -20,18 +20,6 @@ single_scalarmul_compatibility_test (
     int ret = 0, i;
     mask_t succ, succm;
     
-    const struct p448_t
-    sqrt_d_minus_1 = {{
-        U58LE(0xd2e21836749f46),
-        U58LE(0x888db42b4f0179),
-        U58LE(0x5a189aabdeea38),
-        U58LE(0x51e65ca6f14c06),
-        U58LE(0xa49f7b424d9770),
-        U58LE(0xdcac4628c5f656),
-        U58LE(0x49443b8748734a),
-        U58LE(0x12fec0c0b25b7a)
-    }};
-    
     succ = deserialize_and_twist_approx(&text, &sqrt_d_minus_1, base);
     
     succm = montgomery_ladder(&mont,base,scalar,nbits,1);
@@ -108,7 +96,7 @@ single_scalarmul_compatibility_test (
         untwist_and_double_and_serialize(&vl, &work);
         
         copy_tw_extensible(&work, &text);
-        scalarmul_vt(&work, scalar);
+        scalarmul_vt(&work, scalar, nbits);
         untwist_and_double_and_serialize(&vt, &work);
         
     
@@ -167,20 +155,7 @@ single_linear_combo_test (
     const struct p448_t *base2,
     const word_t *scalar2,
     int nbits2
-) {
-    /* MAGIC */
-    const struct p448_t
-    sqrt_d_minus_1 = {{
-        U58LE(0xd2e21836749f46),
-        U58LE(0x888db42b4f0179),
-        U58LE(0x5a189aabdeea38),
-        U58LE(0x51e65ca6f14c06),
-        U58LE(0xa49f7b424d9770),
-        U58LE(0xdcac4628c5f656),
-        U58LE(0x49443b8748734a),
-        U58LE(0x12fec0c0b25b7a)
-    }};
-    
+) { 
     struct tw_extensible_t text1, text2, working;
     struct tw_pniels_t pn;
     struct p448_t result_comb, result_combo, result_wnaf;

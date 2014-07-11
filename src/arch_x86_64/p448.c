@@ -180,9 +180,6 @@ p448_mulw (
 
     c[3] = accum0 & mask; accum0 >>= 56;
     c[7] = accum4 & mask; accum4 >>= 56;
-
-    // c[4] += accum0 + accum4;
-    // c[0] += accum4;
     
     accum0 += accum4 + c[4];
     c[4] = accum0 & mask;

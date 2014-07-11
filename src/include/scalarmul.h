@@ -10,11 +10,18 @@
 #define __P448_ALGO_H__ 1
 
 #include "ec_point.h"
+#include "field.h"
 #include "intrinsics.h"
+#include "magic.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+/**
+ * A word array containing a scalar
+ */
+typedef word_t scalar_t[SCALAR_WORDS];
 
 /**
  * A precomputed table for fixed-base scalar multiplication.
@@ -26,7 +33,7 @@ struct fixed_base_table_t {
   struct tw_niels_t *table;
   
   /** Adjustments to the scalar in even and odd cases, respectively. */
-  word_t scalar_adjustments[2*(448/WORD_BITS)];  /* MAGIC */
+  word_t scalar_adjustments[2*SCALAR_WORDS];
   
   /** The number of combs in the table. */
   unsigned int n;
@@ -83,8 +90,8 @@ struct fixed_base_table_t {
  */
 mask_t
 montgomery_ladder (
-    struct p448_t *out,
-    const struct p448_t *in,
+    struct field_t *out,
+    const struct field_t *in,
     const word_t *scalar,
     unsigned int nbits,
     unsigned int n_extra_doubles
@@ -103,7 +110,7 @@ montgomery_ladder (
 void
 scalarmul (
     struct tw_extensible_t *working,
-    const word_t scalar[448/WORD_BITS] /* MAGIC */
+    const word_t scalar[SCALAR_WORDS]
     /* TODO? int nbits */
 );
     
@@ -124,8 +131,7 @@ scalarmul (
 void
 scalarmul_vlook (
     struct tw_extensible_t *working,
-    const word_t scalar[448/WORD_BITS] /* MAGIC */
-    /* TODO? int nbits */
+    const word_t scalar[SCALAR_WORDS]
 );
 
 /**
@@ -134,7 +140,7 @@ scalarmul_vlook (
  *
  * This function computes $n$ "comb" tables, each containing
  * 2^(t-1) points in tw_niels_t format.  You must have
- * n * t * s >= 446 for complete coverage.
+ * n * t * s >= SCALAR_BITS = 446 for complete coverage.
  *
  * The scalar multiplication algorithm may adjust the scalar by
  * a multiple of q.  Therefore, we strongly recommend to use base
@@ -205,11 +211,13 @@ scalarmul_fixed_base (
  *
  * @param [inout] working The input and output point.
  * @param [in] scalar The scalar.
+ * @param [in] nbits The number of bits in the scalar
  */ 
 void
 scalarmul_vt (
     struct tw_extensible_t *working,
-    const word_t scalar[448/WORD_BITS] /* MAGIC */
+    const word_t *scalar,
+    unsigned int nbits
 );
 
 
@@ -274,9 +282,9 @@ scalarmul_fixed_base_wnaf_vt (
 void
 linear_combo_var_fixed_vt (
     struct tw_extensible_t *working,
-    const word_t scalar_var[448/WORD_BITS], /* MAGIC */
+    const word_t scalar_var[SCALAR_WORDS],
     unsigned int nbits_var,
-    const word_t scalar_pre[448/WORD_BITS], /* MAGIC */
+    const word_t scalar_pre[SCALAR_WORDS],
     unsigned int nbits_pre,
     const struct tw_niels_t *precmp,
     unsigned int table_bits_pre
@@ -302,10 +310,10 @@ linear_combo_var_fixed_vt (
 mask_t
 linear_combo_combs_vt (
     struct tw_extensible_t *out,
-    const word_t scalar1[448/WORD_BITS],
+    const word_t scalar1[SCALAR_WORDS],
     unsigned int nbits1,
     const struct fixed_base_table_t *table1,
-    const word_t scalar2[448/WORD_BITS],
+    const word_t scalar2[SCALAR_WORDS],
     unsigned int nbits2,
     const struct fixed_base_table_t *table2
 );

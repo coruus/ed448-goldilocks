@@ -100,6 +100,9 @@ int main(int argc, char **argv) {
     for (i=0; i<32; i++) initial_seed[i] = i;
     struct crandom_state_t crand;
     crandom_init_from_buffer(&crand, initial_seed);
+    /* For testing the performance drop from the crandom debuffering change.
+        ignore_result(crandom_init_from_file(&crand, "/dev/urandom", 10000, 1));
+    */
     
     word_t sk[448/WORD_BITS],tk[448/WORD_BITS];
     q448_randomize(&crand, sk);
@@ -248,14 +251,14 @@ int main(int argc, char **argv) {
     
     when = now();
     for (i=0; i<nbase*100; i++) {
-        barrett_reduce(lsk,sizeof(lsk)/sizeof(word_t),0,&goldi_q448);
+        barrett_reduce(lsk,sizeof(lsk)/sizeof(word_t),0,&curve_prime_order);
     }
     when = now() - when;
     printf("barrett red: %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*10; i++) {
-        barrett_mac(lsk,448/WORD_BITS,lsk,448/WORD_BITS,lsk,448/WORD_BITS,&goldi_q448);
+        barrett_mac(lsk,448/WORD_BITS,lsk,448/WORD_BITS,lsk,448/WORD_BITS,&curve_prime_order);
     }
     when = now() - when;
     printf("barrett mac: %5.1fns\n", when * 1e9 / i);
@@ -334,7 +337,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
-        scalarmul_vt(&ext,sk);
+        scalarmul_vt(&ext,sk,446);
     }
     when = now() - when;
     printf("edwards vtm: %5.1fµs\n", when * 1e6 / i);

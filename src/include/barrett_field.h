@@ -32,7 +32,7 @@ struct barrett_prime_t {
 /**
  * The Goldilocks prime.  I'm not sure this is the right place for it, but oh well.
  */
-extern const struct barrett_prime_t goldi_q448;
+extern const struct barrett_prime_t curve_prime_order;
 
 /**
  * Reduce a number (with optional high carry word) mod p.

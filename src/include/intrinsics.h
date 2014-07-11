@@ -11,25 +11,27 @@
 #define __CRANDOM_INTRINSICS_H__ 1
 
 #include <sys/types.h>
+#include "config.h"
 
 #if __i386__ || __x86_64__
 #include <immintrin.h>
 #endif
 
+/** @brief Macro to make a function static, forcibly inlined and possibly unused. */
 #define INTRINSIC \
   static __inline__ __attribute__((__gnu_inline__, __always_inline__, unused))
 
-#define GEN    1
-#define SSE2   2
-#define SSSE3  4
-#define AESNI  8
-#define XOP    16
-#define AVX    32
-#define AVX2   64
-#define RDRAND 128
+#define GEN    1     /**< @brief Intrinsics field has been generated. */
+#define SSE2   2     /**< @brief Machine supports SSE2 */
+#define SSSE3  4     /**< @brief Machine supports SSSE3 (for shuffles) */
+#define AESNI  8     /**< @brief Machine supports Intel AES-NI */
+#define XOP    16    /**< @brief Machine supports AMD XOP */
+#define AVX    32    /**< @brief Machine supports Intel AVX (for masking)  */
+#define AVX2   64    /**< @brief Machine supports Intel AVX2 (for bignums) */
+#define RDRAND 128   /**< @brief Machine supports Intel RDRAND */
 
 /**
- * If on x86, read the timestamp counter.  Otherwise, return 0.
+ * @brief If on x86, read the timestamp counter.  Otherwise, return 0.
  */
 INTRINSIC u_int64_t rdtsc() {
   u_int64_t out = 0;
@@ -53,6 +55,8 @@ INTRINSIC u_int64_t opacify(u_int64_t x) {
   return x;
 }
 
+
+/** @cond internal */
 #ifdef __AVX2__
 #  define MIGHT_HAVE_AVX2 1
 #  ifndef MUST_HAVE_AVX2
@@ -92,10 +96,6 @@ INTRINSIC u_int64_t opacify(u_int64_t x) {
 #  define pslldq _mm_slli_epi32
 #  define pshufd _mm_shuffle_epi32
 
-INTRINSIC ssereg sse2_rotate(int r, ssereg a) {
-  return _mm_slli_epi32(a, r) ^ _mm_srli_epi32(a, 32-r);
-}
-
 #else
 #  define MIGHT_HAVE_SSE2 0
 #  define MUST_HAVE_SSE2  0
@@ -127,11 +127,6 @@ INTRINSIC ssereg sse2_rotate(int r, ssereg a) {
 #  ifndef MUST_HAVE_XOP
 #    define MUST_HAVE_XOP 0
 #  endif
-INTRINSIC ssereg xop_rotate(int amount, ssereg x) {
-  ssereg out;
-  __asm__ ("vprotd %1, %2, %0" : "=x"(out) : "x"(x), "g"(amount));
-  return out;
-}
 #else
 #  define MIGHT_HAVE_XOP 0
 #  define MUST_HAVE_XOP 0
@@ -146,6 +141,9 @@ INTRINSIC ssereg xop_rotate(int amount, ssereg x) {
   | RDRAND * MIGHT_HAVE_RDRAND \
   | AVX2   * MIGHT_HAVE_AVX2)
 
+#if CRANDOM_MIGHT_IS_MUST
+#define MUST_MASK MIGHT_MASK
+#else
 #define MUST_MASK \
   ( SSE2   * MUST_HAVE_SSE2   \
   | SSSE3  * MUST_HAVE_SSSE3  \
@@ -154,22 +152,58 @@ INTRINSIC ssereg xop_rotate(int amount, ssereg x) {
   | AVX    * MUST_HAVE_AVX    \
   | RDRAND * MUST_HAVE_RDRAND \
   | AVX2   * MUST_HAVE_AVX2 )
+#endif
+/** @endcond */
 
+#ifdef __SSE2__
+/** Rotate a register by some amount using SSE2. */
+INTRINSIC ssereg sse2_rotate(int r, ssereg a) {
+  return _mm_slli_epi32(a, r) ^ _mm_srli_epi32(a, 32-r);
+}
+#endif
+      
+#ifdef __XOP__
+/** Rotate a register by some amount using AMD XOP. */      
+INTRINSIC ssereg xop_rotate(int amount, ssereg x) {
+  ssereg out;
+  __asm__ ("vprotd %1, %2, %0" : "=x"(out) : "x"(x), "g"(amount));
+  return out;
+}
+#endif
+
+/**
+ * @brief Macro which detects that targets might support this feature,
+ * so that we can include code for it.
+ */
 #define MIGHT_HAVE(feature) ((MIGHT_MASK & feature) == feature)
+
+/**
+ * @brief Macro which detects that targets must support this feature,
+ * so we can omit fallback code.
+ */
 #define MUST_HAVE(feature) ((MUST_MASK & feature) == feature)
 
+/**
+ * @brief Make a functiona available by C API.
+ */
 #ifdef __cplusplus
 #  define extern_c extern "C"
 #else
 #  define extern_c
 #endif
 
+/** @cond internal
+ * @brief Detect platform features and return them as a flagfield int.
+ */
 extern_c
 unsigned int crandom_detect_features();
+/** @endcond */
 
 #ifndef likely
-#  define likely(x)       __builtin_expect((x),1)
-#  define unlikely(x)     __builtin_expect((x),0)
+#  define likely(x)       __builtin_expect((x),1) \
+    /**< @brief Tell the compiler that a branch is likely, for optimization. */
+#  define unlikely(x)     __builtin_expect((x),0) \
+    /**< @brief Tell the compiler that a branch is unlikely, for optimization. */
 #endif
   
 /**
@@ -184,12 +218,6 @@ unsigned int crandom_detect_features();
  */
 INTRINSIC const char *
 compare_and_swap (
-    const char *volatile* target,
-    const char *old,
-    const char *new
-);
-    
-const char *compare_and_swap (
     const char *volatile* target,
     const char *old,
     const char *new
@@ -212,13 +240,6 @@ bool_compare_and_swap (
     const char *volatile* target,
     const char *old,
     const char *new
-);
-
-int
-bool_compare_and_swap (
-    const char *volatile* target,
-    const char *old,
-    const char *new
 ) {
     return __sync_bool_compare_and_swap(target,old,new);
 }
@@ -231,6 +252,8 @@ bool_compare_and_swap (
  * MIGHT_HAVE(feature) is set, but MUST_HAVE(feature) is not.
  */
 extern volatile unsigned int crandom_features;
+
+/** @brief Determine if a given CPU feature is available. */
 INTRINSIC int HAVE(unsigned int feature);
 
 int HAVE(unsigned int feature) {

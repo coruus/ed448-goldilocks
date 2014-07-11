@@ -12,6 +12,7 @@
 #ifndef __GOLDI_CRANDOM_H__
 #define __GOLDI_CRANDOM_H__ 1
 
+#define _XOPEN_SOURCE 600
 #include <stdint.h>  /* for uint64_t */
 #include <fcntl.h>   /* for open */
 #include <errno.h>   /* for returning errors after open */

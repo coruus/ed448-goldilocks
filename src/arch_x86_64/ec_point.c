@@ -356,51 +356,51 @@ serialize_montgomery (
     const struct montgomery_t* a,
     const struct p448_t*       sbz
 ) {
-    struct p448_t L0, L1, L2, L3;
-    mask_t L4, L5, L6;
-    p448_mul  (   &L3, &a->z0, &a->zd );
-    p448_sub  (   &L1,   &L3, &a->xd );
-    p448_bias (   &L1,     2 );
-    p448_mul  (   &L3, &a->za,   &L1 );
-    p448_mul  (   &L2, &a->z0, &a->xd );
-    p448_sub  (   &L1,   &L2, &a->zd );
-    p448_bias (   &L1,     2 );
-    p448_mul  (   &L2, &a->xa,   &L1 );
-    p448_add  (   &L1,   &L2,   &L3 );
-    p448_sub  (   &L0,   &L3,   &L2 );
-    p448_bias (   &L0,     2 );
-    p448_mul  (   &L3,   &L0,   &L1 );
-    p448_copy (   &L2, &a->z0 );
-    p448_addw (   &L2,     1 );
-    p448_sqr  (   &L1,   &L2 );
-    p448_mulw (   &L2,   &L1, 39082 );
-    p448_neg  (   &L1,   &L2 );
-    p448_add  (   &L0, &a->z0, &a->z0 );
-    p448_bias (   &L0,     1 );
-    p448_add  (   &L2,   &L0,   &L0 );
-    p448_add  (   &L0,   &L2,   &L1 );
-    p448_mul  (   &L2, &a->xd,   &L0 );
-       L5 = p448_is_zero( &a->zd );
-       L6 = -   L5;
-    p448_mask (   &L1,   &L2,    L5 );
-    p448_add  (   &L2,   &L1, &a->zd );
-       L4 = ~   L5;
-    p448_mul  (   &L1,   sbz,   &L3 );
-    p448_addw (   &L1,    L6 );
-    p448_mul  (   &L3,   &L2,   &L1 );
-    p448_mul  (   &L1,   &L3,   &L2 );
-    p448_mul  (   &L2,   &L3, &a->xd );
-    p448_mul  (   &L3,   &L1,   &L2 );
-    p448_isr  (   &L0,   &L3 );
-    p448_mul  (   &L2,   &L1,   &L0 );
-    p448_sqr  (   &L1,   &L0 );
-    p448_mul  (   &L0,   &L3,   &L1 );
-    p448_mask (     b,   &L2,    L4 );
-    p448_subw (   &L0,     1 );
-    p448_bias (   &L0,     1 );
-       L5 = p448_is_zero(   &L0 );
-       L4 = p448_is_zero(   sbz );
-    return    L5 |    L4;
+    mask_t L0, L1, L2;
+    struct p448_t L3, L4, L5, L6;
+    p448_mul  (   &L6, &a->z0, &a->zd );
+    p448_sub  (   &L4,   &L6, &a->xd );
+    p448_bias (   &L4,     2 );
+    p448_mul  (   &L6, &a->za,   &L4 );
+    p448_mul  (   &L5, &a->z0, &a->xd );
+    p448_sub  (   &L4,   &L5, &a->zd );
+    p448_bias (   &L4,     2 );
+    p448_mul  (   &L3, &a->xa,   &L4 );
+    p448_add  (   &L5,   &L3,   &L6 );
+    p448_sub  (   &L4,   &L6,   &L3 );
+    p448_bias (   &L4,     2 );
+    p448_mul  (   &L6,   &L4,   &L5 );
+    p448_copy (   &L5, &a->z0 );
+    p448_addw (   &L5,     1 );
+    p448_sqr  (   &L4,   &L5 );
+    p448_mulw (   &L5,   &L4, 39082 );
+    p448_neg  (   &L4,   &L5 );
+    p448_add  (   &L3, &a->z0, &a->z0 );
+    p448_bias (   &L3,     1 );
+    p448_add  (   &L5,   &L3,   &L3 );
+    p448_add  (   &L3,   &L5,   &L4 );
+    p448_mul  (   &L5, &a->xd,   &L3 );
+       L1 = p448_is_zero( &a->zd );
+       L2 = -   L1;
+    p448_mask (   &L4,   &L5,    L1 );
+    p448_add  (   &L5,   &L4, &a->zd );
+       L0 = ~   L1;
+    p448_mul  (   &L4,   sbz,   &L6 );
+    p448_addw (   &L4,    L2 );
+    p448_mul  (   &L6,   &L5,   &L4 );
+    p448_mul  (   &L4,   &L6,   &L5 );
+    p448_mul  (   &L5,   &L6, &a->xd );
+    p448_mul  (   &L6,   &L4,   &L5 );
+    p448_isr  (   &L3,   &L6 );
+    p448_mul  (   &L5,   &L4,   &L3 );
+    p448_sqr  (   &L4,   &L3 );
+    p448_mul  (   &L3,   &L6,   &L4 );
+    p448_mask (     b,   &L5,    L0 );
+    p448_subw (   &L3,     1 );
+    p448_bias (   &L3,     1 );
+       L1 = p448_is_zero(   &L3 );
+       L0 = p448_is_zero(   sbz );
+    return    L1 |    L0;
 }
 
 void
@@ -491,8 +491,8 @@ test_only_twist (
     struct tw_extensible_t*    b,
     const struct extensible_t* a
 ) {
-    struct p448_t L0, L1;
-    mask_t L2, L3;
+    mask_t L0, L1;
+    struct p448_t L2, L3;
     p448_sqr  ( &b->u, &a->z );
     p448_sqr  ( &b->y, &a->x );
     p448_sub  ( &b->z, &b->u, &b->y );
@@ -501,36 +501,36 @@ test_only_twist (
     p448_add  ( &b->u, &b->y, &b->y );
     p448_sub  ( &b->y, &a->z, &a->x );
     p448_bias ( &b->y,     2 );
-    p448_mul  ( &b->t, &b->y, &a->y );
+    p448_mul  ( &b->x, &b->y, &a->y );
     p448_sub  ( &b->z, &a->z, &a->y );
     p448_bias ( &b->z,     2 );
-    p448_mul  ( &b->x, &b->z, &b->t );
-    p448_mul  ( &b->t, &b->x, &b->u );
-    p448_mul  (   &L1, &b->x, &b->t );
-    p448_isr  ( &b->t,   &L1 );
-    p448_mul  ( &b->u, &b->x, &b->t );
-    p448_sqr  ( &b->x, &b->t );
-    p448_mul  ( &b->t,   &L1, &b->x );
-    p448_add  (   &L1, &a->y, &a->x );
-    p448_sub  (   &L0, &a->x, &a->y );
-    p448_bias (   &L0,     2 );
-    p448_mul  ( &b->x, &b->t,   &L0 );
-    p448_add  (   &L0, &b->x,   &L1 );
-    p448_sub  ( &b->t,   &L1, &b->x );
+    p448_mul  ( &b->t, &b->z, &b->x );
+    p448_mul  (   &L3, &b->t, &b->u );
+    p448_mul  ( &b->x, &b->t,   &L3 );
+    p448_isr  (   &L2, &b->x );
+    p448_mul  ( &b->u, &b->t,   &L2 );
+    p448_sqr  (   &L3,   &L2 );
+    p448_mul  ( &b->t, &b->x,   &L3 );
+    p448_add  (   &L3, &a->y, &a->x );
+    p448_sub  (   &L2, &a->x, &a->y );
+    p448_bias (   &L2,     2 );
+    p448_mul  ( &b->x, &b->t,   &L2 );
+    p448_add  (   &L2, &b->x,   &L3 );
+    p448_sub  ( &b->t,   &L3, &b->x );
     p448_bias ( &b->t,     2 );
-    p448_mul  ( &b->x,   &L0, &b->u );
-       L2 = p448_is_zero( &b->y );
-       L3 = -   L2;
-    p448_addw ( &b->x,    L3 );
+    p448_mul  ( &b->x,   &L2, &b->u );
+       L0 = p448_is_zero( &b->y );
+       L1 = -   L0;
+    p448_addw ( &b->x,    L1 );
     p448_weak_reduce( &b->x );
     p448_mul  ( &b->y, &b->t, &b->u );
-       L2 = p448_is_zero( &b->z );
-       L3 = -   L2;
-    p448_addw ( &b->y,    L3 );
+       L0 = p448_is_zero( &b->z );
+       L1 = -   L0;
+    p448_addw ( &b->y,    L1 );
     p448_weak_reduce( &b->y );
-       L3 = p448_is_zero( &a->y );
-       L2 =    L3 +     1;
-    p448_set_ui( &b->z,    L2 );
+       L1 = p448_is_zero( &a->y );
+       L0 =    L1 +     1;
+    p448_set_ui( &b->z,    L0 );
     p448_copy ( &b->t, &b->x );
     p448_copy ( &b->u, &b->y );
 }
@@ -539,16 +539,16 @@ mask_t
 is_square (
     const struct p448_t* x
 ) {
-    struct p448_t L0, L1;
-    mask_t L2, L3;
-    p448_isr  (   &L0,     x );
-    p448_sqr  (   &L1,   &L0 );
-    p448_mul  (   &L0,     x,   &L1 );
-    p448_subw (   &L0,     1 );
-    p448_bias (   &L0,     1 );
-       L3 = p448_is_zero(   &L0 );
-       L2 = p448_is_zero(     x );
-    return    L3 |    L2;
+    mask_t L0, L1;
+    struct p448_t L2, L3;
+    p448_isr  (   &L2,     x );
+    p448_sqr  (   &L3,   &L2 );
+    p448_mul  (   &L2,     x,   &L3 );
+    p448_subw (   &L2,     1 );
+    p448_bias (   &L2,     1 );
+       L1 = p448_is_zero(   &L2 );
+       L0 = p448_is_zero(     x );
+    return    L1 |    L0;
 }
 
 mask_t
@@ -700,15 +700,15 @@ eq_affine (
     const struct affine_t* a,
     const struct affine_t* b
 ) {
-    struct p448_t L0;
-    mask_t L1, L2;
-    p448_sub  (   &L0, &a->x, &b->x );
-    p448_bias (   &L0,     2 );
-       L2 = p448_is_zero(   &L0 );
-    p448_sub  (   &L0, &a->y, &b->y );
-    p448_bias (   &L0,     2 );
-       L1 = p448_is_zero(   &L0 );
-    return    L2 &    L1;
+    mask_t L0, L1;
+    struct p448_t L2;
+    p448_sub  (   &L2, &a->x, &b->x );
+    p448_bias (   &L2,     2 );
+       L1 = p448_is_zero(   &L2 );
+    p448_sub  (   &L2, &a->y, &b->y );
+    p448_bias (   &L2,     2 );
+       L0 = p448_is_zero(   &L2 );
+    return    L1 &    L0;
 }
 
 mask_t
@@ -716,19 +716,19 @@ eq_extensible (
     const struct extensible_t* a,
     const struct extensible_t* b
 ) {
-    struct p448_t L0, L1, L2;
-    mask_t L3, L4;
-    p448_mul  (   &L2, &b->z, &a->x );
-    p448_mul  (   &L1, &a->z, &b->x );
-    p448_sub  (   &L0,   &L2,   &L1 );
-    p448_bias (   &L0,     2 );
-       L4 = p448_is_zero(   &L0 );
-    p448_mul  (   &L2, &b->z, &a->y );
-    p448_mul  (   &L1, &a->z, &b->y );
-    p448_sub  (   &L0,   &L2,   &L1 );
-    p448_bias (   &L0,     2 );
-       L3 = p448_is_zero(   &L0 );
-    return    L4 &    L3;
+    mask_t L0, L1;
+    struct p448_t L2, L3, L4;
+    p448_mul  (   &L4, &b->z, &a->x );
+    p448_mul  (   &L3, &a->z, &b->x );
+    p448_sub  (   &L2,   &L4,   &L3 );
+    p448_bias (   &L2,     2 );
+       L1 = p448_is_zero(   &L2 );
+    p448_mul  (   &L4, &b->z, &a->y );
+    p448_mul  (   &L3, &a->z, &b->y );
+    p448_sub  (   &L2,   &L4,   &L3 );
+    p448_bias (   &L2,     2 );
+       L0 = p448_is_zero(   &L2 );
+    return    L1 &    L0;
 }
 
 mask_t
@@ -736,19 +736,19 @@ eq_tw_extensible (
     const struct tw_extensible_t* a,
     const struct tw_extensible_t* b
 ) {
-    struct p448_t L0, L1, L2;
-    mask_t L3, L4;
-    p448_mul  (   &L2, &b->z, &a->x );
-    p448_mul  (   &L1, &a->z, &b->x );
-    p448_sub  (   &L0,   &L2,   &L1 );
-    p448_bias (   &L0,     2 );
-       L4 = p448_is_zero(   &L0 );
-    p448_mul  (   &L2, &b->z, &a->y );
-    p448_mul  (   &L1, &a->z, &b->y );
-    p448_sub  (   &L0,   &L2,   &L1 );
-    p448_bias (   &L0,     2 );
-       L3 = p448_is_zero(   &L0 );
-    return    L4 &    L3;
+    mask_t L0, L1;
+    struct p448_t L2, L3, L4;
+    p448_mul  (   &L4, &b->z, &a->x );
+    p448_mul  (   &L3, &a->z, &b->x );
+    p448_sub  (   &L2,   &L4,   &L3 );
+    p448_bias (   &L2,     2 );
+       L1 = p448_is_zero(   &L2 );
+    p448_mul  (   &L4, &b->z, &a->y );
+    p448_mul  (   &L3, &a->z, &b->y );
+    p448_sub  (   &L2,   &L4,   &L3 );
+    p448_bias (   &L2,     2 );
+       L0 = p448_is_zero(   &L2 );
+    return    L1 &    L0;
 }
 
 void
@@ -756,53 +756,56 @@ elligator_2s_inject (
     struct affine_t*     a,
     const struct p448_t* r
 ) {
-    struct p448_t L0, L1, L2, L3, L4, L5, L6, L7;
-    mask_t L8, L9;
+    mask_t L0, L1;
+    struct p448_t L2, L3, L4, L5, L6, L7, L8;
     p448_sqr  ( &a->x,     r );
-    p448_sqr  (   &L1, &a->x );
-    p448_copy ( &a->y,   &L1 );
+    p448_sqr  (   &L3, &a->x );
+    p448_copy ( &a->y,   &L3 );
     p448_subw ( &a->y,     1 );
-    p448_neg  (   &L7, &a->y );
+    p448_neg  (   &L4, &a->y );
+    p448_bias (   &L4,     2 );
+    p448_sqr  (   &L2,   &L4 );
+    p448_mulw (   &L7,   &L2, 1527402724 );
+    p448_mulw (   &L8,   &L3, 6108985600 );
+    p448_add  ( &a->y,   &L8,   &L7 );
+    p448_mulw (   &L8,   &L2, 6109454568 );
+    p448_sub  (   &L7, &a->y,   &L8 );
     p448_bias (   &L7,     2 );
-    p448_sqr  (   &L0,   &L7 );
-    p448_mulw (   &L6,   &L0, 1527402724 );
-    p448_mulw (   &L5,   &L1, 6108985600 );
-    p448_add  ( &a->y,   &L5,   &L6 );
-    p448_mulw (   &L6,   &L0, 6109454568 );
-    p448_sub  (   &L5, &a->y,   &L6 );
-    p448_bias (   &L5,     2 );
-    p448_mulw (   &L2, &a->y, 78160 );
-    p448_mul  (   &L4,   &L5,   &L7 );
-    p448_mul  (   &L6,   &L4,   &L2 );
-    p448_mul  (   &L2,   &L5,   &L6 );
-    p448_isr  (   &L3,   &L2 );
-    p448_mul  (   &L2,   &L4,   &L3 );
-    p448_sqr  (   &L4,   &L3 );
-    p448_mul  (   &L3,   &L6,   &L4 );
-    p448_mul  (   &L6,   &L5,   &L3 );
-    p448_mul  (   &L5,   &L6,   &L3 );
-    p448_copy (   &L4, &a->x );
-    p448_subw (   &L4,     1 );
+    p448_mulw (   &L6, &a->y, 78160 );
+    p448_mul  (   &L5,   &L7,   &L6 );
+    p448_mul  (   &L8,   &L5,   &L4 );
+    p448_mul  (   &L4,   &L5,   &L6 );
+    p448_mul  (   &L5,   &L7,   &L8 );
+    p448_mul  (   &L8,   &L5,   &L4 );
+    p448_mul  (   &L4,   &L7,   &L8 );
+    p448_isr  (   &L6,   &L4 );
+    p448_mul  (   &L4,   &L5,   &L6 );
+    p448_sqr  (   &L5,   &L6 );
+    p448_mul  (   &L6,   &L8,   &L5 );
+    p448_mul  (   &L8,   &L7,   &L6 );
+    p448_mul  (   &L7,   &L8,   &L6 );
+    p448_copy (   &L6, &a->x );
+    p448_subw (   &L6,     1 );
     p448_addw ( &a->x,     1 );
-    p448_mul  (   &L3, &a->x,   &L6 );
-    p448_sub  ( &a->x,   &L4,   &L3 );
+    p448_mul  (   &L5, &a->x,   &L8 );
+    p448_sub  ( &a->x,   &L6,   &L5 );
     p448_bias ( &a->x,     3 );
-    p448_mul  (   &L3,   &L2, &a->x );
-    p448_mulw (   &L2,   &L3, 78160 );
-    p448_neg  ( &a->x,   &L2 );
+    p448_mul  (   &L5,   &L4, &a->x );
+    p448_mulw (   &L4,   &L5, 78160 );
+    p448_neg  ( &a->x,   &L4 );
     p448_bias ( &a->x,     2 );
     p448_weak_reduce( &a->x );
-    p448_add  (   &L2,   &L1,   &L1 );
-    p448_add  (   &L1,   &L2,   &L0 );
-    p448_subw (   &L1,     2 );
-    p448_bias (   &L1,     1 );
-    p448_mul  (   &L0,   &L1,   &L6 );
-    p448_mulw (   &L1,   &L0, 3054649120 );
-    p448_add  (   &L0,   &L1, &a->y );
-    p448_mul  ( &a->y,   &L5,   &L0 );
-       L9 = p448_is_zero(   &L7 );
-       L8 = -   L9;
-    p448_addw ( &a->y,    L8 );
+    p448_add  (   &L4,   &L3,   &L3 );
+    p448_add  (   &L3,   &L4,   &L2 );
+    p448_subw (   &L3,     2 );
+    p448_bias (   &L3,     1 );
+    p448_mul  (   &L2,   &L3,   &L8 );
+    p448_mulw (   &L3,   &L2, 3054649120 );
+    p448_add  (   &L2,   &L3, &a->y );
+    p448_mul  ( &a->y,   &L7,   &L2 );
+       L1 = p448_is_zero(   &L8 );
+       L0 = -   L1;
+    p448_addw ( &a->y,    L0 );
     p448_weak_reduce( &a->y );
 }
 
@@ -828,83 +831,83 @@ mask_t
 validate_tw_extensible (
     const struct tw_extensible_t* ext
 ) {
-    struct p448_t L0, L1, L2, L3;
-    mask_t L4, L5;
+    mask_t L0, L1;
+    struct p448_t L2, L3, L4, L5;
     /*
      * Check invariant:
      * 0 = -x*y + z*t*u
      */
-    p448_mul  (   &L0, &ext->t, &ext->u );
-    p448_mul  (   &L2, &ext->z,   &L0 );
-    p448_addw (   &L2,     0 );
-    p448_mul  (   &L1, &ext->x, &ext->y );
-    p448_neg  (   &L0,   &L1 );
-    p448_add  (   &L1,   &L0,   &L2 );
-    p448_bias (   &L1,     2 );
-       L5 = p448_is_zero(   &L1 );
+    p448_mul  (   &L2, &ext->t, &ext->u );
+    p448_mul  (   &L4, &ext->z,   &L2 );
+    p448_addw (   &L4,     0 );
+    p448_mul  (   &L3, &ext->x, &ext->y );
+    p448_neg  (   &L2,   &L3 );
+    p448_add  (   &L3,   &L2,   &L4 );
+    p448_bias (   &L3,     2 );
+       L1 = p448_is_zero(   &L3 );
     /*
      * Check invariant:
      * 0 = d*t^2*u^2 + x^2 - y^2 + z^2 - t^2*u^2
      */
-    p448_sqr  (   &L2, &ext->y );
-    p448_neg  (   &L0,   &L2 );
-    p448_addw (   &L0,     0 );
-    p448_sqr  (   &L1, &ext->x );
-    p448_add  (   &L2,   &L1,   &L0 );
-    p448_sqr  (   &L3, &ext->u );
-    p448_sqr  (   &L1, &ext->t );
-    p448_mul  (   &L0,   &L1,   &L3 );
-    p448_mulw (   &L1,   &L0, 39081 );
-    p448_neg  (   &L3,   &L1 );
-    p448_add  (   &L1,   &L3,   &L2 );
-    p448_neg  (   &L3,   &L0 );
-    p448_add  (   &L2,   &L3,   &L1 );
-    p448_sqr  (   &L1, &ext->z );
-    p448_add  (   &L0,   &L1,   &L2 );
-    p448_bias (   &L0,     4 );
-       L4 = p448_is_zero(   &L0 );
-    return    L5 &    L4;
+    p448_sqr  (   &L4, &ext->y );
+    p448_neg  (   &L2,   &L4 );
+    p448_addw (   &L2,     0 );
+    p448_sqr  (   &L3, &ext->x );
+    p448_add  (   &L4,   &L3,   &L2 );
+    p448_sqr  (   &L5, &ext->u );
+    p448_sqr  (   &L3, &ext->t );
+    p448_mul  (   &L2,   &L3,   &L5 );
+    p448_mulw (   &L3,   &L2, 39081 );
+    p448_neg  (   &L5,   &L3 );
+    p448_add  (   &L3,   &L5,   &L4 );
+    p448_neg  (   &L5,   &L2 );
+    p448_add  (   &L4,   &L5,   &L3 );
+    p448_sqr  (   &L3, &ext->z );
+    p448_add  (   &L2,   &L3,   &L4 );
+    p448_bias (   &L2,     4 );
+       L0 = p448_is_zero(   &L2 );
+    return    L1 &    L0;
 }
 
 mask_t
 validate_extensible (
     const struct extensible_t* ext
 ) {
-    struct p448_t L0, L1, L2, L3;
-    mask_t L4, L5;
+    mask_t L0, L1;
+    struct p448_t L2, L3, L4, L5;
     /*
      * Check invariant:
      * 0 = d*t^2*u^2 - x^2 - y^2 + z^2
      */
-    p448_sqr  (   &L2, &ext->y );
-    p448_neg  (   &L1,   &L2 );
-    p448_addw (   &L1,     0 );
-    p448_sqr  (   &L0, &ext->z );
-    p448_add  (   &L2,   &L0,   &L1 );
-    p448_sqr  (   &L3, &ext->u );
-    p448_sqr  (   &L0, &ext->t );
-    p448_mul  (   &L1,   &L0,   &L3 );
-    p448_mulw (   &L3,   &L1, 39081 );
-    p448_neg  (   &L0,   &L3 );
-    p448_add  (   &L1,   &L0,   &L2 );
-    p448_sqr  (   &L0, &ext->x );
-    p448_neg  (   &L2,   &L0 );
-    p448_add  (   &L0,   &L2,   &L1 );
-    p448_bias (   &L0,     4 );
-       L5 = p448_is_zero(   &L0 );
+    p448_sqr  (   &L4, &ext->y );
+    p448_neg  (   &L3,   &L4 );
+    p448_addw (   &L3,     0 );
+    p448_sqr  (   &L2, &ext->z );
+    p448_add  (   &L4,   &L2,   &L3 );
+    p448_sqr  (   &L5, &ext->u );
+    p448_sqr  (   &L2, &ext->t );
+    p448_mul  (   &L3,   &L2,   &L5 );
+    p448_mulw (   &L5,   &L3, 39081 );
+    p448_neg  (   &L2,   &L5 );
+    p448_add  (   &L3,   &L2,   &L4 );
+    p448_sqr  (   &L2, &ext->x );
+    p448_neg  (   &L4,   &L2 );
+    p448_add  (   &L2,   &L4,   &L3 );
+    p448_bias (   &L2,     4 );
+       L1 = p448_is_zero(   &L2 );
     /*
      * Check invariant:
      * 0 = -x*y + z*t*u
      */
-    p448_mul  (   &L1, &ext->t, &ext->u );
-    p448_mul  (   &L2, &ext->z,   &L1 );
-    p448_addw (   &L2,     0 );
-    p448_mul  (   &L0, &ext->x, &ext->y );
-    p448_neg  (   &L1,   &L0 );
-    p448_add  (   &L0,   &L1,   &L2 );
-    p448_bias (   &L0,     2 );
-       L4 = p448_is_zero(   &L0 );
-    return    L5 &    L4;
+    p448_mul  (   &L3, &ext->t, &ext->u );
+    p448_mul  (   &L4, &ext->z,   &L3 );
+    p448_addw (   &L4,     0 );
+    p448_mul  (   &L2, &ext->x, &ext->y );
+    p448_neg  (   &L3,   &L2 );
+    p448_add  (   &L2,   &L3,   &L4 );
+    p448_bias (   &L2,     2 );
+       L0 = p448_is_zero(   &L2 );
+    return    L1 &    L0;
 }
 
 

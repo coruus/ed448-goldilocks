@@ -26,7 +26,6 @@
 
 #if (__SIZEOF_INT128__ == 16 && __SIZEOF_SIZE_T__ == 8 && (__SIZEOF_LONG__==8 || __POINTER_WIDTH__==64) && !GOLDI_FORCE_32_BIT)
 /* It's a 64-bit machine if:
- * // limits.h thinks so
  * __uint128_t exists
  * size_t is 64 bits
  * Either longs are 64-bits (doesn't happen on Windows)
@@ -61,6 +60,9 @@ typedef int64_t dsword_t;
 #endif
 
 #define WORD_BITS (sizeof(word_t) * 8)
+#define DIV_CEIL(_x,_y) (((_x) + (_y) - 1)/(_y))
+#define ROUND_UP(_x,_y) (DIV_CEIL((_x),(_y))*(_y))
+#define WORDS_FOR_BITS(_x) (DIV_CEIL((_x),WORD_BITS))
 
 typedef word_t mask_t;
 static const mask_t MASK_FAILURE = 0, MASK_SUCCESS = -1;
@@ -69,51 +71,80 @@ static const mask_t MASK_FAILURE = 0, MASK_SUCCESS = -1;
 
 #ifdef __ARM_NEON__
 typedef uint32x4_t vecmask_t;
-#else
-/* FIXME this only works on clang */
+#elif __clang__
+typedef uint64_t uint64x2_t __attribute__((ext_vector_type(2)));
+typedef int64_t  int64x2_t __attribute__((ext_vector_type(2)));
+typedef uint64_t uint64x4_t __attribute__((ext_vector_type(4)));
+typedef int64_t  int64x4_t __attribute__((ext_vector_type(4)));
+typedef uint32_t uint32x4_t __attribute__((ext_vector_type(4)));
+typedef int32_t  int32x4_t __attribute__((ext_vector_type(4)));
+typedef uint32_t uint32x2_t __attribute__((ext_vector_type(2)));
+typedef int32_t  int32x2_t __attribute__((ext_vector_type(2)));
+typedef uint32_t uint32x8_t __attribute__((ext_vector_type(8)));
+typedef int32_t  int32x8_t __attribute__((ext_vector_type(8)));
+typedef word_t vecmask_t __attribute__((ext_vector_type(4)));
+#else /* GCC-cleanliness */
 typedef uint64_t uint64x2_t __attribute__((vector_size(16)));
 typedef int64_t  int64x2_t __attribute__((vector_size(16)));
 typedef uint64_t uint64x4_t __attribute__((vector_size(32)));
 typedef int64_t  int64x4_t __attribute__((vector_size(32)));
-typedef uint32_t uint32x2_t __attribute__((vector_size(8)));
-typedef int32_t  int32x2_t __attribute__((vector_size(8)));
 typedef uint32_t uint32x4_t __attribute__((vector_size(16)));
 typedef int32_t  int32x4_t __attribute__((vector_size(16)));
+typedef uint32_t uint32x2_t __attribute__((vector_size(8)));
+typedef int32_t  int32x2_t __attribute__((vector_size(8)));
 typedef uint32_t uint32x8_t __attribute__((vector_size(32)));
 typedef int32_t  int32x8_t __attribute__((vector_size(32)));
-/* TODO: vector width for procs like ARM; gcc support */
 typedef word_t vecmask_t __attribute__((vector_size(32)));
 #endif
 
 #if __AVX2__
-typedef uint32x8_t big_register_t;
-typedef uint64x4_t uint64xn_t;
-typedef uint32x8_t uint32xn_t;
-#elif __SSE2__ || __ARM_NEON__
-typedef uint32x4_t big_register_t;
-typedef uint64x2_t uint64xn_t;
-typedef uint32x4_t uint32xn_t;
+    typedef uint32x8_t big_register_t;
+    typedef uint64x4_t uint64xn_t;
+    typedef uint32x8_t uint32xn_t;
+
+    static __inline__ big_register_t
+    br_set_to_mask(mask_t x) {
+        uint32_t y = x;
+        big_register_t ret = {y,y,y,y,y,y,y,y};
+        return ret;
+    }
+#elif __SSE2__
+    typedef uint32x4_t big_register_t;
+    typedef uint64x2_t uint64xn_t;
+    typedef uint32x4_t uint32xn_t;
+    typedef uint32_t uint32xn_t;
+
+    static __inline__ big_register_t
+    br_set_to_mask(mask_t x) {
+        uint32_t y = x;
+        big_register_t ret = {y,y,y,y};
+        return ret;
+    }
+#elif __ARM_NEON__
+    typedef uint32x4_t big_register_t;
+    typedef uint64x2_t uint64xn_t;
+    typedef uint32x4_t uint32xn_t;
+    static __inline__ big_register_t
+    br_set_to_mask(mask_t x) {
+        return vdupq_n_u32(x);
+    }
 #elif _WIN64 || __amd64__ || __X86_64__ || __aarch64__
-typedef uint64_t big_register_t, uint64xn_t;
-typedef uint32_t uint32xn_t;
-#else
-typedef uint64_t uint64xn_t;
-typedef uint32_t uint32xn_t;
-typedef uint32_t big_register_t;
-#endif
+    typedef uint64_t big_register_t, uint64xn_t;
 
-
-#ifdef __ARM_NEON__
-static __inline__ big_register_t
-br_set_to_mask(mask_t x) {
-    return vdupq_n_u32(x);
-}
+    typedef uint32_t uint32xn_t;
+    static __inline__ big_register_t
+    br_set_to_mask(mask_t x) {
+        return (big_register_t)x;
+    }
 #else
-static __inline__ big_register_t
-br_set_to_mask(mask_t x) {
-    big_register_t out = {x,x,x,x,x,x,x,x};
-    return out;
-}
+    typedef uint64_t uint64xn_t;
+    typedef uint32_t uint32xn_t;
+    typedef uint32_t big_register_t;
+
+    static __inline__ big_register_t
+    br_set_to_mask(mask_t x) {
+        return (big_register_t)x;
+    }
 #endif
 
 #if __AVX2__ || __SSE2__

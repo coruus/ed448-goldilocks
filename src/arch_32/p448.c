@@ -4,7 +4,6 @@
 
 #include "word.h"
 #include "p448.h"
-//#include "x86-64-arith.h"
 
 static inline mask_t __attribute__((always_inline))
 is_zero (
@@ -27,13 +26,7 @@ p448_mul (
     p448_t *__restrict__ cs,
     const p448_t *as,
     const p448_t *bs
-) {
-    // p448_t ar, br;
-//     p448_copy(&ar,as);
-//     p448_copy(&br,bs);
-//     p448_weak_reduce(&ar);
-//     p448_weak_reduce(&br);
-    
+) { 
     const uint32_t *a = as->limb, *b = bs->limb;
     uint32_t *c = cs->limb;
 
@@ -41,13 +34,7 @@ p448_mul (
     uint32_t mask = (1<<28) - 1;  
 
     uint32_t aa[8], bb[8];
-
-    /* For some reason clang doesn't vectorize this without prompting? */
-    // unsigned int i;
-    // for (i=0; i<sizeof(aa)/sizeof(uint64xn_t); i++) {
-    //     ((uint64xn_t*)aa)[i] = ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)(&a[4]))[i];
-    //     ((uint64xn_t*)bb)[i] = ((const uint64xn_t*)b)[i] + ((const uint64xn_t*)(&b[4]))[i];     
-    // }
+    
     int i,j;
     for (i=0; i<8; i++) {
         aa[i] = a[i] + a[i+8];
@@ -144,7 +131,7 @@ p448_sqr (
     p448_t *__restrict__ cs,
     const p448_t *as
 ) {
-    p448_mul(cs,as,as); // PERF
+    p448_mul(cs,as,as); /* PERF */
 }
 
 void

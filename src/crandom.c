@@ -5,8 +5,11 @@
 
 /* Chacha random number generator code copied from crandom */
 
-#include "intrinsics.h"
 #include "crandom.h"
+#include "intrinsics.h"
+#include "config.h"
+#include "magic.h"
+
 #include <stdio.h>
 
 volatile unsigned int crandom_features = 0;
@@ -67,7 +70,7 @@ INTRINSIC u_int64_t rdrand(int abort_on_fail) {
         out = out << 32 | reg;
         return out;
     # else
-        abort(); // whut
+        abort(); /* whut */
     # endif
     } else {
         tries = 0;
@@ -296,9 +299,6 @@ crandom_chacha_expand(u_int64_t iv,
 #endif /* NEED_CONV */
 }
 
-/* "return 4", cf xkcd #221 */
-#define CRANDOM_MAGIC 0x72657475726e2034ull
-
 int
 crandom_init_from_file(
     struct crandom_state_t *state,
@@ -361,6 +361,52 @@ crandom_generate(
 
     int ret = 0;
 
+    /* 
+     * Addition 5/21/2014.
+     *
+     * If this is used in an application inside a VM, and the VM
+     * is snapshotted and restored, then crandom_generate() would
+     * produce the same output.
+     * 
+     * Of course, the real defense against this is "don't do that",
+     * but we mitigate it by the RDRAND and/or rdtsc() in the refilling
+     * code.  Since chacha is pseudorandom, when the attacker doesn't
+     * know the state, it's good enough if RDRAND/rdtsc() return
+     * different results.  However, if (part of) the request is filled
+     * from the buffer, this won't help.
+     *
+     * So, add a flag EXPERIMENT_CRANDOM_BUFFER_CUTOFF_BYTES which
+     * disables the buffer for requests larger than this size.
+     *
+     * Suggest EXPERIMENT_CRANDOM_BUFFER_CUTOFF_BYTES = 0, which
+     * disables the buffer.  But instead you can set it to say 16,
+     * so that pulls of at least 128 bits will be stirred.  This
+     * could still be a problem for eg 64-bit nonces, but those
+     * aren't entirely collision-resistant anyway.
+     *
+     * Heuristic: large requests are more likely to be 
+     * cryptographically important, and the buffer doesn't impact
+     * their performance as much.  So if the request is bigger
+     * than a certain size, just drop the buffer on the floor.
+     *
+     * This code isn't activated if state->reseed_interval == 0,
+     * because then the PRNG is deterministic anyway.
+     *
+     * TODO: sample 128 bits out of RDRAND() instead of 64 bits.
+     * TODO: option to completely remove the buffer and fill?
+     * FUTURE: come up with a less band-aid-y solution to this problem.
+     */
+#ifdef EXPERIMENT_CRANDOM_BUFFER_CUTOFF_BYTES
+    if (state->reseed_interval
+#if EXPERIMENT_CRANDOM_CUTOFF_BYTES > 0
+        /* #if'd to a warning from -Wtype-limits in GCC when it's zero */
+        && length >= EXPERIMENT_CRANDOM_BUFFER_CUTOFF_BYTES
+#endif
+    ) {
+        state->fill = 0;
+    }
+#endif
+    
     while (length) {
         if (unlikely(state->fill <= 0)) {
             uint64_t iv = 0;

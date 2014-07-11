@@ -37,7 +37,7 @@ xx_vaddup_s64(int64x2_t x) {
 }
 #else
 #include "neon_emulation.h"
-#endif // ARM_NEON
+#endif /* ARM_NEON */
 
 static inline void __attribute__((gnu_inline,always_inline))
 smlal (
@@ -74,12 +74,6 @@ smull2 (
 ) {
     *acc = (int64_t)(int32_t)a * (int64_t)(int32_t)b * 2;
 }
-
-// static inline int64x2_t copy_now(int64x2_t x) {
-//     int64x2_t y;
-//     __asm__ ("vmov %0, %1" : "=w"(y) : "w"(x));
-//     return y;
-// }
 
 void
 p448_mul (

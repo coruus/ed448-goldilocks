@@ -39,7 +39,7 @@ endif
 ARCHFLAGS += -mcpu=cortex-a9 # FIXME
 GENFLAGS = -DN_TESTS_BASE=1000 # sooooo sloooooow
 else
-ARCHFLAGS += -mssse3 -maes -mavx -mavx2 -DMUST_HAVE_AVX2 -mbmi2 #TODO
+ARCHFLAGS += -maes -mavx2 -mbmi2 #TODO
 endif
 
 ifeq ($(CC),clang)
@@ -48,25 +48,27 @@ endif
 
 ifeq (,$(findstring 64,$(ARCH))$(findstring gcc,$(CC)))
 # ARCHFLAGS += -m32
-ARCHFLAGS += -DGOLDI_FORCE_32_BIT=1
+XCFLAGS += -DGOLDI_FORCE_32_BIT=1
 endif
 
 CFLAGS  = $(LANGFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCFLAGS)
 LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS)
 ASFLAGS = $(ARCHFLAGS)
 
-.PHONY: clean all test bench todo doc lib
+.PHONY: clean all test bench todo doc lib bat
 .PRECIOUS: build/%.s
 
 HEADERS= Makefile $(shell find . -name "*.h") build/timestamp
 
 LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
-  build/p448.o build/ec_point.o build/scalarmul.o build/sha512.o
+  build/p448.o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o
 
 TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
-	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o
+	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o
 
 BENCHCOMPONENTS=build/bench.o
+
+BATNAME=build/ed448-goldilocks
 
 all: lib build/test build/bench
 
@@ -118,6 +120,19 @@ doc/timestamp:
 doc: Doxyfile doc/timestamp src/*.c src/include/*.h src/$(ARCH)/*.c src/$(ARCH)/*.h
 	doxygen
 
+bat: $(BATNAME)
+
+$(BATNAME): include/* src/* src/*/*
+	rm -fr $@
+	for arch in src/arch*; do \
+		mkdir -p $@/`basename $$arch`; \
+		cp include/* src/*.c src/include/* $$arch/* $@/`basename $$arch`; \
+		perl -p -i -e 's/.*endif.*GOLDILOCKS_CONFIG_H/#define SUPERCOP_WONT_LET_ME_OPEN_FILES 1\n\n$$&/' $@/`basename $$arch`/config.h; \
+		done
+	echo 'Mike Hamburg' > $@/designers
+	echo 'Ed448-Goldilocks sign and dh' > $@/description
+	
+
 todo::
 	@(find * -name '*.h'; find * -name '*.c') | xargs egrep --color=auto -w \
 		'HACK|TODO|FIXME|BUG|XXX|PERF|FUTURE|REMOVE|MAGIC'
@@ -139,4 +154,4 @@ test: build/test
 	./$<
 
 clean:
-	rm -fr build doc
+	rm -fr build doc $(BATNAME)

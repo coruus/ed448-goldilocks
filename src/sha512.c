@@ -2,8 +2,8 @@
  * Copyright (c) 2014 Cryptography Research, Inc.
  * Released under the MIT License.  See LICENSE.txt for license information.
  */
-#include "sha512.h"
 #include "word.h"
+#include "sha512.h"
 
 #include <string.h>
 #include <assert.h>
@@ -163,9 +163,11 @@ sha512_final (
         sha512_process_block(ctx);
         fill = 0;
     }
-    memset(ctx->block + fill, 0, 120-fill);
-    uint64_t size = htobe64((ctx->nbytes * 8));
-    memcpy(&ctx->block[120], &size, sizeof(size));
+    memset(ctx->block + fill, 0, 112-fill);
+    
+    uint64_t highCount = 0, lowCount = htobe64((ctx->nbytes * 8));
+    memcpy(&ctx->block[112],&highCount,8);
+    memcpy(&ctx->block[120],&lowCount,8);
     sha512_process_block(ctx);
     for (i=0; i<8; i++) {
         ctx->chain[i] = htobe64(ctx->chain[i]);

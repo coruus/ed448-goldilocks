@@ -25,8 +25,8 @@ Important work items for Ed448-Goldilocks:
 
 * [DONE] Bugfix: make sure that init() and randomization are thread-safe.
 
-* Security: check on deserialization that points are < p.
-    * Check also that they're nonzero or otherwise non-pathological?
+* [DONE] Security: check on deserialization that points are < p.
+    * [NEEDS TESTING] Check also that they're nonzero or otherwise non-pathological?
 
 * Testing:
     * Corner-case testing
@@ -39,16 +39,16 @@ Important work items for Ed448-Goldilocks:
     * Most functions now have warn on ignored return.
 
 * Safety:
-    * Check for init() if it's still required once we've done the above
+    * [DONE] Check for init() if it's still required once we've done the above
     * Decide what to do about RNG failures
         * abort
         * return error and zeroize
         * return error but continue if RNG is kind of mostly OK
     
 * Flexibility: decide which API options are good.
-    * Eg, should functions take nbits and table sizes?
+    * [DONE?] Eg, should functions take nbits and table sizes?
     
-    * Remove hardcoded adjustments from comb control.
+    * [DONE] Remove hardcoded adjustments from comb control.
         * These adjustments make the output wrong when it's not 450 bits.
         
     * Other slow Barrett fields?  Montgomery fields?
@@ -71,6 +71,7 @@ Important work items for Ed448-Goldilocks:
 
 * Portability: test and make clean with other compilers
     * Using a fair amount of __attribute__ code.
+    * [DONE] Should work for GCC now.
 
 * Portability: try to make the vector code as portable as possible
     * Currently using clang ext_vector_length.
@@ -79,15 +80,15 @@ Important work items for Ed448-Goldilocks:
 
 * Portability: make the inner layers of the code 32-bit clean.
     * Write new versions of the field code.
-        * 28-bit limbs give less headroom for carries.
-        * Now have a vectorless ARM version; need NEON.
+        * [DONE] 28-bit limbs give less headroom for carries.
+        * [DONE] Now have a vectorless ARM version; need NEON.
         * Improve speed of 32-bit field code.
     
-    * Run through the SAGE tool to generate new bias & bound.
+    * [DONE] Run through the SAGE tool to generate new bias & bound.
 
 * [DONE] Portability: make the outer layers of the code 32-bit clean.
 
-* Performance/flexibility: decide which parameters should be hard-coded.
+* [DONE] Performance/flexibility: decide which parameters should be hard-coded.
     * Perhaps useful for comb precomputation.
 
 * Performance: Improve SHA512.
@@ -120,4 +121,4 @@ Important work items for Ed448-Goldilocks:
 
 * Clear other TODO/FIXME/HACK/PERF items in the code
 
-* Submit to SUPERCOP
+* [DONE?] Submit to SUPERCOP
