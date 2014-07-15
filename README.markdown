@@ -1,4 +1,6 @@
-Ed448-Goldilocks
+# Ed448-Goldilocks
+
+## README.txt
 
 This software is an experimental implementation of a new 448-bit elliptic
 curve called Ed448-Goldilocks. The implementation itself is based on that of
@@ -40,3 +42,26 @@ additional agenda items. Do not taunt happy fun ball.
 
 Cheers,
 -- Mike Hamburg
+
+## SHAKE branch
+
+This branch uses Shake -- the SHA-3 variable-output-length function -- instead
+of SHA-2. Use the GOLDI_SHAKE macro in config.h to pick Shake128 or Shake256.
+The default is Shake256.
+
+The design, w.r.t. signatures:
+
+    pk = shake(proto + ds_goldi_derivepk)
+    nonceg = shake(message + pk + ds_goldi_signonce)
+    challenge = shake(message + nonceg + pubkey + ds_goldi_challenge)
+
+No double-hashing or envelope-MAC construction is needed. By postfixing --
+rather than prefixing -- the nonce and public key, verifying multiple
+signatures on (long) messages is much faster.
+
+("Shake _s_" is equivalent to `Sponge[c=s*2,r=1600-c,pad10.1](Keccak-f)`. Recent
+work has shown that the generic security strength of the sponge construction,
+used in "keyed" modes, is equal to `c`. So Shake128 is a viable choice, even
+for a target of 256-bit security strength.)
+
+Patches under the same license.
