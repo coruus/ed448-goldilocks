@@ -29,25 +29,25 @@ typedef word_t scalar_t[SCALAR_WORDS];
  * This uses a signed combs format.
  */
 struct fixed_base_table_t {
-   /** Comb tables containing multiples of the base point. */
-  struct tw_niels_t *table;
-  
+  /** Comb tables containing multiples of the base point. */
+  struct tw_niels_t* table;
+
   /** Adjustments to the scalar in even and odd cases, respectively. */
-  word_t scalar_adjustments[2*SCALAR_WORDS];
-  
+  word_t scalar_adjustments[2 * SCALAR_WORDS];
+
   /** The number of combs in the table. */
   unsigned int n;
-  
+
   /** The number of teeth in each comb. */
   unsigned int t;
-  
+
   /** The spacing between the teeth. */
   unsigned int s;
-  
+
   /** If nonzero, the table was malloc'd by precompute_for_combs. */
   unsigned int own_table;
 };
-    
+
 /**
  * Full Montgomery ladder in inverse square root format.
  *
@@ -88,15 +88,13 @@ struct fixed_base_table_t {
  * @retval MASK_FAILURE The input point was invalid, or the output
  * would be the identity or the point of order 2.
  */
-mask_t
-montgomery_ladder (
-    struct field_t *out,
-    const struct field_t *in,
-    const word_t *scalar,
-    unsigned int nbits,
-    unsigned int n_extra_doubles
-) __attribute__((warn_unused_result));
-    
+mask_t montgomery_ladder(struct field_t* out,
+                         const struct field_t* in,
+                         const word_t* scalar,
+                         unsigned int nbits,
+                         unsigned int n_extra_doubles)
+    __attribute__((warn_unused_result));
+
 /**
  * Scalar multiply a twisted Edwards-form point.
  *
@@ -107,13 +105,11 @@ montgomery_ladder (
  * @param [inout] working The point to multply.
  * @param [in] scalar The scalar, in little-endian form.
  */
-void
-scalarmul (
-    struct tw_extensible_t *working,
-    const word_t scalar[SCALAR_WORDS]
-    /* TODO? int nbits */
-);
-    
+void scalarmul(struct tw_extensible_t* working,
+               const word_t scalar[SCALAR_WORDS]
+               /* TODO? int nbits */
+               );
+
 /**
  * Scalar multiply a twisted Edwards-form point.  Use the same
  * algorithm as scalarmul(), but uses variable array indices.
@@ -128,11 +124,7 @@ scalarmul (
  * @param [inout] working The point to multply.
  * @param [in] scalar The scalar, in little-endian form.
  */
-void
-scalarmul_vlook (
-    struct tw_extensible_t *working,
-    const word_t scalar[SCALAR_WORDS]
-);
+void scalarmul_vlook(struct tw_extensible_t* working, const word_t scalar[SCALAR_WORDS]);
 
 /**
  * Precompute a table to accelerate fixed-point scalar
@@ -158,26 +150,21 @@ scalarmul_vlook (
  * @retval MASK_FAILURE Failure, most likely because we are out
  * of memory.
  */
-mask_t
-precompute_fixed_base (
-  struct fixed_base_table_t *out,
-  const struct tw_extensible_t *base,
-  unsigned int n,
-  unsigned int t,
-  unsigned int s,
-  struct tw_niels_t *prealloc
-) __attribute__((warn_unused_result));
+mask_t precompute_fixed_base(struct fixed_base_table_t* out,
+                             const struct tw_extensible_t* base,
+                             unsigned int n,
+                             unsigned int t,
+                             unsigned int s,
+                             struct tw_niels_t* prealloc)
+    __attribute__((warn_unused_result));
 
- /**
-  * Destroy a fixed-base table.  Frees any memory that we allocated
-  * for the combs.
-  *
-  * @param [in] table The table to destroy.
-  */
-void
-destroy_fixed_base (
-    struct fixed_base_table_t *table
-);
+/**
+ * Destroy a fixed-base table.  Frees any memory that we allocated
+ * for the combs.
+ *
+ * @param [in] table The table to destroy.
+ */
+void destroy_fixed_base(struct fixed_base_table_t* table);
 
 /**
  * Scalar multiplication with precomputation.  Set working to
@@ -194,14 +181,11 @@ destroy_fixed_base (
  *
  * @retval MASK_SUCCESS Success.
  * @retval MASK_FAILURE Failure, because n*t*s < nbits
- */ 
-mask_t
-scalarmul_fixed_base (
-    struct tw_extensible_t *out,
-    const word_t *scalar,
-    unsigned int nbits,
-    const struct fixed_base_table_t *table
-);
+ */
+mask_t scalarmul_fixed_base(struct tw_extensible_t* out,
+                            const word_t* scalar,
+                            unsigned int nbits,
+                            const struct fixed_base_table_t* table);
 
 /**
  * Variable-time scalar multiplication.
@@ -212,14 +196,10 @@ scalarmul_fixed_base (
  * @param [inout] working The input and output point.
  * @param [in] scalar The scalar.
  * @param [in] nbits The number of bits in the scalar
- */ 
-void
-scalarmul_vt (
-    struct tw_extensible_t *working,
-    const word_t *scalar,
-    unsigned int nbits
-);
-
+ */
+void scalarmul_vt(struct tw_extensible_t* working,
+                  const word_t* scalar,
+                  unsigned int nbits);
 
 /**
  * Precompute a table to accelerate fixed-point scalar
@@ -234,12 +214,9 @@ scalarmul_vt (
  * @retval MASK_FAILURE Failure, most likely because we are out
  * of memory.
  */
-mask_t
-precompute_fixed_base_wnaf (
-    struct tw_niels_t *out,
-    const struct tw_extensible_t *base,
-    unsigned int tbits
-) __attribute__((warn_unused_result));
+mask_t precompute_fixed_base_wnaf(struct tw_niels_t* out,
+                                  const struct tw_extensible_t* base,
+                                  unsigned int tbits) __attribute__((warn_unused_result));
 
 /**
  * Variable-time scalar multiplication with precomputed WNAF
@@ -253,16 +230,12 @@ precompute_fixed_base_wnaf (
  * @param [in] nbits The number of bits in the scalar.
  * @param [in] precmp The precomputed WNAF table.
  * @param [in] table_bits The number of bits in the WNAF table.
- */ 
-void
-scalarmul_fixed_base_wnaf_vt (
-    struct tw_extensible_t *out,
-    const word_t *scalar,
-    unsigned int nbits,
-    const struct tw_niels_t *precmp,
-    unsigned int table_bits
-);
-
+ */
+void scalarmul_fixed_base_wnaf_vt(struct tw_extensible_t* out,
+                                  const word_t* scalar,
+                                  unsigned int nbits,
+                                  const struct tw_niels_t* precmp,
+                                  unsigned int table_bits);
 
 /**
  * Variable-time scalar linear combination of two points: one
@@ -278,17 +251,14 @@ scalarmul_fixed_base_wnaf_vt (
  * @param [in] nbits_pre The number of bits in scalar_pre.
  * @param [in] precmp The precomputed WNAF table.
  * @param [in] table_bits_pre The number of bits in the WNAF table.
- */ 
-void
-linear_combo_var_fixed_vt (
-    struct tw_extensible_t *working,
-    const word_t scalar_var[SCALAR_WORDS],
-    unsigned int nbits_var,
-    const word_t scalar_pre[SCALAR_WORDS],
-    unsigned int nbits_pre,
-    const struct tw_niels_t *precmp,
-    unsigned int table_bits_pre
-);
+ */
+void linear_combo_var_fixed_vt(struct tw_extensible_t* working,
+                               const word_t scalar_var[SCALAR_WORDS],
+                               unsigned int nbits_var,
+                               const word_t scalar_pre[SCALAR_WORDS],
+                               unsigned int nbits_pre,
+                               const struct tw_niels_t* precmp,
+                               unsigned int table_bits_pre);
 
 /**
  * Variable-time scalar linear combination of two fixed points.
@@ -307,16 +277,13 @@ linear_combo_var_fixed_vt (
  * @retval MASK_SUCCESS Success.
  * @retval MASK_FAILURE Failure, because eg the tables are too small.
  */
-mask_t
-linear_combo_combs_vt (
-    struct tw_extensible_t *out,
-    const word_t scalar1[SCALAR_WORDS],
-    unsigned int nbits1,
-    const struct fixed_base_table_t *table1,
-    const word_t scalar2[SCALAR_WORDS],
-    unsigned int nbits2,
-    const struct fixed_base_table_t *table2
-);
+mask_t linear_combo_combs_vt(struct tw_extensible_t* out,
+                             const word_t scalar1[SCALAR_WORDS],
+                             unsigned int nbits1,
+                             const struct fixed_base_table_t* table1,
+                             const word_t scalar2[SCALAR_WORDS],
+                             unsigned int nbits2,
+                             const struct fixed_base_table_t* table2);
 
 #ifdef __cplusplus
 };

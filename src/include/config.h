@@ -24,7 +24,7 @@
  *
  * Setting this flag will make the library smaller.
  */
-#define CRANDOM_MIGHT_IS_MUST           1
+#define CRANDOM_MIGHT_IS_MUST 1
 
 /**
  * @brief Causes crandom to refuse to buffer requests bigger
@@ -44,16 +44,16 @@
  * thread-safety.  If you disable this flag, it won't link
  * libpthread, but it won't be thread-safe either.
  */
-#define GOLDILOCKS_USE_PTHREAD          1
+#define GOLDILOCKS_USE_PTHREAD 1
 
 /**
  * @brief Experiment to change the hash inputs for ECDH,
  * in a way that obliterates the result -- overwriting it with
  * a safe pseudorandom value -- if the public key is invalid.
  * That way users who ignore the status result won't be
- * exposed to invalid key attacks. 
+ * exposed to invalid key attacks.
  */
-#define EXPERIMENT_ECDH_OBLITERATE_CT   1
+#define EXPERIMENT_ECDH_OBLITERATE_CT 1
 
 /**
  * @brief ECDH adds public keys into the hash, to prevent

@@ -4,9 +4,9 @@
  *   Copyright (c) 2014 Cryptography Research, Inc.  \n
  *   Released under the MIT License.  See LICENSE.txt for license information.
  * @author Mike Hamburg
- * @brief Goldilocks magic numbers (group orders, coefficients, algo params etc).
+ * @brief Goldilocks magic numbers (group orders, coefficients, algo params
+ * etc).
  */
-
 
 #ifndef __GOLDI_MAGIC_H__
 #define __GOLDI_MAGIC_H__ 1
@@ -17,14 +17,14 @@
 
 /* TODO: standardize notation */
 
-
 /** @brief The number of bits in the Goldilocks field. */
 #define GOLDI_FIELD_BITS 448
 
 /** @brief The number of words in the Goldilocks field. */
-#define GOLDI_FIELD_WORDS DIV_CEIL(GOLDI_FIELD_BITS,WORD_BITS)
+#define GOLDI_FIELD_WORDS DIV_CEIL(GOLDI_FIELD_BITS, WORD_BITS)
 
-/** @brief The number of bits in the Goldilocks curve's cofactor (cofactor=4). */
+/** @brief The number of bits in the Goldilocks curve's cofactor (cofactor=4).
+ */
 #define COFACTOR_BITS 2
 
 /** @brief The number of bits in a Goldilocks scalar. */
@@ -45,7 +45,7 @@ extern const struct affine_t goldilocks_base_point;
 
 /**
  * @brief The Goldilocks prime subgroup order.
- */ 
+ */
 extern const struct barrett_prime_t curve_prime_order;
 
 /**
@@ -58,7 +58,7 @@ extern const struct barrett_prime_t curve_prime_order;
  * @brief Even/odd adjustments for fixed window with
  * ROUNDUP(SCALAR_BITS,SCALARMUL_FIXED_WINDOW_SIZE).
  */
-extern const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS];
+extern const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2 * SCALAR_WORDS];
 
 /**
  * @brief Table size for wNAF signed binary (variable-time) scalarmul.
@@ -79,21 +79,22 @@ extern const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS];
 #if __ARM_NEON__
 #define USE_BIG_COMBS 1
 #else
-#define USE_BIG_COMBS (WORD_BITS==64)
+#define USE_BIG_COMBS (WORD_BITS == 64)
 #endif
 #endif
 
 /** @brief The number of combs to use for signed comb algo */
-#define COMB_N (USE_BIG_COMBS ? 5  : 8)
+#define COMB_N (USE_BIG_COMBS ? 5 : 8)
 
 /** @brief The number of teeth of the combs for signed comb algo */
-#define COMB_T (USE_BIG_COMBS ? 5  : 4)
+#define COMB_T (USE_BIG_COMBS ? 5 : 4)
 
 /** @brief The spacing the of combs for signed comb algo */
 #define COMB_S (USE_BIG_COMBS ? 18 : 14)
 
 /**
- * @brief The bit width of the precomputed WNAF tables.  Size is 2^this elements.
+ * @brief The bit width of the precomputed WNAF tables.  Size is 2^this
+ * elements.
  */
 #define WNAF_PRECMP_BITS 5
 

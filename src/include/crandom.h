@@ -28,17 +28,17 @@
  * not be accessed by multiple threads at the same time.
  */
 struct crandom_state_t {
-    /** @privatesection */
-    unsigned char seed[32];
-    unsigned char buffer[96];
-    uint64_t ctr;
-    uint64_t magic;
-    unsigned int fill;
-    int reseed_countdown;
-    int reseed_interval;
-    int reseeds_mandatory;
-    int randomfd;
-} __attribute__((aligned(16))) ;
+  /** @privatesection */
+  unsigned char seed[32];
+  unsigned char buffer[96];
+  uint64_t ctr;
+  uint64_t magic;
+  unsigned int fill;
+  int reseed_countdown;
+  int reseed_interval;
+  int reseeds_mandatory;
+  int randomfd;
+} __attribute__((aligned(16)));
 
 #ifdef __cplusplus
 extern "C" {
@@ -46,7 +46,7 @@ extern "C" {
 
 /**
  * Initialize a crandom state from the chosen file.
- * 
+ *
  * This function initializes a state from a given state file, or
  * from a random device (eg. /dev/random or /dev/urandom).
  *
@@ -62,18 +62,14 @@ extern "C" {
  * @retval 0 Success.
  * @retval Nonzero An error to be interpreted by strerror().
  */
-int
-crandom_init_from_file (
-    struct crandom_state_t *state,
-    const char *filename,
-    int reseed_interval,
-    int reseeds_mandatory
-) __attribute__((warn_unused_result));
-
+int crandom_init_from_file(struct crandom_state_t* state,
+                           const char* filename,
+                           int reseed_interval,
+                           int reseeds_mandatory) __attribute__((warn_unused_result));
 
 /**
  * Initialize a crandom state from a buffer, for deterministic operation.
- * 
+ *
  * This function is used to initialize a crandom state deterministically,
  * mainly for testing purposes.  It can also be used to expand a secret
  * random value deterministically.
@@ -85,11 +81,7 @@ crandom_init_from_file (
  * @param [out] state The crandom state variable to initalize.
  * @param [in] initial_seed The seed value.
  */
-void
-crandom_init_from_buffer (
-    struct crandom_state_t *state,
-    const char initial_seed[32]
-);
+void crandom_init_from_buffer(struct crandom_state_t* state, const char initial_seed[32]);
 
 /**
  * Fill the output buffer with random data.
@@ -116,12 +108,9 @@ crandom_init_from_buffer (
  * @retval 0 Success.
  * @retval Nonezero A non-mandatory reseed operation failed.
  */
-int
-crandom_generate (
-    struct crandom_state_t *state,
-    unsigned char *output,
-    unsigned long long length
-);
+int crandom_generate(struct crandom_state_t* state,
+                     unsigned char* output,
+                     unsigned long long length);
 
 /**
  * Destroy the random state.  Further calls to crandom_generate() on that state
@@ -129,10 +118,7 @@ crandom_generate (
  *
  * @param [inout] state The state to be destroyed.
  */
-void
-crandom_destroy (
-    struct crandom_state_t *state
-);
+void crandom_destroy(struct crandom_state_t* state);
 
 #ifdef __cplusplus
 }; /* extern "C" */
