@@ -193,7 +193,8 @@ int goldilocks_private_to_public(struct goldilocks_public_key_t* pubkey,
  * @retval GOLDI_EINVAL   The other party's key is corrupt.
  * @retval GOLDI_EUNINIT You must call goldilocks_init() first.
  */
-int goldilocks_shared_secret(uint8_t* shared, size_t sharedlen,
+int goldilocks_shared_secret(uint8_t* shared,
+                             size_t sharedlen,
                              const struct goldilocks_private_key_t* my_privkey,
                              const struct goldilocks_public_key_t* your_pubkey)
     __attribute__((warn_unused_result, nonnull(1, 3, 4), visibility("default")));
@@ -339,7 +340,8 @@ int goldilocks_verify_precomputed(
  * @retval GOLDI_EUNINIT You must call goldilocks_init() first.
  */
 int goldilocks_shared_secret_precomputed(
-    uint8_t* shared, size_t sharedlen,
+    uint8_t* shared,
+    size_t sharedlen,
     const struct goldilocks_private_key_t* my_privkey,
     const struct goldilocks_precomputed_public_key_t* your_pubkey)
     __attribute__((warn_unused_result, nonnull(1, 3, 4), visibility("default")));

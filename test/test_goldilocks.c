@@ -4,7 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-
 int test_goldilocks() {
   const char* message1 = "hello world";
   const char* message2 = "Jello world";
@@ -121,7 +120,8 @@ int test_goldilocks() {
       good = 0;
     }
 
-    ret = goldilocks_shared_secret_precomputed(ss21p, GOLDI_SHARED_SECRET_BYTES, &priv2, pre);
+    ret = goldilocks_shared_secret_precomputed(
+        ss21p, GOLDI_SHARED_SECRET_BYTES, &priv2, pre);
     if (ret) {
       youfail();
       printf("    Failed ss21p trial %d.\n", i);

@@ -586,7 +586,8 @@ int main(int argc, char** argv) {
 
   when = now();
   for (i = 0; i < nbase; i++) {
-    int ret = goldilocks_shared_secret_precomputed(ss1, GOLDI_SHARED_SECRET_BYTES, &gsk, pre);
+    int ret =
+        goldilocks_shared_secret_precomputed(ss1, GOLDI_SHARED_SECRET_BYTES, &gsk, pre);
     assert(!ret);
   }
   when = now() - when;

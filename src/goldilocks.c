@@ -61,7 +61,6 @@ static const uint8_t goldi_signonce[32] = {0xe1,0xa2,0xca,0x66,0xca,0x11,0xe4,0x
 static const uint8_t goldi_derivepk[32] = {0x09,0x82,0xb2,0x7b,0x0e,0x68,0x30,0x45,0x33,0xb6,0xa6,0xcf,0x83,0x05,0x67,0x1f,0x8a,0xe1,0x13,0xdc,0xdd,0xed,0x90,0xeb,0x13,0xa1,0x21,0x44,0xec,0xaa,0xd1,0xb5};
 
 
-
 /* FUTURE: auto.  MAGIC */
 static const word_t goldi_q448_lo[(224 + WORD_BITS - 1) / WORD_BITS] = {
     U64LE(0xdc873d6d54a7bb0d),
@@ -333,7 +332,8 @@ static int goldilocks_shared_secret_core(
          (GOLDI_EOK & msucc & succ);
 }
 
-int goldilocks_shared_secret(uint8_t* shared, size_t sharedlen,
+int goldilocks_shared_secret(uint8_t* shared,
+                             size_t sharedlen,
                              const struct goldilocks_private_key_t* my_privkey,
                              const struct goldilocks_public_key_t* your_pubkey) {
   return goldilocks_shared_secret_core(shared, sharedlen, my_privkey,
@@ -347,9 +347,9 @@ static inline void goldilocks_beforegn(hash_ctx_t* ctx, const uint8_t* message,
 }
 
 static inline void goldilocks_aftergn(word_t challenge[GOLDI_FIELD_WORDS],
-                                         const hash_ctx_t* mctx,
-                                         const uint8_t pubkey[GOLDI_FIELD_BYTES],
-                                         const uint8_t gnonce[GOLDI_FIELD_BYTES]) {
+                                      const hash_ctx_t* mctx,
+                                      const uint8_t pubkey[GOLDI_FIELD_BYTES],
+                                      const uint8_t gnonce[GOLDI_FIELD_BYTES]) {
   // Clone the sponge.
   hash_ctx_t ctx;
   memcpy(&ctx, mctx, sizeof(hash_ctx_t));
