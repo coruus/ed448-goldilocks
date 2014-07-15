@@ -50,7 +50,7 @@ ARCHFLAGS += -DGOLDI_FORCE_32_BIT=1
 endif
 
 CFLAGS  = $(LANGFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCFLAGS)
-LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS)
+LDFLAGS = build/libkeccak.dylib $(ARCHFLAGS) $(XLDFLAGS)
 ASFLAGS = $(ARCHFLAGS)
 
 .PHONY: clean all test bench todo doc lib
@@ -59,9 +59,9 @@ ASFLAGS = $(ARCHFLAGS)
 HEADERS= Makefile $(shell find . -name "*.h") build/timestamp
 
 LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
-  build/p448.o build/ec_point.o build/scalarmul.o build/sha512.o
+  build/p448.o build/ec_point.o build/scalarmul.o
 
-TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
+TESTCOMPONENTS=build/test.o build/test_scalarmul.o \
 	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o
 
 BENCHCOMPONENTS=build/bench.o
@@ -86,7 +86,7 @@ build/goldilocks.so: $(LIBCOMPONENTS)
 	rm -f $@
 ifeq ($(UNAME),Darwin)
 	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
-		  $(LIBCOMPONENTS)
+		  $(LIBCOMPONENTS) build/libkeccak.dylib
 else
 	$(LD) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
 	strip --discard-all $@

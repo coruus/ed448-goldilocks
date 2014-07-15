@@ -12,7 +12,7 @@
 
 #include <sys/types.h>
 
-#if __i386__ || __x86_64__
+#if defined(__i386__) || defined(__x86_64__)
 #include <immintrin.h>
 #endif
 

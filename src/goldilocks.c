@@ -16,8 +16,8 @@
 #include "scalarmul.h"
 #include "barrett_field.h"
 #include "crandom.h"
-#include "sha512.h"
 #include "intrinsics.h"
+#include "hash.h"
 
 #ifndef GOLDILOCKS_RANDOM_INIT_FILE
 #define GOLDILOCKS_RANDOM_INIT_FILE "/dev/urandom"
@@ -50,6 +50,17 @@ const struct affine_t goldilocks_base_point = {{{U58LE(0xf0de840aed939f),
 static const char* G_INITING = "initializing";
 static const char* G_INITED = "initialized";
 static const char* G_FAILED = "failed to initialize";
+
+/* Domain separators for hashs. */
+// mkk(key, p) = Rijndael256(mbrpad(key, 32), mbrpad(p, 32))
+// mkk(k="Ed448-Goldilocks", p="Challenge.")
+static const uint8_t goldi_challenge[32] = {0xac,0x46,0x28,0x71,0x24,0x3d,0x9f,0x18,0x85,0x93,0x3a,0x3d,0xce,0x96,0x5b,0x9f,0x73,0x2f,0x40,0x59,0xf7,0x2a,0x1b,0x2a,0xff,0x12,0x20,0x20,0x8a,0x5e,0xf7,0xc0};
+// mkk(k="Ed448-Goldilocks", p="Sign once.")
+static const uint8_t goldi_signonce[32] = {0xe1,0xa2,0xca,0x66,0xca,0x11,0xe4,0x0c,0xd8,0x60,0x19,0x3c,0xab,0x1d,0x2b,0xc5,0x02,0x0e,0xc4,0x33,0x14,0x59,0x1d,0x04,0x70,0x89,0xfe,0xc8,0x4a,0x6a,0xc8,0xce};
+// mkk(k="Ed448-Goldilocks", p="Derive private key.")
+static const uint8_t goldi_derivepk[32] = {0x09,0x82,0xb2,0x7b,0x0e,0x68,0x30,0x45,0x33,0xb6,0xa6,0xcf,0x83,0x05,0x67,0x1f,0x8a,0xe1,0x13,0xdc,0xdd,0xed,0x90,0xeb,0x13,0xa1,0x21,0x44,0xec,0xaa,0xd1,0xb5};
+
+
 
 /* FUTURE: auto.  MAGIC */
 static const word_t goldi_q448_lo[(224 + WORD_BITS - 1) / WORD_BITS] = {
@@ -164,27 +175,28 @@ fail:
 }
 
 int goldilocks_derive_private_key(struct goldilocks_private_key_t* privkey,
-                                  const unsigned char proto[GOLDI_SYMKEY_BYTES]) {
+                                  const uint8_t proto[GOLDI_SYMKEY_BYTES]) {
   if (!goldilocks_check_init()) {
     return GOLDI_EUNINIT;
   }
 
   memcpy(&privkey->opaque[2 * GOLDI_FIELD_BYTES], proto, GOLDI_SYMKEY_BYTES);
 
-  unsigned char skb[SHA512_OUTPUT_BYTES];
+  uint8_t skb[HASH_OUTPUT_BYTES];
   word_t sk[GOLDI_FIELD_WORDS];
   assert(sizeof(skb) >= sizeof(sk));
 
-  struct sha512_ctx_t ctx;
+  hash_ctx_t ctx;
   struct tw_extensible_t exta;
   struct p448_t pk;
 
-  sha512_init(&ctx);
-  sha512_update(&ctx, (const unsigned char*)"derivepk", GOLDI_DIVERSIFY_BYTES);
-  sha512_update(&ctx, proto, GOLDI_SYMKEY_BYTES);
-  sha512_final(&ctx, (unsigned char*)skb);
+  /* pk = H(proto, goldi_derivepk) */
+  hash_init(&ctx);
+  hash_update(&ctx, proto, GOLDI_SYMKEY_BYTES);
+  hash_update(&ctx, goldi_derivepk, 32);
+  hash_digest(&ctx, (uint8_t*)skb, HASH_OUTPUT_BYTES);
 
-  barrett_deserialize_and_reduce(sk, skb, SHA512_OUTPUT_BYTES, &goldi_q448);
+  barrett_deserialize_and_reduce(sk, skb, HASH_OUTPUT_BYTES, &goldi_q448);
   barrett_serialize(privkey->opaque, sk, GOLDI_FIELD_BYTES);
 
   scalarmul_fixed_base(&exta, sk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
@@ -195,7 +207,7 @@ int goldilocks_derive_private_key(struct goldilocks_private_key_t* privkey,
   return GOLDI_EOK;
 }
 
-void goldilocks_underive_private_key(unsigned char proto[GOLDI_SYMKEY_BYTES],
+void goldilocks_underive_private_key(uint8_t proto[GOLDI_SYMKEY_BYTES],
                                      const struct goldilocks_private_key_t* privkey) {
   memcpy(proto, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
 }
@@ -206,7 +218,7 @@ int goldilocks_keygen(struct goldilocks_private_key_t* privkey,
     return GOLDI_EUNINIT;
   }
 
-  unsigned char proto[GOLDI_SYMKEY_BYTES];
+  uint8_t proto[GOLDI_SYMKEY_BYTES];
 
 #if GOLDILOCKS_USE_PTHREAD
   int ml_ret = pthread_mutex_lock(&goldilocks_global.mutex);
@@ -247,7 +259,7 @@ int goldilocks_private_to_public(struct goldilocks_public_key_t* pubkey,
 }
 
 static int goldilocks_shared_secret_core(
-    uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
+    uint8_t* shared, size_t sharedlen,
     const struct goldilocks_private_key_t* my_privkey,
     const struct goldilocks_public_key_t* your_pubkey,
     const struct goldilocks_precomputed_public_key_t* pre) {
@@ -255,7 +267,7 @@ static int goldilocks_shared_secret_core(
    * so it doesn't check init.
    */
 
-  assert(GOLDI_SHARED_SECRET_BYTES == SHA512_OUTPUT_BYTES);
+  assert(GOLDI_SHARED_SECRET_BYTES == HASH_OUTPUT_BYTES);
 
   word_t sk[GOLDI_FIELD_WORDS];
   struct p448_t pk;
@@ -286,11 +298,12 @@ static int goldilocks_shared_secret_core(
 
   p448_serialize(shared, &pk);
 
-  /* obliterate records of our failure by adjusting with obliteration key */
-  struct sha512_ctx_t ctx;
-  sha512_init(&ctx);
+  // Initialize sponge.
+  hash_ctx_t ctx;
+  hash_init(&ctx);
 
 #ifdef EXPERIMENT_ECDH_OBLITERATE_CT
+  /* obliterate records of our failure by adjusting with obliteration key */
   uint8_t oblit[GOLDI_DIVERSIFY_BYTES + GOLDI_SYMKEY_BYTES];
   unsigned i;
   for (i = 0; i < GOLDI_DIVERSIFY_BYTES; i++) {
@@ -300,46 +313,65 @@ static int goldilocks_shared_secret_core(
     oblit[GOLDI_DIVERSIFY_BYTES + i] =
         my_privkey->opaque[2 * GOLDI_FIELD_BYTES + i] & ~(succ & msucc);
   }
-  sha512_update(&ctx, oblit, sizeof(oblit));
+  hash_update(&ctx, oblit, sizeof(oblit));
 #endif
 
 #ifdef EXPERIMENT_ECDH_STIR_IN_PUBKEYS
-  /* stir in the sum and product of the pubkeys. */
+  /* stir in the sum and product of the pubkeys */
   uint8_t a_pk[GOLDI_FIELD_BYTES];
   p448_serialize(a_pk, &sum);
-  sha512_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
+  hash_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
   p448_serialize(a_pk, &prod);
-  sha512_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
+  hash_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
 #endif
 
   /* stir in the shared key and finish */
-  sha512_update(&ctx, shared, GOLDI_FIELD_BYTES);
-  sha512_final(&ctx, shared);
+  hash_update(&ctx, shared, GOLDI_FIELD_BYTES);
+  hash_digest(&ctx, shared, sharedlen);
 
   return (GOLDI_ECORRUPT & ~msucc) | (GOLDI_EINVAL & msucc & ~succ) |
          (GOLDI_EOK & msucc & succ);
 }
 
-int goldilocks_shared_secret(uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
+int goldilocks_shared_secret(uint8_t* shared, size_t sharedlen,
                              const struct goldilocks_private_key_t* my_privkey,
                              const struct goldilocks_public_key_t* your_pubkey) {
-  return goldilocks_shared_secret_core(shared, my_privkey, your_pubkey, NULL);
+  return goldilocks_shared_secret_core(shared, sharedlen, my_privkey,
+                                       your_pubkey, NULL);
+}
+
+static inline void goldilocks_beforegn(hash_ctx_t* ctx, const uint8_t* message,
+    size_t messagelen) {
+  hash_init(ctx);
+  hash_update(ctx, message, messagelen);
+}
+
+static inline void goldilocks_aftergn(word_t challenge[GOLDI_FIELD_WORDS],
+                                         const hash_ctx_t* mctx,
+                                         const uint8_t pubkey[GOLDI_FIELD_BYTES],
+                                         const uint8_t gnonce[GOLDI_FIELD_BYTES]) {
+  // Clone the sponge.
+  hash_ctx_t ctx;
+  memcpy(&ctx, mctx, sizeof(hash_ctx_t));
+
+  hash_update(&ctx, gnonce, GOLDI_FIELD_BYTES);
+  hash_update(&ctx, pubkey, GOLDI_FIELD_BYTES);
+  hash_update(&ctx, goldi_challenge, 32);
+
+  uint8_t hash_out[HASH_OUTPUT_BYTES];
+  hash_digest(&ctx, hash_out, HASH_OUTPUT_BYTES);
+  barrett_deserialize_and_reduce(challenge, hash_out, sizeof(hash_out), &goldi_q448);
 }
 
 static void goldilocks_derive_challenge(word_t challenge[GOLDI_FIELD_WORDS],
-                                        const unsigned char pubkey[GOLDI_FIELD_BYTES],
-                                        const unsigned char gnonce[GOLDI_FIELD_BYTES],
-                                        const unsigned char* message,
+                                        const uint8_t pubkey[GOLDI_FIELD_BYTES],
+                                        const uint8_t gnonce[GOLDI_FIELD_BYTES],
+                                        const uint8_t* message,
                                         uint64_t message_len) {
-  /* challenge = H(pk, [nonceG], message). */
-  unsigned char sha_out[SHA512_OUTPUT_BYTES];
-  struct sha512_ctx_t ctx;
-  sha512_init(&ctx);
-  sha512_update(&ctx, pubkey, GOLDI_FIELD_BYTES);
-  sha512_update(&ctx, gnonce, GOLDI_FIELD_BYTES);
-  sha512_update(&ctx, message, message_len);
-  sha512_final(&ctx, sha_out);
-  barrett_deserialize_and_reduce(challenge, sha_out, sizeof(sha_out), &goldi_q448);
+  /* challenge = H(message, [nonceG], pubkey, goldi_challenge). */
+  hash_ctx_t ctx;
+  goldilocks_beforegn(&ctx, message, message_len);
+  goldilocks_aftergn(challenge, &ctx, pubkey, gnonce);
 }
 
 int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
@@ -359,16 +391,19 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
   }
 
   /* Derive a nonce.  TODO: use HMAC. FUTURE: factor. */
-  unsigned char sha_out[SHA512_OUTPUT_BYTES];
+  uint8_t hash_out[HASH_OUTPUT_BYTES];
   word_t tk[GOLDI_FIELD_WORDS];
-  struct sha512_ctx_t ctx;
-  sha512_init(&ctx);
-  sha512_update(&ctx, (const unsigned char*)"signonce", 8);
-  sha512_update(&ctx, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
-  sha512_update(&ctx, message, message_len);
-  sha512_update(&ctx, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
-  sha512_final(&ctx, sha_out);
-  barrett_deserialize_and_reduce(tk, sha_out, SHA512_OUTPUT_BYTES, &goldi_q448);
+  hash_ctx_t ctx, mctx;
+  // Hash the message.
+  goldilocks_beforegn(&mctx, message, message_len);
+  // Clone the state.
+  memcpy(&ctx, &mctx, sizeof(hash_ctx_t));
+
+  /* nonce = H(message, privkey, goldi_signonce); */
+  hash_update(&ctx, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
+  hash_update(&ctx, goldi_signonce, 32);
+  hash_digest(&ctx, hash_out, HASH_OUTPUT_BYTES);
+  barrett_deserialize_and_reduce(tk, hash_out, HASH_OUTPUT_BYTES, &goldi_q448);
 
   /* 4[nonce]G */
   uint8_t signature_tmp[GOLDI_FIELD_BYTES];
@@ -379,12 +414,19 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
   untwist_and_double_and_serialize(&gsk, &exta);
   p448_serialize(signature_tmp, &gsk);
 
+  // Continue deriving challenge from cloned message sponge.
   word_t challenge[GOLDI_FIELD_WORDS];
-  goldilocks_derive_challenge(challenge,
-                              &privkey->opaque[GOLDI_FIELD_BYTES],
-                              signature_tmp,
+  hash_update(&mctx, signature_tmp, GOLDI_FIELD_BYTES);
+  hash_update(&mctx, &privkey->opaque[GOLDI_FIELD_BYTES], GOLDI_FIELD_BYTES);
+  hash_update(&mctx, goldi_challenge, 32);
+  hash_digest(&mctx, hash_out, HASH_OUTPUT_BYTES);
+  barrett_deserialize_and_reduce(challenge, hash_out, sizeof(hash_out), &goldi_q448);
+
+/*  goldilocks_derive_challenge(challenge,
+                              &privkey->opaque[GOLDI_FIELD_BYTES], // pubkey
+                              signature_tmp,                       // [nonceG]
                               message,
-                              message_len);
+                              message_len);*/
 
   // reduce challenge and sub.
   barrett_negate(challenge, GOLDI_FIELD_WORDS, &goldi_q448);
@@ -402,9 +444,11 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
 
   memcpy(signature_out, signature_tmp, GOLDI_FIELD_BYTES);
   barrett_serialize(signature_out + GOLDI_FIELD_BYTES, tk, GOLDI_FIELD_BYTES);
-  memset((unsigned char*)tk, 0, sizeof(tk));
-  memset((unsigned char*)skw, 0, sizeof(skw));
-  memset((unsigned char*)challenge, 0, sizeof(challenge));
+  memset((uint8_t*)tk, 0, sizeof(tk));
+  memset((uint8_t*)skw, 0, sizeof(skw));
+  memset((uint8_t*)challenge, 0, sizeof(challenge));
+  memset(&ctx, 0, sizeof(hash_ctx_t));
+  memset(&mctx, 0, sizeof(hash_ctx_t));
 
   /* response = 2(nonce_secret - sk*challenge)
    * Nonce = 8[nonce_secret]*G
@@ -560,11 +604,11 @@ int goldilocks_verify_precomputed(
 }
 
 int goldilocks_shared_secret_precomputed(
-    uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
+    uint8_t* shared, size_t sharedlen,
     const struct goldilocks_private_key_t* my_privkey,
     const struct goldilocks_precomputed_public_key_t* your_pubkey) {
-  return goldilocks_shared_secret_core(
-      shared, my_privkey, &your_pubkey->pub, your_pubkey);
+  return goldilocks_shared_secret_core(shared, sharedlen, my_privkey,
+                                       &your_pubkey->pub, your_pubkey);
 }
 
 #endif  // GOLDI_IMPLEMENT_PRECOMPUTED_KEYS

@@ -18,14 +18,14 @@
 #include <sys/types.h>
 #include <inttypes.h>
 
-#if __ARM_NEON__
+#if defined(__ARM_NEON__)
 #include <arm_neon.h>
-#elif __SSE2__
+#elif defined(__SSE2__)
 #include <immintrin.h>
 #endif
 
 #if (__SIZEOF_INT128__ == 16 && __SIZEOF_SIZE_T__ == 8 && \
-     (__SIZEOF_LONG__ == 8 || __POINTER_WIDTH__ == 64) && !GOLDI_FORCE_32_BIT)
+     (__SIZEOF_LONG__ == 8 || __POINTER_WIDTH__ == 64) && !defined(GOLDI_FORCE_32_BIT))
 /* It's a 64-bit machine if:
  * // limits.h thinks so
  * __uint128_t exists
@@ -84,15 +84,15 @@ typedef int32_t int32x8_t __attribute__((ext_vector_type(8)));
 typedef word_t vecmask_t __attribute__((ext_vector_type(4)));
 #endif
 
-#if __AVX2__
+#if defined(__AVX2__)
 typedef uint32x8_t big_register_t;
 typedef uint64x4_t uint64xn_t;
 typedef uint32x8_t uint32xn_t;
-#elif __SSE2__ || __ARM_NEON__
+#elif defined(__SSE2__) || defined(__ARM_NEON__)
 typedef uint32x4_t big_register_t;
 typedef uint64x2_t uint64xn_t;
 typedef uint32x4_t uint32xn_t;
-#elif _WIN64 || __amd64__ || __X86_64__ || __aarch64__
+#elif defined(_WIN64) || defined(__amd64__) || defined(__X86_64__) || defined(__aarch64__)
 typedef uint64_t big_register_t, uint64xn_t;
 typedef uint32_t uint32xn_t;
 #else
@@ -111,11 +111,11 @@ static __inline__ big_register_t br_set_to_mask(mask_t x) {
 }
 #endif
 
-#if __AVX2__ || __SSE2__
+#if defined(__AVX2__) || defined(__SSE2__)
 static __inline__ big_register_t br_is_zero(big_register_t x) {
   return (big_register_t)(x == (big_register_t)0);
 }
-#elif __ARM_NEON__
+#elif defined(__ARM_NEON__)
 static __inline__ big_register_t br_is_zero(big_register_t x) {
   return vceqq_u32(x, x ^ x);
 }
