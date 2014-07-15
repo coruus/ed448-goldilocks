@@ -42,9 +42,9 @@ static int single_scalarmul_compatibility_test(const struct p448_t* base,
   const int nparams = sizeof(params) / sizeof(params[0]);
   struct fixed_base_table_t fbt;
   struct p448_t fbout[nparams], wout[6];
-  memset(&fbt, 0, sizeof(fbt));
-  memset(&fbout, 0, sizeof(fbout));
-  memset(&wout, 0, sizeof(wout));
+  memset_s(&fbt, sizeof(fbt), 0, sizeof(fbt));
+  memset_s(&fbout, sizeof(fbout), 0, sizeof(fbout));
+  memset_s(&wout, sizeof(wout), 0, sizeof(wout));
 
   /* compute using combs */
   for (i = 0; i < nparams; i++) {
@@ -162,8 +162,8 @@ static int single_linear_combo_test(const struct p448_t* base1,
 
   struct fixed_base_table_t t1, t2;
   struct tw_niels_t wnaf[32];
-  memset(&t1, 0, sizeof(t1));
-  memset(&t2, 0, sizeof(t2));
+  memset_s(&t1, sizeof(t1), 0, sizeof(t1));
+  memset_s(&t2, sizeof(t2), 0, sizeof(t2));
 
   succ = precompute_fixed_base(&t1, &text1, 5, 5, 18, NULL);
   succ &= precompute_fixed_base(&t2, &text2, 6, 3, 25, NULL);

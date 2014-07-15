@@ -280,7 +280,7 @@ void barrett_deserialize_and_reduce(word_t* x,
     size = prime->nwords_p;
   }
   word_t tmp[size];
-  memset(tmp, 0, sizeof(tmp));
+  memset_s(tmp, sizeof(tmp), 0, sizeof(tmp));
 
   unsigned int i, j;
   for (i = 0; i * sizeof(word_t) < nserial; i++) {

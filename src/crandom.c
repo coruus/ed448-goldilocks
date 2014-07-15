@@ -332,7 +332,7 @@ int crandom_init_from_file(struct crandom_state_t* state,
     return err ? err : -1;
   }
 
-  memset(state->buffer, 0, 96);
+  memset_s(state->buffer, 96, 0, 96);
 
   state->magic = CRANDOM_MAGIC;
   state->reseeds_mandatory = reseeds_mandatory;
@@ -343,7 +343,7 @@ int crandom_init_from_file(struct crandom_state_t* state,
 void crandom_init_from_buffer(struct crandom_state_t* state,
                               const char initial_seed[32]) {
   memcpy(state->seed, initial_seed, 32);
-  memset(state->buffer, 0, 96);
+  memset_s(state->buffer, 96, 0, 96);
   state->reseed_countdown = state->reseed_interval = state->fill = state->ctr =
       state->reseeds_mandatory = 0;
   state->randomfd = -1;
@@ -474,7 +474,7 @@ int crandom_generate(struct crandom_state_t* state,
     unsigned long long copy = (length > state->fill) ? state->fill : length;
     state->fill -= copy;
     memcpy(output, state->buffer + state->fill, copy);
-    memset(state->buffer + state->fill, 0, copy);
+    memset_s(state->buffer + state->fill, copy, 0, copy);
     output += copy;
     length -= copy;
   }
@@ -490,5 +490,5 @@ void crandom_destroy(struct crandom_state_t* state) {
      */
   }
 
-  memset(state, 0, sizeof(*state));
+  memset_s(state, sizeof(*state), 0, sizeof(*state));
 }

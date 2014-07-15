@@ -82,7 +82,7 @@ int test_goldilocks() {
     }
 
     /* honestly a slightly better negative test */
-    memset(signature, 0, sizeof(signature));
+    memset_s(signature, sizeof(signature), 0, sizeof(signature));
     ret = goldilocks_verify(
         signature, (const unsigned char*)message1, strlen(message1), &pub);
     if (ret != GOLDI_EINVAL) {

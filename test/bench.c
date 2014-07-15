@@ -699,10 +699,10 @@ int main(int argc, char** argv) {
 
     q448_randomize(&crand, sk);
     if (i == 0 || i == 2)
-      memset(&sk, 0, sizeof(sk));
+      memset_s(&sk, sizeof(sk), 0, sizeof(sk));
     q448_randomize(&crand, tk);
     if (i == 0 || i == 1)
-      memset(&tk, 0, sizeof(tk));
+      memset_s(&tk, sizeof(tk), 0, sizeof(tk));
 
     copy_tw_extensible(&exv, &ext);
     copy_tw_extensible(&exw, &exu);

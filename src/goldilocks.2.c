@@ -32,7 +32,19 @@
 #define GOLDILOCKS_RANDOM_RESEEDS_MANDATORY 0
 #endif
 
+#define GOLDI_FIELD_WORDS ((GOLDI_FIELD_BITS + WORD_BITS - 1) / (WORD_BITS))
 #define GOLDI_DIVERSIFY_BYTES 8
+
+/* FUTURE: auto.  MAGIC */
+const struct affine_t goldilocks_base_point = {{{U58LE(0xf0de840aed939f),
+                                                 U58LE(0xc170033f4ba0c7),
+                                                 U58LE(0xf3932d94c63d96),
+                                                 U58LE(0x9cecfa96147eaa),
+                                                 U58LE(0x5f065c3c59d070),
+                                                 U58LE(0x3a6a26adf73324),
+                                                 U58LE(0x1b4faff4609845),
+                                                 U58LE(0x297ea0ea2692ff)}},
+                                               {{19}}};
 
 /* These are just unique identifiers */
 static const char* G_INITING = "initializing";
@@ -48,20 +60,52 @@ static const uint8_t goldi_signonce[32] = {0xe1,0xa2,0xca,0x66,0xca,0x11,0xe4,0x
 // mkk(k="Ed448-Goldilocks", p="Derive private key.")
 static const uint8_t goldi_derivepk[32] = {0x09,0x82,0xb2,0x7b,0x0e,0x68,0x30,0x45,0x33,0xb6,0xa6,0xcf,0x83,0x05,0x67,0x1f,0x8a,0xe1,0x13,0xdc,0xdd,0xed,0x90,0xeb,0x13,0xa1,0x21,0x44,0xec,0xaa,0xd1,0xb5};
 
+
+/* FUTURE: auto.  MAGIC */
+static const word_t goldi_q448_lo[(224 + WORD_BITS - 1) / WORD_BITS] = {
+    U64LE(0xdc873d6d54a7bb0d),
+    U64LE(0xde933d8d723a70aa),
+    U64LE(0x3bb124b65129c96f),
+    0x8335dc16};
+
+extern const struct barrett_prime_t goldi_q448 = {
+    GOLDI_FIELD_WORDS,
+    62 % WORD_BITS,
+    sizeof(goldi_q448_lo) / sizeof(goldi_q448_lo[0]),
+    goldi_q448_lo};
+
+/* MAGIC */
+static const struct p448_t sqrt_d_minus_1 = {{U58LE(0xd2e21836749f46),
+                                              U58LE(0x888db42b4f0179),
+                                              U58LE(0x5a189aabdeea38),
+                                              U58LE(0x51e65ca6f14c06),
+                                              U58LE(0xa49f7b424d9770),
+                                              U58LE(0xdcac4628c5f656),
+                                              U58LE(0x49443b8748734a),
+                                              U58LE(0x12fec0c0b25b7a)}};
+
 struct goldilocks_precomputed_public_key_t {
   struct goldilocks_public_key_t pub;
   struct fixed_base_table_t table;
 };
 
-/* FUTURE: auto. */
-static struct {
+#ifndef USE_BIG_TABLES
+#ifdef __ARM_NEON__
+#define USE_BIG_TABLES 1
+#else
+#define USE_BIG_TABLES (WORD_BITS == 64)
+#endif
+#endif
+
+/* FUTURE: auto.  MAGIC */
+struct {
   const char* volatile state;
 #if GOLDILOCKS_USE_PTHREAD
   pthread_mutex_t mutex;
 #endif
-  struct tw_niels_t combs[COMB_N << (COMB_T - 1)];
+  struct tw_niels_t combs[USE_BIG_TABLES ? 80 : 64];
   struct fixed_base_table_t fixed_base;
-  struct tw_niels_t wnafs[1 << WNAF_PRECMP_BITS];
+  struct tw_niels_t wnafs[32];
   struct crandom_state_t rand;
 } goldilocks_global;
 
@@ -100,25 +144,17 @@ int goldilocks_init(void) {
   /* Precompute the tables. */
   mask_t succ;
 
-  succ = precompute_fixed_base(&goldilocks_global.fixed_base,
-                               &text,
-                               COMB_N,
-                               COMB_T,
-                               COMB_S,
-                               goldilocks_global.combs);
-  succ &= precompute_fixed_base_wnaf(goldilocks_global.wnafs, &text, WNAF_PRECMP_BITS);
+  int big = USE_BIG_TABLES;
+  uint64_t n = big ? 5 : 8, t = big ? 5 : 4, s = big ? 18 : 14;
+
+  succ = precompute_fixed_base(
+      &goldilocks_global.fixed_base, &text, n, t, s, goldilocks_global.combs);
+  succ &= precompute_fixed_base_wnaf(goldilocks_global.wnafs, &text, 5);
 
   int criff_res = crandom_init_from_file(&goldilocks_global.rand,
                                          GOLDILOCKS_RANDOM_INIT_FILE,
                                          GOLDILOCKS_RANDOM_RESEED_INTERVAL,
                                          GOLDILOCKS_RANDOM_RESEEDS_MANDATORY);
-
-#ifdef SUPERCOP_WONT_LET_ME_OPEN_FILES
-  if (criff_res == EMFILE) {
-    crandom_init_from_buffer(&goldilocks_global.rand, "SUPERCOP won't let me open files");
-    criff_res = 0;
-  }
-#endif
 
   if (succ & !criff_res) {
     if (!bool_compare_and_swap(&goldilocks_global.state, G_INITING, G_INITED)) {
@@ -151,7 +187,7 @@ int goldilocks_derive_private_key(struct goldilocks_private_key_t* privkey,
 
   hash_ctx_t ctx;
   struct tw_extensible_t exta;
-  struct field_t pk;
+  struct p448_t pk;
 
   /* pk = H(proto, goldi_derivepk) */
   hash_init(&ctx);
@@ -159,13 +195,13 @@ int goldilocks_derive_private_key(struct goldilocks_private_key_t* privkey,
   hash_update(&ctx, goldi_derivepk, 32);
   hash_digest(&ctx, (uint8_t*)skb, HASH_OUTPUT_BYTES);
 
-  barrett_deserialize_and_reduce(sk, skb, HASH_OUTPUT_BYTES, &curve_prime_order);
+  barrett_deserialize_and_reduce(sk, skb, HASH_OUTPUT_BYTES, &goldi_q448);
   barrett_serialize(privkey->opaque, sk, GOLDI_FIELD_BYTES);
 
   scalarmul_fixed_base(&exta, sk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
   untwist_and_double_and_serialize(&pk, &exta);
 
-  field_serialize(&privkey->opaque[GOLDI_FIELD_BYTES], &pk);
+  p448_serialize(&privkey->opaque[GOLDI_FIELD_BYTES], &pk);
 
   return GOLDI_EOK;
 }
@@ -210,11 +246,11 @@ int goldilocks_keygen(struct goldilocks_private_key_t* privkey,
 
 int goldilocks_private_to_public(struct goldilocks_public_key_t* pubkey,
                                  const struct goldilocks_private_key_t* privkey) {
-  struct field_t pk;
-  mask_t msucc = field_deserialize(&pk, &privkey->opaque[GOLDI_FIELD_BYTES]);
+  struct p448_t pk;
+  mask_t msucc = p448_deserialize(&pk, &privkey->opaque[GOLDI_FIELD_BYTES]);
 
   if (msucc) {
-    field_serialize(pubkey->opaque, &pk);
+    p448_serialize(pubkey->opaque, &pk);
     return GOLDI_EOK;
   } else {
     return GOLDI_ECORRUPT;
@@ -233,18 +269,18 @@ static int goldilocks_shared_secret_core(
   assert(GOLDI_SHARED_SECRET_BYTES == HASH_OUTPUT_BYTES);
 
   word_t sk[GOLDI_FIELD_WORDS];
-  struct field_t pk;
+  struct p448_t pk;
 
-  mask_t succ = field_deserialize(&pk, your_pubkey->opaque), msucc = -1;
+  mask_t succ = p448_deserialize(&pk, your_pubkey->opaque), msucc = -1;
 
 #ifdef EXPERIMENT_ECDH_STIR_IN_PUBKEYS
-  struct field_t sum, prod;
-  msucc &= field_deserialize(&sum, &my_privkey->opaque[GOLDI_FIELD_BYTES]);
-  field_mul(&prod, &pk, &sum);
-  field_add(&sum, &pk, &sum);
+  struct p448_t sum, prod;
+  msucc &= p448_deserialize(&sum, &my_privkey->opaque[GOLDI_FIELD_BYTES]);
+  p448_mul(&prod, &pk, &sum);
+  p448_add(&sum, &pk, &sum);
 #endif
 
-  msucc &= barrett_deserialize(sk, my_privkey->opaque, &curve_prime_order);
+  msucc &= barrett_deserialize(sk, my_privkey->opaque, &goldi_q448);
 
 #if GOLDI_IMPLEMENT_PRECOMPUTED_KEYS
   if (pre) {
@@ -259,7 +295,7 @@ static int goldilocks_shared_secret_core(
   succ &= montgomery_ladder(&pk, &pk, sk, GOLDI_SCALAR_BITS, 1);
 #endif
 
-  field_serialize(shared, &pk);
+  p448_serialize(shared, &pk);
 
   // Initialize sponge.
   hash_ctx_t ctx;
@@ -282,9 +318,9 @@ static int goldilocks_shared_secret_core(
 #ifdef EXPERIMENT_ECDH_STIR_IN_PUBKEYS
   /* stir in the sum and product of the pubkeys */
   uint8_t a_pk[GOLDI_FIELD_BYTES];
-  field_serialize(a_pk, &sum);
+  p448_serialize(a_pk, &sum);
   hash_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
-  field_serialize(a_pk, &prod);
+  p448_serialize(a_pk, &prod);
   hash_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
 #endif
 
@@ -324,7 +360,7 @@ static inline void goldilocks_aftergn(word_t challenge[GOLDI_FIELD_WORDS],
 
   uint8_t hash_out[HASH_OUTPUT_BYTES];
   hash_digest(&ctx, hash_out, HASH_OUTPUT_BYTES);
-  barrett_deserialize_and_reduce(challenge, hash_out, sizeof(hash_out), &curve_prime_order);
+  barrett_deserialize_and_reduce(challenge, hash_out, sizeof(hash_out), &goldi_q448);
 }
 
 static void goldilocks_derive_challenge(word_t challenge[GOLDI_FIELD_WORDS],
@@ -348,7 +384,7 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
 
   /* challenge = H(pk, [nonceG], message). */
   word_t skw[GOLDI_FIELD_WORDS];
-  mask_t succ = barrett_deserialize(skw, privkey->opaque, &curve_prime_order);
+  mask_t succ = barrett_deserialize(skw, privkey->opaque, &goldi_q448);
   if (!succ) {
     memset_s(skw, sizeof(skw), 0, sizeof(skw));
     return GOLDI_ECORRUPT;
@@ -367,16 +403,16 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
   hash_update(&ctx, &privkey->opaque[2 * GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
   hash_update(&ctx, goldi_signonce, 32);
   hash_digest(&ctx, hash_out, HASH_OUTPUT_BYTES);
-  barrett_deserialize_and_reduce(tk, hash_out, HASH_OUTPUT_BYTES, &curve_prime_order);
+  barrett_deserialize_and_reduce(tk, hash_out, HASH_OUTPUT_BYTES, &goldi_q448);
 
   /* 4[nonce]G */
   uint8_t signature_tmp[GOLDI_FIELD_BYTES];
   struct tw_extensible_t exta;
-  struct field_t gsk;
+  struct p448_t gsk;
   scalarmul_fixed_base(&exta, tk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
   double_tw_extensible(&exta);
   untwist_and_double_and_serialize(&gsk, &exta);
-  field_serialize(signature_tmp, &gsk);
+  p448_serialize(signature_tmp, &gsk);
 
   // Continue deriving challenge from cloned message sponge.
   word_t challenge[GOLDI_FIELD_WORDS];
@@ -384,7 +420,7 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
   hash_update(&mctx, &privkey->opaque[GOLDI_FIELD_BYTES], GOLDI_FIELD_BYTES);
   hash_update(&mctx, goldi_challenge, 32);
   hash_digest(&mctx, hash_out, HASH_OUTPUT_BYTES);
-  barrett_deserialize_and_reduce(challenge, hash_out, sizeof(hash_out), &curve_prime_order);
+  barrett_deserialize_and_reduce(challenge, hash_out, sizeof(hash_out), &goldi_q448);
 
 /*  goldilocks_derive_challenge(challenge,
                               &privkey->opaque[GOLDI_FIELD_BYTES], // pubkey
@@ -392,8 +428,8 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
                               message,
                               message_len);*/
 
-  /* reduce challenge and sub. */
-  barrett_negate(challenge, GOLDI_FIELD_WORDS, &curve_prime_order);
+  // reduce challenge and sub.
+  barrett_negate(challenge, GOLDI_FIELD_WORDS, &goldi_q448);
 
   barrett_mac(tk,
               GOLDI_FIELD_WORDS,
@@ -401,10 +437,10 @@ int goldilocks_sign(uint8_t signature_out[GOLDI_SIGNATURE_BYTES],
               GOLDI_FIELD_WORDS,
               skw,
               GOLDI_FIELD_WORDS,
-              &curve_prime_order);
+              &goldi_q448);
 
   word_t carry = add_nr_ext_packed(tk, tk, GOLDI_FIELD_WORDS, tk, GOLDI_FIELD_WORDS, -1);
-  barrett_reduce(tk, GOLDI_FIELD_WORDS, carry, &curve_prime_order);
+  barrett_reduce(tk, GOLDI_FIELD_WORDS, carry, &goldi_q448);
 
   memcpy(signature_out, signature_tmp, GOLDI_FIELD_BYTES);
   barrett_serialize(signature_out + GOLDI_FIELD_BYTES, tk, GOLDI_FIELD_BYTES);
@@ -431,25 +467,25 @@ int goldilocks_verify(const uint8_t signature[GOLDI_SIGNATURE_BYTES],
     return GOLDI_EUNINIT;
   }
 
-  struct field_t pk;
+  struct p448_t pk;
   word_t s[GOLDI_FIELD_WORDS];
 
-  mask_t succ = field_deserialize(&pk, pubkey->opaque);
+  mask_t succ = p448_deserialize(&pk, pubkey->opaque);
   if (!succ)
     return GOLDI_EINVAL;
 
-  succ = barrett_deserialize(s, &signature[GOLDI_FIELD_BYTES], &curve_prime_order);
+  succ = barrett_deserialize(s, &signature[GOLDI_FIELD_BYTES], &goldi_q448);
   if (!succ)
     return GOLDI_EINVAL;
 
   word_t challenge[GOLDI_FIELD_WORDS];
   goldilocks_derive_challenge(challenge, pubkey->opaque, signature, message, message_len);
 
-  struct field_t eph;
+  struct p448_t eph;
   struct tw_extensible_t pk_text;
 
   /* deserialize [nonce]G */
-  succ = field_deserialize(&eph, signature);
+  succ = p448_deserialize(&eph, signature);
   if (!succ)
     return GOLDI_EINVAL;
 
@@ -463,13 +499,13 @@ int goldilocks_verify(const uint8_t signature[GOLDI_SIGNATURE_BYTES],
                             s,
                             GOLDI_SCALAR_BITS,
                             goldilocks_global.wnafs,
-                            WNAF_PRECMP_BITS);
+                            5);
 
   untwist_and_double_and_serialize(&pk, &pk_text);
-  field_sub(&eph, &eph, &pk);
-  field_bias(&eph, 2);
+  p448_sub(&eph, &eph, &pk);
+  p448_bias(&eph, 2);
 
-  succ = field_is_zero(&eph);
+  succ = p448_is_zero(&eph);
 
   return succ ? 0 : GOLDI_EINVAL;
 }
@@ -486,8 +522,8 @@ struct goldilocks_precomputed_public_key_t* goldilocks_precompute_public_key(
 
   struct tw_extensible_t pk_text;
 
-  struct field_t pk;
-  mask_t succ = field_deserialize(&pk, pub->opaque);
+  struct p448_t pk;
+  mask_t succ = p448_deserialize(&pk, pub->opaque);
   if (!succ) {
     free(precom);
     return NULL;
@@ -499,7 +535,10 @@ struct goldilocks_precomputed_public_key_t* goldilocks_precompute_public_key(
     return NULL;
   }
 
-  succ = precompute_fixed_base(&precom->table, &pk_text, COMB_N, COMB_T, COMB_S, NULL);
+  int big = USE_BIG_TABLES;
+  uint64_t n = big ? 5 : 8, t = big ? 5 : 4, s = big ? 18 : 14;
+
+  succ = precompute_fixed_base(&precom->table, &pk_text, n, t, s, NULL);
   if (!succ) {
     free(precom);
     return NULL;
@@ -529,7 +568,7 @@ int goldilocks_verify_precomputed(
   }
 
   word_t s[GOLDI_FIELD_WORDS];
-  mask_t succ = barrett_deserialize(s, &signature[GOLDI_FIELD_BYTES], &curve_prime_order);
+  mask_t succ = barrett_deserialize(s, &signature[GOLDI_FIELD_BYTES], &goldi_q448);
   if (!succ)
     return GOLDI_EINVAL;
 
@@ -537,11 +576,11 @@ int goldilocks_verify_precomputed(
   goldilocks_derive_challenge(
       challenge, pubkey->pub.opaque, signature, message, message_len);
 
-  struct field_t eph, pk;
+  struct p448_t eph, pk;
   struct tw_extensible_t pk_text;
 
   /* deserialize [nonce]G */
-  succ = field_deserialize(&eph, signature);
+  succ = p448_deserialize(&eph, signature);
   if (!succ)
     return GOLDI_EINVAL;
 
@@ -556,21 +595,20 @@ int goldilocks_verify_precomputed(
     return GOLDI_EINVAL;
 
   untwist_and_double_and_serialize(&pk, &pk_text);
-  field_sub(&eph, &eph, &pk);
-  field_bias(&eph, 2);
+  p448_sub(&eph, &eph, &pk);
+  p448_bias(&eph, 2);
 
-  succ = field_is_zero(&eph);
+  succ = p448_is_zero(&eph);
 
   return succ ? 0 : GOLDI_EINVAL;
 }
 
 int goldilocks_shared_secret_precomputed(
-    uint8_t* shared,
-    size_t sharedlen,
+    uint8_t* shared, size_t sharedlen,
     const struct goldilocks_private_key_t* my_privkey,
     const struct goldilocks_precomputed_public_key_t* your_pubkey) {
   return goldilocks_shared_secret_core(shared, sharedlen, my_privkey,
                                        &your_pubkey->pub, your_pubkey);
 }
 
-#endif /* GOLDI_IMPLEMENT_PRECOMPUTED_KEYS */
+#endif  // GOLDI_IMPLEMENT_PRECOMPUTED_KEYS

@@ -26,7 +26,7 @@ WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
 
 
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(ARCH)
-LANGFLAGS = -std=c11
+LANGFLAGS = -std=c11 -D__STDC_WANT_LIB_EXT1__=1
 SANFLAGS = #-fsanitize=address-full -fsanitize=undefined
 GENFLAGS = $(SANFLAGS) -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
 OFLAGS = -O3

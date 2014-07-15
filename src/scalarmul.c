@@ -62,7 +62,7 @@ static __inline__ void constant_time_lookup_tw_pniels(struct tw_pniels_t* out,
   int j;
   unsigned int k;
 
-  memset(out, 0, sizeof(*out));
+  memset_s(out, sizeof(*out), 0, sizeof(*out));
   for (j = 0; j < nin; j++, big_i -= big_one) {
     big_register_t mask = br_is_zero(big_i);
     for (k = 0; k < sizeof(*out) / sizeof(*o); k++) {
@@ -81,7 +81,7 @@ static __inline__ void constant_time_lookup_tw_niels(struct tw_niels_t* out,
   int j;
   unsigned int k;
 
-  memset(out, 0, sizeof(*out));
+  memset_s(out, sizeof(*out), 0, sizeof(*out));
   for (j = 0; j < nin; j++, big_i -= big_one) {
     big_register_t mask = br_is_zero(big_i);
     for (k = 0; k < sizeof(*out) / sizeof(*o); k++) {
@@ -407,7 +407,7 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
                              unsigned int s,
                              struct tw_niels_t* prealloc) {
   if (s < 1 || t < 1 || n < 1 || n * t * s < SCALAR_BITS) {
-    memset(out, 0, sizeof(*out));
+    memset_s(out, sizeof(*out), 0, sizeof(*out));
     return 0;
   }
 
@@ -437,8 +437,9 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
     free(doubles);
     free(zs);
     free(zis);
-    memset(out, 0, sizeof(*out));
-    memset(table, 0, sizeof(*table) * (n << (t - 1)));
+    memset_s(out, sizeof(*out), 0, sizeof(*out));
+    memset_s(table, sizeof(*table) * (n << (t - 1)), 0,
+             sizeof(*table) * (n << (t - 1)));
     if (!prealloc)
       free(table);
     return 0;
@@ -551,10 +552,11 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
   free(zis);
 
   if (unlikely(!ret)) {
-    memset(table, 0, sizeof(*table) * (n << (t - 1)));
+    memset_s(table, sizeof(*table) * (n << (t - 1)), 0,
+             sizeof(*table) * (n << (t - 1)));
     if (!prealloc)
       free(table);
-    memset(out, 0, sizeof(*out));
+    memset_s(out, sizeof(*out), 0, sizeof(*out));
     return 0;
   }
 
@@ -563,12 +565,14 @@ mask_t precompute_fixed_base(struct fixed_base_table_t* out,
 
 void destroy_fixed_base(struct fixed_base_table_t* table) {
   if (table->table) {
-    memset(table->table, 0, sizeof(*table->table) * (table->n << (table->t - 1)));
+    memset_s(table->table,
+             sizeof(*table->table) * (table->n << (table->t - 1)), 0,
+             sizeof(*table->table) * (table->n << (table->t - 1)));
   }
   if (table->own_table) {
     free(table->table);
   }
-  memset(table, 0, sizeof(*table));
+  memset_s(table, sizeof(*table), 0, sizeof(*table));
 }
 
 mask_t precompute_fixed_base_wnaf(struct tw_niels_t* out,

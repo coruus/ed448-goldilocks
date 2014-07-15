@@ -9,7 +9,7 @@ mpz_t mp_p448;
 static mask_t mpz_to_p448(struct p448_t* out, const mpz_t in) {
   uint8_t ser[56];
   mpz_t modded;
-  memset(ser, 0, sizeof(ser));
+  memset_s(ser, sizeof(ser), 0, sizeof(ser));
   mpz_init(modded);
   mpz_mod(modded, in, mp_p448);
   mpz_export(ser, NULL, -1, 1, -1, 0, modded);
@@ -25,7 +25,7 @@ static mask_t p448_assert_eq_gmp(const char* descr,
   uint8_t xser[56], yser[56];
   mpz_t modded;
 
-  memset(yser, 0, sizeof(yser));
+  memset_s(yser, sizeof(yser), 0, sizeof(yser));
 
   p448_serialize(xser, x);
 
