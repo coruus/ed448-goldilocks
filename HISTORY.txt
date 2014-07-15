@@ -7,16 +7,16 @@ July 11, 2014:
     the rest of the Goldilocks code is not (yet?) able to detect features.
     Also, I'd like to submit this to SUPERCOP eventually, and SUPERCOP won't
     pass -DMUST_HAVE_XXX on the command line the way the Makefile here did.
-    
+
     Flag EXPERIMENT_CRANDOM_BUFFER_CUTOFF_BYTES to disable the crandom
     output buffer.  This buffer improves performance (very marginally at
     Goldilocks sizes), but can cause problems with forking and VM
     snapshotting.  By default, the buffer is now disabled.
-    
+
     I've slightly tweaked the Elligator implementation (which is still
     unused) to make it easier to invert.  This makes anything using Elligator
     (i.e. nothing) incompatible with previous releases.
-    
+
     I've been factoring "magic" constants such as curve orders, window sizes,
     etc into a few headers, to reduce the effort to port the code to other
     primes, curves, etc.  For example, I could test the Microsoft curves, and
@@ -24,26 +24,26 @@ July 11, 2014:
         x^2 + y^2 = 1 +- 5382[45] x^2 y^2 mod 2^480-2^240-1
     ("Goldeneye"? "Ridinghood"?) might be a reasonable thing to try for
     64-bit CPUs.
-    
+
     In a similar vein, most of the internal code has been changed to say
     "field" instead of p448, so that a future version of magic.h can decide
     which field header to include.
-    
+
     You can now `make bat` to create an eBAT in build/ed448-goldilocks.  This
     is only minimally tested, though, because SUPERCOP doesn't work on my
     machine and I'm too lazy to reverse engineer it.  It sets a new macro,
     SUPERCOP_WONT_LET_ME_OPEN_FILES, which causes goldilocks_init() to fall
     back to something horribly insecure if crandom_init_from_file raises
     EMFILE.
-    
+
     Slightly improved documentation.
-    
+
     Removed some old commented-out code; restored the /* C-style */ comment
     discipline.
-    
+
     The AMD-64 version should now be GCC clean, at least for reasonably
     recent GCC (tested on OS X.9.3, Haswell, gcc-4.9).
-    
+
     History no longer says "2104".
 
 May 3, 2014:
@@ -51,40 +51,40 @@ May 3, 2014:
     compatible with the previous one.
 
     Added ARM NEON code.
-    
+
     Added the ability to precompute multiples of a partner's public key.  This
     takes slightly longer than a signature verification, but reduces future
     verifications with the precomputed key by ~63% and ECDH by ~70%.
-    
+
         goldilocks_precompute_public_key
         goldilocks_destroy_precomputed_public_key
         goldilocks_verify_precomputed
         goldilocks_shared_secret_precomputed
-    
+
     The precomputation feature are is protected by a macro
         GOLDI_IMPLEMENT_PRECOMPUTED_KEYS
     which can be #defined to 0 to compile these functions out.  Unlike most
     of Goldilocks' functions, goldilocks_precompute_public_key uses malloc()
     (and goldilocks_destroy_precomputed_public_key uses free()).
-    
+
     Changed private keys to be derived from just the symmetric part.  This
     means that you can compress them to 32 bytes for cold storage, or derive
     keypairs from crypto secrets from other systems.
         goldilocks_derive_private_key
         goldilocks_underive_private_key
         goldilocks_private_to_public
-    
+
     Fixed a number of bugs related to vector alignment on Sandy Bridge, which
     has AVX but uses SSE2 alignment (because it doesn't have AVX2).  Maybe I
     should just switch it to use AVX2 alignment?
-    
+
     Beginning to factor out curve-specific magic, so as to build other curves
     with the Goldilocks framework.  That would enable fair tests against eg
     E-521, Ed25519 etc.  Still would be a lot of work.
-    
+
     More thorough testing of arithmetic.  Now uses GMP for testing framework,
     but not in the actual library.
-    
+
     Added some high-level tests for the whole library, including some (bs)
     negative testing.  Obviously, effective negative testing is a very difficult
     proposition in a crypto library.
@@ -93,78 +93,78 @@ March 29, 2014:
     Added a test directory with various tests.  Currently testing SHA512 Monte
     Carlo, compatibility of the different scalarmul functions, and some
     identities on EC point ops.  Began moving these tests out of benchmarker.
-    
+
     Added scan-build support.
-    
+
     Improved some internal interfaces.  Made a structure for Barrett primes
     instead of passing parameters individually.  Moved some field operations
     to places that make more sense, eg Barrett serialize and deserialize.  The
     deserialize operation now checks that its argument is in [0,q).
-    
+
     Added more documentation.
-    
+
     Changed the names of a bunch of functions.  Still not entirely consistent,
     but getting more so.
-    
+
     Some minor speed improvements.  For example, multiply is now a couple cycles
     faster.
-    
+
     Added a hackish attempt at thread-safety and initialization sanity checking
     in the Goldilocks top-level routines.
-    
+
     Fixed some vector alignment bugs.  Compiling with -O0 should now work.
-    
+
     Slightly simplified recode_wnaf.
 
     Add a config.h file for future configuration.  EXPERIMENT flags moved here.
-    
+
     I've decided against major changes to SHA512 for the moment.  They add speed
     but also significantly bloat the code, which is going to hurt L1 cache
     performance.  Perhaps we should link to OpenSSL if a faster SHA512 is desired.
-    
+
     Reorganize the source tree into src, test; factor arch stuff into src/arch_*.
-    
+
     Make most of the code 32-bit clean.  There's now a 32-bit generic and 32-bit
     vectorless ARM version.  No NEON version yet because I don't have a test
     machine (could use my phone in a pinch I guess?).  The 32-bit version still
     isn't heavily optimized, but on ARM it's using a nicely reworked signed/phi-adic
     multiplier.  The squaring is also based on this, but could really stand some
     improvement.
-    
+
     When passed an even exponent (or extra doubles), the Montgomery ladder should
     now be accept points if and only if they lie on the curve.  This needs
     additional testing, but it passes the zero bit exponent test.
-    
+
     On 32-bit, use 8x4x14 instead of 5x5x18 table organization.  Probably there's
     a better heuristic.
 
 March 5, 2014:
     First revision.
-    
+
     Private keys are now longer.  They now store a copy of the public key, and
     a secret symmetric key for signing purposes.
-    
+
     Signatures are now supported, though like everything else in this library,
     their format is not stable.  They use a deterministic Schnorr mode,
     similar to EdDSA.  Precomputed low-latency signing is not supported (yet?).
     The hash function is SHA-512.
-    
+
     The deterministic hashing mode needs to be changed to HMAC (TODO!).  It's
     currently envelope-MAC.
-    
+
     Probably in the future there will be a distinction between ECDH key and
     signing keys (and possibly also MQV keys etc).
-    
+
     Began renaming internal functions.  Removing p448_ prefixes from EC point
     operations.  Trying to put the verb first.  For example,
     "p448_isogeny_un_to_tw" is now called "twist_and_double".
-    
+
     Began documenting with Doxygen.  Use "make doc" to make a very incomplete
     documentation directory.
-    
+
     There have been many other internal changes.
 
 Feb 21, 2014:
     Initial import and benchmarking scripts.
-    
+
     Keygen and ECDH are implemented, but there's no hash function.

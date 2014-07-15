@@ -15,7 +15,7 @@
 #include "barrett_field.h"
 #include "crandom.h"
 #include "goldilocks.h"
-#include "sha512.h"
+#include "hash.h"
 
 static __inline__ void ignore_result(int result) {
   (void)result;
@@ -139,22 +139,23 @@ int main(int argc, char** argv) {
   when = now() - when;
   printf("rand448:     %5.1fns\n", when * 1e9 / i);
 
-  struct sha512_ctx_t sha;
-  uint8_t hashout[128];
+  hash_ctx_t sha;
+  uint8_t hashout[128] = {0};
   when = now();
   for (i = 0; i < nbase; i++) {
-    sha512_init(&sha);
-    sha512_final(&sha, hashout);
+    hash_init(&sha);
+    hash_digest(&sha, hashout, GOLDI_SHARED_SECRET_BYTES);
   }
   when = now() - when;
-  printf("sha512 1blk: %5.1fns\n", when * 1e9 / i);
+  printf(HASH_NAME " 1blk: %5.1fns\n", when * 1e9 / i);
 
+  hash_init(&sha);
   when = now();
   for (i = 0; i < nbase; i++) {
-    sha512_update(&sha, hashout, 128);
+    hash_update(&sha, hashout, 128);
   }
   when = now() - when;
-  printf("sha512 blk:  %5.1fns (%0.2f MB/s)\n", when * 1e9 / i, 128 * i / when / 1e6);
+  printf(HASH_NAME " blk:  %5.1fns (%0.2f MB/s)\n", when * 1e9 / i, 128 * i / when / 1e6);
 
   when = now();
   for (i = 0; i < nbase; i++) {
@@ -525,9 +526,9 @@ int main(int argc, char** argv) {
   when = now();
   for (i = 0; i < nbase; i++) {
     if (i & 1) {
-      gres1 = goldilocks_shared_secret(ss1, &gsk, &hpk);
+      gres1 = goldilocks_shared_secret(ss1, GOLDI_SHARED_SECRET_BYTES, &gsk, &hpk);
     } else {
-      gres2 = goldilocks_shared_secret(ss2, &hsk, &gpk);
+      gres2 = goldilocks_shared_secret(ss2, GOLDI_SHARED_SECRET_BYTES, &hsk, &gpk);
     }
   }
   when = now() - when;
@@ -593,7 +594,7 @@ int main(int argc, char** argv) {
 
   when = now();
   for (i = 0; i < nbase; i++) {
-    int ret = goldilocks_shared_secret_precomputed(ss1, &gsk, pre);
+    int ret = goldilocks_shared_secret_precomputed(ss1, GOLDI_SHARED_SECRET_BYTES, &gsk, pre);
     assert(!ret);
   }
   when = now() - when;

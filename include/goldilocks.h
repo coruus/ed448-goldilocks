@@ -35,10 +35,13 @@
 /** The size of a shared secret. */
 #define GOLDI_SHARED_SECRET_BYTES 64
 
+/** For the moment, HASH_OUTPUT_BYTES must equal GOLDI_SHARED_SECRET_BYTES. **/
+#define HASH_OUTPUT_BYTES GOLDI_SHARED_SECRET_BYTES
+
 /** The size of a Goldilocks private key, in bytes. */
 #define GOLDI_PRIVATE_KEY_BYTES (2 * GOLDI_FIELD_BYTES + GOLDI_SYMKEY_BYTES)
 
-/** The size of a Goldilocks private key, in bytes. */
+/** The size of a Goldilocks signature, in bytes. */
 #define GOLDI_SIGNATURE_BYTES (2 * GOLDI_FIELD_BYTES)
 
 /**
@@ -100,7 +103,7 @@ static const int GOLDI_EALREADYINIT = 44805;
  *init'ing.
  * @retval Nonzero An error occurred.
  */
-int goldilocks_init() __attribute__((warn_unused_result, visibility("default")));
+int goldilocks_init(void) __attribute__((warn_unused_result, visibility("default")));
 
 /**
  * @brief Generate a new random keypair.
@@ -190,10 +193,11 @@ int goldilocks_private_to_public(struct goldilocks_public_key_t* pubkey,
  * @retval GOLDI_EINVAL   The other party's key is corrupt.
  * @retval GOLDI_EUNINIT You must call goldilocks_init() first.
  */
-int goldilocks_shared_secret(uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
+int goldilocks_shared_secret(uint8_t* shared,
+                             size_t sharedlen,
                              const struct goldilocks_private_key_t* my_privkey,
                              const struct goldilocks_public_key_t* your_pubkey)
-    __attribute__((warn_unused_result, nonnull(1, 2, 3), visibility("default")));
+    __attribute__((warn_unused_result, nonnull(1, 3, 4), visibility("default")));
 
 /**
  * @brief Sign a message.
@@ -335,10 +339,11 @@ int goldilocks_verify_precomputed(
  * @retval GOLDI_EUNINIT You must call goldilocks_init() first.
  */
 int goldilocks_shared_secret_precomputed(
-    uint8_t shared[GOLDI_SHARED_SECRET_BYTES],
+    uint8_t* shared,
+    size_t sharedlen,
     const struct goldilocks_private_key_t* my_privkey,
     const struct goldilocks_precomputed_public_key_t* your_pubkey)
-    __attribute__((warn_unused_result, nonnull(1, 2, 3), visibility("default")));
+    __attribute__((warn_unused_result, nonnull(1, 3, 4), visibility("default")));
 
 #endif /* GOLDI_IMPLEMENT_PRECOMPUTED_KEYS */
 

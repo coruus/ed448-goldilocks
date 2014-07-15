@@ -110,9 +110,6 @@ int main(int argc, char** argv) {
   begin_test("Linear combo");
   test_linear_combo();
 
-  begin_test("SHA-512 NIST Monte Carlo");
-  test_sha512_monte_carlo();
-
   begin_test("Goldilocks complete system");
   test_goldilocks();
 

@@ -61,4 +61,10 @@
  */
 #define EXPERIMENT_ECDH_STIR_IN_PUBKEYS 1
 
+
+/**
+ * @brief Which security strength of SHAKE to use.
+ */
+#define GOLDILOCKS_SHAKE 256
+
 #endif /* __GOLDILOCKS_CONFIG_H__ */

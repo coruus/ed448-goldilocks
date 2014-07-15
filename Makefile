@@ -23,11 +23,12 @@ endif
 
 WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
 	 -Wmissing-declarations -Wunused-function $(EXWARN)
-	 
-	 
+
+
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(ARCH)
-LANGFLAGS = -std=c99
-GENFLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
+LANGFLAGS = -std=c11
+SANFLAGS = #-fsanitize=address-full -fsanitize=undefined
+GENFLAGS = $(SANFLAGS) -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
 OFLAGS = -O3
 
 ifneq (,$(findstring arm,$(MACHINE)))
@@ -39,7 +40,7 @@ endif
 ARCHFLAGS += -mcpu=cortex-a9 # FIXME
 GENFLAGS = -DN_TESTS_BASE=1000 # sooooo sloooooow
 else
-ARCHFLAGS += -maes -mavx2 -mbmi2 #TODO
+ARCHFLAGS += -march=native#-mavx2 -mbmi2 #TODO
 endif
 
 ifeq ($(CC),clang)
@@ -52,7 +53,7 @@ XCFLAGS += -DGOLDI_FORCE_32_BIT=1
 endif
 
 CFLAGS  = $(LANGFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCFLAGS)
-LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS)
+LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS) $(SANFLAGS)
 ASFLAGS = $(ARCHFLAGS)
 
 .PHONY: clean all test bench todo doc lib bat
@@ -61,9 +62,9 @@ ASFLAGS = $(ARCHFLAGS)
 HEADERS= Makefile $(shell find . -name "*.h") build/timestamp
 
 LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
-  build/p448.o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o
+  build/p448.o build/ec_point.o build/scalarmul.o build/magic.o build/libkeccak.dylib
 
-TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
+TESTCOMPONENTS=build/test.o build/test_scalarmul.o  \
 	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o
 
 BENCHCOMPONENTS=build/bench.o
@@ -89,8 +90,9 @@ lib: build/goldilocks.so
 build/goldilocks.so: $(LIBCOMPONENTS)
 	rm -f $@
 ifeq ($(UNAME),Darwin)
-	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
+	#libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
 		  $(LIBCOMPONENTS)
+	clang -shared $(SANFLAGS) -o $@ $(LIBCOMPONENTS)
 else
 	$(LD) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
 	strip --discard-all $@
@@ -131,7 +133,7 @@ $(BATNAME): include/* src/* src/*/*
 		done
 	echo 'Mike Hamburg' > $@/designers
 	echo 'Ed448-Goldilocks sign and dh' > $@/description
-	
+
 
 todo::
 	@(find * -name '*.h'; find * -name '*.c') | xargs egrep --color=auto -w \
