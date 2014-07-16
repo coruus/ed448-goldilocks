@@ -112,7 +112,6 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
     typedef uint32x4_t big_register_t;
     typedef uint64x2_t uint64xn_t;
     typedef uint32x4_t uint32xn_t;
-    typedef uint32_t uint32xn_t;
 
     static __inline__ big_register_t
     br_set_to_mask(mask_t x) {
