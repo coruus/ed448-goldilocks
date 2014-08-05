@@ -3,6 +3,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifndef LIMBPERM
+#define LIMBPERM(x) (x)
+#endif
 
 int failed_tests, n_tests, failed_this_test, running_a_test;
 
@@ -87,7 +90,7 @@ void p448_print (
     int j;
     printf("%s = 0x", descr);
     for (j=sizeof(*a)/sizeof(word_t)-1; j>=0; j--) {
-        printf(PRIxWORD58, b.limb[j]);
+        printf(PRIxWORD58, b.limb[LIMBPERM(j)]);
     }
     printf("\n");
 }

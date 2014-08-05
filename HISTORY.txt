@@ -1,3 +1,23 @@
+August 4, 2014:
+    Experiments and bug fixes.
+
+    Add really_memset = memset_s (except not because I'm setting -std=c99),
+    thanks David Leon Gil.  I think I put it in the right places.
+
+    Try to work around what I think is a compiler bug in GCC -O3 on non-AVX
+    platforms.  I can't seem to work around it as -Os, so I'm just flagging
+    a warning (-Werror makes it an error) for now.  Will take more
+    investigation.  Thanks Samuel Neves.
+
+    Added an experimental (not ready yet!) ARM NEON implementation in
+    arch_neon_experimental.  This implementation seems to work, but needs
+    more testing.  It is currently asm-heavy and not GCC clean.  I am
+    planning to have a flag for it to use intrinsics instead of asm;
+    currently the intrinsics are commented out.  On clang this does ECDH
+    in 1850kcy on my BeagleBone Black, comparable to Curve41417.  Once this
+    is ready, I will probably move it to arch_neon proper, since arch_neon
+    isn't particularly tuned.
+
 July 11, 2014:
     This is mostly a cleanup release.
 

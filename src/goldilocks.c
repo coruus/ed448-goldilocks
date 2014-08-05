@@ -340,7 +340,7 @@ goldilocks_sign (
     word_t skw[GOLDI_FIELD_WORDS];
     mask_t succ = barrett_deserialize(skw,privkey->opaque,&curve_prime_order);
     if (!succ) {
-        memset(skw,0,sizeof(skw));
+        really_memset(skw,0,sizeof(skw));
         return GOLDI_ECORRUPT;
     }
         
@@ -389,9 +389,9 @@ goldilocks_sign (
         
     memcpy(signature_out, signature_tmp, GOLDI_FIELD_BYTES);
     barrett_serialize(signature_out+GOLDI_FIELD_BYTES, tk, GOLDI_FIELD_BYTES);
-    memset((unsigned char *)tk,0,sizeof(tk));
-    memset((unsigned char *)skw,0,sizeof(skw));
-    memset((unsigned char *)challenge,0,sizeof(challenge));
+    really_memset((unsigned char *)tk,0,sizeof(tk));
+    really_memset((unsigned char *)skw,0,sizeof(skw));
+    really_memset((unsigned char *)challenge,0,sizeof(challenge));
     
     /* response = 2(nonce_secret - sk*challenge)
      * Nonce = 8[nonce_secret]*G
@@ -494,7 +494,7 @@ goldilocks_destroy_precomputed_public_key (
 ) {
     if (!precom) return;
     destroy_fixed_base(&precom->table);
-    memset(&precom->pub.opaque, 0, sizeof(precom->pub));
+    really_memset(&precom->pub.opaque, 0, sizeof(precom->pub));
     free(precom);
 }
 

@@ -170,7 +170,12 @@ int test_arithmetic () {
     int bits = sizeof(word_t) * 448 / sizeof(p448_t);
     
     for (j=0; j<ntests; j++) {
-        if (j&1) {
+        if (j<256) {
+            mpz_set_ui(x,0);
+            mpz_set_ui(y,0);
+            mpz_setbit(x,(j%16)*28);
+            mpz_setbit(y,(j/16)*28);
+        } else if (j&1) {
             mpz_rrandomb(x, state, 448);
             mpz_rrandomb(y, state, 448);
         } else {

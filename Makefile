@@ -22,7 +22,7 @@ endif
 
 
 WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
-	 -Wmissing-declarations -Wunused-function $(EXWARN)
+	 -Wmissing-declarations -Wunused-function -Wno-overlength-strings $(EXWARN)
 	 
 	 
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(ARCH)
@@ -36,8 +36,8 @@ ARCHFLAGS += -mfpu=neon
 else
 ARCHFLAGS += -mfpu=vfpv3-d16
 endif
-ARCHFLAGS += -mcpu=cortex-a9 # FIXME
-GENFLAGS = -DN_TESTS_BASE=1000 # sooooo sloooooow
+ARCHFLAGS += -mcpu=cortex-a8 # FIXME
+GENFLAGS += -DN_TESTS_BASE=1000 # sooooo sloooooow
 else
 ARCHFLAGS += -maes -mavx2 -mbmi2 #TODO
 endif

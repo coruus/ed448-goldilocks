@@ -466,7 +466,7 @@ crandom_generate(
         unsigned long long copy = (length > state->fill) ? state->fill : length;
         state->fill -= copy;
         memcpy(output, state->buffer + state->fill, copy);
-        memset(state->buffer + state->fill, 0, copy);
+        really_memset(state->buffer + state->fill, 0, copy);
         output += copy; length -= copy;
     }
 
@@ -484,5 +484,5 @@ crandom_destroy(
          */
     }
 
-    memset(state, 0, sizeof(*state));
+    really_memset(state, 0, sizeof(*state));
 }

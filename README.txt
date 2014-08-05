@@ -13,7 +13,7 @@ game protection system out of Stanford, and are (c) 2011 Stanford
 University. All of these files are usable under the MIT license contained in
 LICENSE.txt.
 
-The Makefile is set for my 2013 MacBook Air. You can `make runbench` to run
+The Makefile is set for my 2013 MacBook Air. You can `make bench` to run
 a completely arbitrary set of benchmarks and tests, or `make
 build/goldilocks.so` to build a stripped-down version of the library. For
 non-Haswell platforms, you need to replace -mavx2 -mbmi2 by an appropriate

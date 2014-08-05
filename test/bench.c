@@ -108,18 +108,25 @@ int main(int argc, char **argv) {
     q448_randomize(&crand, sk);
     
     when = now();
-    for (i=0; i<nbase*1000; i++) {
+    for (i=0; i<nbase*5000; i++) {
         p448_mul(&c, &b, &a);
     }
     when = now() - when;
     printf("mul:         %5.1fns\n", when * 1e9 / i);
     
     when = now();
-    for (i=0; i<nbase*1000; i++) {
+    for (i=0; i<nbase*5000; i++) {
         p448_sqr(&c, &a);
     }
     when = now() - when;
     printf("sqr:         %5.1fns\n", when * 1e9 / i);
+    
+    when = now();
+    for (i=0; i<nbase*5000; i++) {
+        p448_mulw(&c, &b, 1234562);
+    }
+    when = now() - when;
+    printf("mulw:        %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*500; i++) {
@@ -128,13 +135,6 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("mul dep:     %5.1fns\n", when * 1e9 / i / 2);
-    
-    when = now();
-    for (i=0; i<nbase*1000; i++) {
-        p448_mulw(&c, &b, 1234562);
-    }
-    when = now() - when;
-    printf("mulw:        %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*10; i++) {

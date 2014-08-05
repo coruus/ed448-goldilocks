@@ -63,7 +63,15 @@ cond_negate_tw_pniels (
     cond_negate_tw_niels(&n->n, doNegate);
 }
 
-static __inline__ void
+#if (defined(__GNUC__) && !defined(__clang__) && defined(__x86_64__) && !defined(__AVX2__))
+  /* This works around an apparent compiler bug in GCC, thanks Samuel Neves */
+  static void __attribute__((optimize("O1")))
+  #ifdef __OPTIMIZE_SIZE__
+    #warning "There's a bug in here somewhere with GCC -Os on non-AVX2 platforms"
+  #endif
+#else
+  static __inline__ void
+#endif
 constant_time_lookup_tw_pniels (
     struct tw_pniels_t *out,
     const struct tw_pniels_t *in,
@@ -76,7 +84,7 @@ constant_time_lookup_tw_pniels (
     int j;
     unsigned int k;
     
-    memset(out, 0, sizeof(*out));
+    really_memset(out, 0, sizeof(*out));
     for (j=0; j<nin; j++, big_i-=big_one) {
         big_register_t mask = br_is_zero(big_i);
         for (k=0; k<sizeof(*out)/sizeof(*o); k++) {
@@ -98,7 +106,7 @@ constant_time_lookup_tw_niels (
     int j;
     unsigned int k;
     
-    memset(out, 0, sizeof(*out));
+    really_memset(out, 0, sizeof(*out));
     for (j=0; j<nin; j++, big_i-=big_one) {
         big_register_t mask = br_is_zero(big_i);
         for (k=0; k<sizeof(*out)/sizeof(*o); k++) {
@@ -449,7 +457,7 @@ precompute_fixed_base (
   struct tw_niels_t *prealloc
 ) {
     if (s < 1 || t < 1 || n < 1 || n*t*s < SCALAR_BITS) {
-        memset(out, 0, sizeof(*out));
+        really_memset(out, 0, sizeof(*out));
         return 0;
     }
     
@@ -478,8 +486,8 @@ precompute_fixed_base (
         free(doubles);
         free(zs);
         free(zis);
-        memset(out, 0, sizeof(*out));
-        memset(table, 0, sizeof(*table) * (n<<(t-1)));
+        really_memset(out, 0, sizeof(*out));
+        really_memset(table, 0, sizeof(*table) * (n<<(t-1)));
         if (!prealloc) free(table);
         return 0;
     }
@@ -593,9 +601,9 @@ precompute_fixed_base (
     free(zis);
 
     if (unlikely(!ret)) {
-        memset(table, 0, sizeof(*table) * (n<<(t-1)));
+        really_memset(table, 0, sizeof(*table) * (n<<(t-1)));
         if (!prealloc) free(table);
-        memset(out, 0, sizeof(*out));
+        really_memset(out, 0, sizeof(*out));
         return 0;
     }
 
@@ -607,12 +615,12 @@ destroy_fixed_base (
     struct fixed_base_table_t *table
 ) {
     if (table->table) {
-        memset(table->table,0,sizeof(*table->table)*(table->n<<(table->t-1)));
+        really_memset(table->table,0,sizeof(*table->table)*(table->n<<(table->t-1)));
     }
     if (table->own_table) {
         free(table->table);
     }
-    memset(table,0,sizeof(*table));
+    really_memset(table,0,sizeof(*table));
 }
 
 mask_t

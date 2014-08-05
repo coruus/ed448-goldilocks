@@ -146,10 +146,16 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
     }
 #endif
 
-#if __AVX2__ || __SSE2__
+#if __AVX2__
 static __inline__ big_register_t
 br_is_zero(big_register_t x) {
     return (big_register_t)(x == br_set_to_mask(0));
+}
+#elif __SSE2__
+static __inline__ big_register_t
+br_is_zero(big_register_t x) {
+    return (big_register_t)_mm_cmpeq_epi32((__m128i)x, _mm_setzero_si128());
+    //return (big_register_t)(x == br_set_to_mask(0));
 }
 #elif __ARM_NEON__
 static __inline__ big_register_t
@@ -179,7 +185,25 @@ static inline uint64_t
 letoh64 (uint64_t x) { return x; }
 #endif
 
-
+/**
+ * Really call memset, in a way that prevents the compiler from optimizing it out.
+ * @param p The object to zeroize.
+ * @param c The char to set it to (probably zero).
+ * @param s The size of the object.
+ */
+#ifdef __STDC_LIB_EXT1__ /* which it won't be, because we're -std=c99 */
+static __inline__ void
+really_memset(void *p, char c, size_t s) {
+    memset_s(p,s,c,s);
+}
+#else
+static __inline__ void __attribute__((always_inline,unused))
+really_memset(void *p, char c, size_t s) {
+    volatile char *pv = (volatile char *)p;
+    size_t i;
+    for (i=0; i<s; i++) pv[i] = c;
+}
+#endif
 
 /**
  * Allocate memory which is sufficiently aligned to be used for the
