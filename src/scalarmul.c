@@ -1,6 +1,11 @@
 /* Copyright (c) 2014 Cryptography Research, Inc.
  * Released under the MIT License.  See LICENSE.txt for license information.
  */
+#if (defined(__GNUC__) && !defined(__clang__) && defined(__x86_64__))
+  /* This works around an apparent compiler bug in GCC, thanks Samuel Neves */
+  #define GCC_HAS_A_BUG_SO_DONT_INLINE_FIELD_BIAS
+#endif
+
 #include "word.h"
 
 #include <stdlib.h>
@@ -63,15 +68,7 @@ cond_negate_tw_pniels (
     cond_negate_tw_niels(&n->n, doNegate);
 }
 
-#if (defined(__GNUC__) && !defined(__clang__) && defined(__x86_64__) && !defined(__AVX2__))
-  /* This works around an apparent compiler bug in GCC, thanks Samuel Neves */
-  static void __attribute__((optimize("O1")))
-  #ifdef __OPTIMIZE_SIZE__
-    #warning "There's a bug in here somewhere with GCC -Os on non-AVX2 platforms"
-  #endif
-#else
-  static __inline__ void
-#endif
+static __inline__ void
 constant_time_lookup_tw_pniels (
     struct tw_pniels_t *out,
     const struct tw_pniels_t *in,
