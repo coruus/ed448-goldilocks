@@ -131,17 +131,17 @@ p448_mul (
     
     __asm__ __volatile__(
         
-        "vld2.32 {%e[al0],%f[al0],%e[ah0],%f[ah0]}, [%[a],:64]!" "\n\t"
+        "vld2.32 {%e[al0],%f[al0],%e[ah0],%f[ah0]}, [%[a],:128]!" "\n\t"
         "vadd.i32 %[as0], %[al0], %[ah0]" "\n\t"
         
-        "vld2.32 {%e[bl0],%f[bl0],%e[bh0],%f[bh0]}, [%[b],:64]!" "\n\t"
+        "vld2.32 {%e[bl0],%f[bl0],%e[bh0],%f[bh0]}, [%[b],:128]!" "\n\t"
         "vadd.i32 %f[bs0], %f[bl0], %f[bh0]" "\n\t"
         "vsub.i32 %e[bs0], %e[bl0], %e[bh0]" "\n\t"
             
-        "vld2.32 {%e[bl2],%f[bl2],%e[bh2],%f[bh2]}, [%[b],:64]!" "\n\t"
+        "vld2.32 {%e[bl2],%f[bl2],%e[bh2],%f[bh2]}, [%[b],:128]!" "\n\t"
         "vadd.i32 %[bs2], %[bl2], %[bh2]" "\n\t"
             
-        "vld2.32 {%e[al2],%f[al2],%e[ah2],%f[ah2]}, [%[a],:64]!" "\n\t"
+        "vld2.32 {%e[al2],%f[al2],%e[ah2],%f[ah2]}, [%[a],:128]!" "\n\t"
         "vadd.i32 %[as2], %[al2], %[ah2]" "\n\t"
         
         "vmull.s32 %[a0b], %f[as0], %f[bs2][0]" "\n\t"
@@ -611,12 +611,12 @@ p448_sqr (
     register int64x2_t acc1b __asm__("q15");
     
     __asm__ __volatile__ (
-        "vld2.32 {%e[bl0],%f[bl0],%e[bh0],%f[bh0]}, [%[b],:64]!" "\n\t"
+        "vld2.32 {%e[bl0],%f[bl0],%e[bh0],%f[bh0]}, [%[b],:128]!" "\n\t"
         "vadd.i32 %f[bs0], %f[bl0], %f[bh0]" "\n\t"
         "vsub.i32 %e[bs0], %e[bl0], %e[bh0]" "\n\t"
         "vadd.i32 %[as0], %[bl0], %[bh0]" "\n\t"
             
-        "vld2.32 {%e[bl2],%f[bl2],%e[bh2],%f[bh2]}, [%[b],:64]!" "\n\t"
+        "vld2.32 {%e[bl2],%f[bl2],%e[bh2],%f[bh2]}, [%[b],:128]!" "\n\t"
         "vadd.i32 %[bs2], %[bl2], %[bh2]" "\n\t"
         "vmov %[as2], %[bs2]" "\n\t"
         
