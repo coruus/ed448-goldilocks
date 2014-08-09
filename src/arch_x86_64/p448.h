@@ -89,21 +89,11 @@ p448_is_zero (
     const p448_t *in
 );
   
-static
-#ifndef GCC_HAS_A_BUG_SO_DONT_INLINE_FIELD_BIAS
-    __inline__
-#endif
-void
+static __inline__ void
 p448_bias (
     p448_t *inout,
     int amount
-)
-#ifdef GCC_HAS_A_BUG_SO_DONT_INLINE_FIELD_BIAS
-    __attribute__((unused,noinline,optimize("O1")))
-#else
-    __attribute__((unused,always_inline))
-#endif
-;
+) __attribute__((unused,always_inline));
          
 void
 p448_mul (

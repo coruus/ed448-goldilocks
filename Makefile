@@ -26,7 +26,7 @@ WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
 	 
 	 
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(ARCH)
-LANGFLAGS = -std=c99
+LANGFLAGS = -std=c99 -fno-strict-aliasing
 GENFLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
 OFLAGS = -O3
 

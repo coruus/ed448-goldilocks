@@ -1,10 +1,6 @@
 /* Copyright (c) 2014 Cryptography Research, Inc.
  * Released under the MIT License.  See LICENSE.txt for license information.
  */
-#if (defined(__GNUC__) && !defined(__clang__) && defined(__x86_64__))
-  /* This works around an apparent compiler bug in GCC, thanks Samuel Neves */
-  #define GCC_HAS_A_BUG_SO_DONT_INLINE_FIELD_BIAS
-#endif
 
 #include "word.h"
 
