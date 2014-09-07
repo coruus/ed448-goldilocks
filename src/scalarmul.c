@@ -752,6 +752,7 @@ prepare_wnaf_table(
     struct tw_extensible_t *working,
     unsigned int tbits
 ) {
+    int i;
     convert_tw_extensible_to_tw_pniels(&output[0], working);
 
     if (tbits == 0) return;
@@ -763,7 +764,7 @@ prepare_wnaf_table(
     add_tw_pniels_to_tw_extensible(working, &output[0]);
     convert_tw_extensible_to_tw_pniels(&output[1], working);
 
-    for (int i=2; i < 1<<tbits; i++) {
+    for (i=2; i < 1<<tbits; i++) {
         add_tw_pniels_to_tw_extensible(working, &twop);
         convert_tw_extensible_to_tw_pniels(&output[i], working);
     }

@@ -9,7 +9,9 @@
 #define _XOPEN_SOURCE 600
 
 #ifndef __APPLE__
-#define _BSD_SOURCE
+#ifndef _BSD_SOURCE
+#define _BSD_SOURCE 1
+#endif
 #include <endian.h>
 #endif
 

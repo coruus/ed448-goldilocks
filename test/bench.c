@@ -552,6 +552,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase; i++) {
         res = goldilocks_sign(sout,(const unsigned char *)message,message_len,&gsk);
+        (void)res;
         assert(!res);
     }
     when = now() - when;
@@ -560,6 +561,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase; i++) {
         int ver = goldilocks_verify(sout,(const unsigned char *)message,message_len,&gpk);
+        (void)ver;
         assert(!ver);
     }
     when = now() - when;
@@ -577,6 +579,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase; i++) {
         int ver = goldilocks_verify_precomputed(sout,(const unsigned char *)message,message_len,pre);
+        (void)ver;
         assert(!ver);
     }
     when = now() - when;
@@ -585,6 +588,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase; i++) {
         int ret = goldilocks_shared_secret_precomputed(ss1,&gsk,pre);
+        (void)ret;
         assert(!ret);
     }
     when = now() - when;

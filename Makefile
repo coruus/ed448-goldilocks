@@ -68,7 +68,7 @@ TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 
 BENCHCOMPONENTS=build/bench.o
 
-BATNAME=build/ed448-goldilocks
+BATNAME=build/ed448goldilocks
 
 all: lib build/test build/bench
 
@@ -128,6 +128,7 @@ $(BATNAME): include/* src/* src/*/*
 		mkdir -p $@/`basename $$arch`; \
 		cp include/* src/*.c src/include/* $$arch/* $@/`basename $$arch`; \
 		perl -p -i -e 's/.*endif.*GOLDILOCKS_CONFIG_H/#define SUPERCOP_WONT_LET_ME_OPEN_FILES 1\n\n$$&/' $@/`basename $$arch`/config.h; \
+		perl -p -i -e 's/SYSNAME/'`basename $(BATNAME)`_`basename $$arch`'/g' $@/`basename $$arch`/api.h;  \
 		done
 	echo 'Mike Hamburg' > $@/designers
 	echo 'Ed448-Goldilocks sign and dh' > $@/description
