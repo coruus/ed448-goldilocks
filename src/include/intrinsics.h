@@ -19,7 +19,7 @@
 
 /** @brief Macro to make a function static, forcibly inlined and possibly unused. */
 #define INTRINSIC \
-  static inline __attribute__((__gnu_inline__, __always_inline__))
+  static __inline__ __attribute__((__gnu_inline__, __always_inline__, unused))
 
 #define GEN    1     /**< @brief Intrinsics field has been generated. */
 #define SSE2   2     /**< @brief Machine supports SSE2 */

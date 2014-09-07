@@ -306,7 +306,7 @@ goldilocks_shared_secret (
     );
 }
 
-#ifdef GOLDI_IMPLEMENT_SIGNATURES
+#if GOLDI_IMPLEMENT_SIGNATURES
 static void
 goldilocks_derive_challenge(
     word_t challenge[GOLDI_FIELD_WORDS],

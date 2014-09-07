@@ -17,6 +17,11 @@
 #define GOLDI_IMPLEMENT_PRECOMPUTED_KEYS 1
 #endif
 
+#ifndef GOLDI_IMPLEMENT_SIGNATURES
+/** If nonzero, implement signatures. */
+#define GOLDI_IMPLEMENT_SIGNATURES 1
+#endif
+
 /** The size of the Goldilocks field, in bits. */
 #define GOLDI_FIELD_BITS          448
 
@@ -207,7 +212,7 @@ goldilocks_shared_secret (
     const struct goldilocks_public_key_t *your_pubkey
 ) __attribute__((warn_unused_result,nonnull(1,2,3),visibility ("default")));
 
-#ifdef GOLDI_IMPLEMENT_SIGNATURES
+#if GOLDI_IMPLEMENT_SIGNATURES
 /**
  * @brief Sign a message.
  *

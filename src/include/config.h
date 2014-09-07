@@ -65,7 +65,7 @@
  * @brief Whether or not to define and implement functions
  * working with pre-computed keys.
  */
-#define GOLDI_IMPLEMENT_PRECOMPUTED_KEYS 0
+#define GOLDI_IMPLEMENT_PRECOMPUTED_KEYS 1
 
 /**
  * @brief ECDH adds public keys into the hash, to prevent
