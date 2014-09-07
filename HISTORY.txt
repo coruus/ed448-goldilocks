@@ -1,3 +1,11 @@
+September 6, 2014:
+    Pull in minor changes from David Leon Gil and Nicholas Wilson, with
+    some adjustments.  I hope the adjustments don't break their compiles.
+
+    `make bat` now makes a bat which passes supercop-fastbuild, though
+    the benchmarks are rather different from `make bench`.  I need to track
+    down why.
+
 August 4, 2014:
     Experiments and bug fixes.
 
