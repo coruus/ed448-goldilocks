@@ -22,7 +22,7 @@ ignore_result ( int result ) {
     (void)result;
 }
 
-static double now() {
+static double now(void) {
   struct timeval tv;
   gettimeofday(&tv, NULL);
   

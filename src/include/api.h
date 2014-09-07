@@ -43,9 +43,9 @@
 #endif
 */
 
-static inline int timingattacks() { return 0; }
-static inline int copyrightclaims() { return 0; }
-static inline int patentclaims() {
+static inline int timingattacks(void) { return 0; }
+static inline int copyrightclaims(void) { return 0; }
+static inline int patentclaims(void) {
     /* Until the end of July 2014, point compression
      * is patented. */
     return 20;

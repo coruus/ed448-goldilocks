@@ -20,13 +20,16 @@
 #include <sys/types.h>
 #include <inttypes.h>
 
-#if __ARM_NEON__
+#if defined(__ARM_NEON__)
 #include <arm_neon.h>
-#elif __SSE2__
+#elif defined(__SSE2__)
 #include <immintrin.h>
 #endif
 
-#if (__SIZEOF_INT128__ == 16 && __SIZEOF_SIZE_T__ == 8 && (__SIZEOF_LONG__==8 || __POINTER_WIDTH__==64) && !GOLDI_FORCE_32_BIT)
+#if (__SIZEOF_INT128__ == 16 \
+        && __SIZEOF_SIZE_T__ == 8 \
+        && (__SIZEOF_LONG__==8 || __POINTER_WIDTH__==64) \
+        && !defined(GOLDI_FORCE_32_BIT))
 /* It's a 64-bit machine if:
  * __uint128_t exists
  * size_t is 64 bits
@@ -67,7 +70,7 @@ typedef int64_t dsword_t;
 #define WORDS_FOR_BITS(_x) (DIV_CEIL((_x),WORD_BITS))
 
 typedef word_t mask_t;
-static const mask_t MASK_FAILURE = 0, MASK_SUCCESS = -1;
+static const mask_t MASK_FAILURE = 0, MASK_SUCCESS = -(mask_t)1;
 
 
 
@@ -106,7 +109,7 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
 
     static __inline__ big_register_t
     br_set_to_mask(mask_t x) {
-        uint32_t y = x;
+        uint32_t y = (uint32_t)x;
         big_register_t ret = {y,y,y,y,y,y,y,y};
         return ret;
     }
@@ -193,10 +196,22 @@ letoh64 (uint64_t x) { return x; }
  * @param c The char to set it to (probably zero).
  * @param s The size of the object.
  */
-#ifdef __STDC_LIB_EXT1__ /* which it won't be, because we're -std=c99 */
+#if (defined(__DARWIN_C_LEVEL) \
+    || (defined(__STDC_WANT_LIB_EXT1__) && __STDC_WANT_LIB_EXT1__ == 1))
+#define HAS_MEMSET_S
+#endif
+
+#if !defined(__STDC_WANT_LIB_EXT1__) || __STDC_WANT_LIB_EXT1__ != 1
+#define NEED_MEMSET_S_EXTERN
+#endif
+
+#ifdef HAS_MEMSET_S
+#ifdef NEED_MEMSET_S_EXTERN
+extern int memset_s(void *, size_t, int, size_t);
+#endif
 static __inline__ void
 really_memset(void *p, char c, size_t s) {
-    memset_s(p,s,c,s);
+    memset_s(p, s, c, s);
 }
 #else
 static __inline__ void __attribute__((always_inline,unused))

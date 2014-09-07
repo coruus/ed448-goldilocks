@@ -29,20 +29,20 @@ void scalar_print (
     int nwords
 );
 
-void youfail();
+void youfail(void);
 
-int test_sha512_monte_carlo();
+int test_sha512_monte_carlo(void);
 
-int test_linear_combo ();
+int test_linear_combo (void);
 
-int test_scalarmul_compatibility ();
+int test_scalarmul_compatibility (void);
 
-int test_scalarmul_commutativity ();
+int test_scalarmul_commutativity (void);
 
-int test_arithmetic ();
+int test_arithmetic (void);
 
-int test_goldilocks ();
+int test_goldilocks (void);
 
-int test_pointops ();
+int test_pointops (void);
 
 #endif // __GOLDILOCKS_TEST_H__

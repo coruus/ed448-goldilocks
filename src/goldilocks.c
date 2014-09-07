@@ -57,7 +57,7 @@ static struct {
 } goldilocks_global;
 
 static inline mask_t
-goldilocks_check_init() {
+goldilocks_check_init(void) {
     if (likely(goldilocks_global.state == G_INITED)) {
         return MASK_SUCCESS;
     } else {
@@ -66,7 +66,7 @@ goldilocks_check_init() {
 }
 
 int
-goldilocks_init () {
+goldilocks_init (void) {
     const char *res = compare_and_swap(&goldilocks_global.state, NULL, G_INITING);
     if (res == G_INITED) return GOLDI_EALREADYINIT;
     else if (res) {

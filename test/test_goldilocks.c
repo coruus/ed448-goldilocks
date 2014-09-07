@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int test_goldilocks () {
+int test_goldilocks (void) {
     const char *message1 = "hello world";
     const char *message2 = "Jello world";
     

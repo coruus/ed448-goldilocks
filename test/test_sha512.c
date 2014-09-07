@@ -59,7 +59,7 @@ static int sha512_monte_carlo_core (
     return 0;
 }
 
-int test_sha512_monte_carlo() {
+int test_sha512_monte_carlo(void) {
     const char *seed =
         "5c337de5caf35d18ed90b5cddfce001ca1b8ee8602f367e7c24ccca6f893802f"
         "b1aca7a3dae32dcd60800a59959bc540d63237876b799229ae71a2526fbc52cd";

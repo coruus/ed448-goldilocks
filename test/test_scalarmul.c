@@ -274,7 +274,7 @@ single_scalarmul_commutativity_test (
     }
 }
 
-int test_scalarmul_commutativity () {
+int test_scalarmul_commutativity (void) {
     int i,j,k,got;
     
     struct crandom_state_t crand;
@@ -312,7 +312,7 @@ int test_scalarmul_commutativity () {
     return 0;
 }
 
-int test_linear_combo () {
+int test_linear_combo (void) {
     int i,j,k,got;
     
     struct crandom_state_t crand;
@@ -355,7 +355,7 @@ int test_linear_combo () {
     return 0;
 }
 
-int test_scalarmul_compatibility () {
+int test_scalarmul_compatibility (void) {
     int i,j,k,got;
     
     struct crandom_state_t crand;

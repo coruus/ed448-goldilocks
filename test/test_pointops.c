@@ -249,7 +249,7 @@ single_twisting_test (
     return succ ? 0 : -1;
 }
 
-int test_pointops () {
+int test_pointops (void) {
     struct affine_t base, pbase;
     struct p448_t ser448;
     

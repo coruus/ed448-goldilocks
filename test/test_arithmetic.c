@@ -148,7 +148,7 @@ static mask_t test_mul_sqr (
     return succ;
 }
 
-int test_arithmetic () {
+int test_arithmetic (void) {
     int j, ntests = 100000;
     
     gmp_randstate_t state;

@@ -9,7 +9,7 @@
 
 int failed_tests, n_tests, failed_this_test, running_a_test;
 
-static void end_test() {
+static void end_test(void) {
     if (!failed_this_test) {
         printf("[PASS]\n");
     }
@@ -25,7 +25,7 @@ static void begin_test(const char *name) {
     running_a_test = 1;
 }
 
-void youfail() {
+void youfail(void) {
     if (failed_this_test) return;
     failed_this_test = 1;
     failed_tests ++;

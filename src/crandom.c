@@ -14,7 +14,7 @@
 
 volatile unsigned int crandom_features = 0;
 
-unsigned int crandom_detect_features() {
+unsigned int crandom_detect_features(void) {
   unsigned int out = GEN;
   
 # if (defined(__i386__) || defined(__x86_64__))
