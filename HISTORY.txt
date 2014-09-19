@@ -1,3 +1,13 @@
+September 18, 2014:
+    Begin work on a "ref" implementation.  Currently this is just the
+    arch_ref64 architecture.  The ref implementation always weak_reduces
+    after arithmetic, and doesn't use vectors or other hackery.  Currently
+    it still must declare field elements as vector aligned, though,
+    other code outside the arch directory can be vectorized.
+
+    Change goldilocks.c to use field_eq instead of calling deep into field
+    apis.
+
 September 6, 2014:
     Pull in minor changes from David Leon Gil and Nicholas Wilson, with
     some adjustments.  I hope the adjustments don't break their compiles.
