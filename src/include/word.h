@@ -49,6 +49,7 @@ typedef __int128_t dsword_t;
 #define U64LE(x) x##ull
 #define U58LE(x) x##ull
 #define letohWORD letoh64
+#define GOLDI_BITS 64
 #else
 typedef uint16_t hword_t;
 typedef uint32_t word_t;
@@ -62,6 +63,7 @@ typedef int64_t dsword_t;
 #define U64LE(x) (x##ull)&((1ull<<32)-1), (x##ull)>>32
 #define U58LE(x) (x##ull)&((1ull<<28)-1), (x##ull)>>28
 #define letohWORD letoh32
+#define GOLDI_BITS 32
 #endif
 
 #define WORD_BITS (sizeof(word_t) * 8)
