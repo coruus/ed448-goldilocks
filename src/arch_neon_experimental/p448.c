@@ -14,20 +14,6 @@ is_zero (
     return xx >> WORD_BITS;
 }
 
-static __inline__ void __attribute__((gnu_inline,always_inline,unused))
-xx_vtrnq_s64 (
-    int64x2_t *x,
-    int64x2_t *y
-) {
-    __asm__ __volatile__ ("vswp %f0, %e1" : "+w"(*x), "+w"(*y));
-}
-
-static __inline__ int64x2_t __attribute__((gnu_inline,always_inline,unused))
-xx_vaddup_s64(int64x2_t x) {
-    __asm__ ("vadd.s64 %f0, %e0" : "+w"(x));
-    return x;
-}
-
 static __inline__ uint64x2_t __attribute__((gnu_inline,always_inline,unused))
 xx_vaddup_u64(uint64x2_t x) {
     __asm__ ("vadd.s64 %f0, %e0" : "+w"(x));
@@ -82,509 +68,303 @@ smull2 (
     *acc = (int64_t)(int32_t)a * (int64_t)(int32_t)b * 2;
 }
 
-static inline int64x2_t __attribute__((always_inline,unused))
-SER(int64x2_t x) {
-    __asm__ __volatile__("" : "+w"(x));
-    return x;
-}
-#define svmull_lane_s32(a,b,c) SER(vmull_lane_s32(a,b,c))
-#define svmlal_s32(a,b,c) SER(vmlal_s32(a,b,c))
-#define svmlal_lane_s32(a,b,c,d) SER(vmlal_lane_s32(a,b,c,d))
-
-
-// static inline int64x2_t __attribute__((always_inline,unused))
-// xvmlal_lane_s32(int64x2_t acc, int32x2_t a, int32x2_t b, const int lane) {
-//     __asm__ volatile (
-//         "vmlal.s32 %0, %1, %2[%c3]"
-//             : "+w"(acc)
-//             : "w"(a), "w"(b), "i"(lane)
-//     );
-//     return acc;
-// }
-
 void
 p448_mul (
     p448_t *__restrict__ cs,
     const p448_t *as,
     const p448_t *bs
 ) {
-    register int32x4_t al0 __asm__("q6");
-    register int32x4_t ah0 __asm__("q7");
-    register int32x4_t as0 __asm__("q8");
-    register int32x4_t al2 __asm__("q9");
-    register int32x4_t ah2 __asm__("q10");
-    register int32x4_t as2 __asm__("q11");
-    
-    register int32x4_t bl0 __asm__("q0");
-    register int32x4_t bh0 __asm__("q1");
-    register int32x4_t bs0 __asm__("q2");
-    register int32x4_t bl2 __asm__("q3");
-    register int32x4_t bh2 __asm__("q4");
-    register int32x4_t bs2 __asm__("q5");
+    #define _bl0 "q0"
+    #define _bl0_0 "d0"
+    #define _bl0_1 "d1"
+    #define _bh0 "q1"
+    #define _bh0_0 "d2"
+    #define _bh0_1 "d3"
+    #define _bs0 "q2"
+    #define _bs0_0 "d4"
+    #define _bs0_1 "d5"
+    #define _bl2 "q3"
+    #define _bl2_0 "d6"
+    #define _bl2_1 "d7"
+    #define _bh2 "q4"
+    #define _bh2_0 "d8"
+    #define _bh2_1 "d9"
+    #define _bs2 "q5"
+    #define _bs2_0 "d10"
+    #define _bs2_1 "d11"
 
-    int32x2_t *vc = (int32x2_t*) cs->limb, *vcasm = vc;
+    #define _as0 "q6"
+    #define _as0_0 "d12"
+    #define _as0_1 "d13"
+    #define _as2 "q7"
+    #define _as2_0 "d14"
+    #define _as2_1 "d15"
+    #define _al0 "q8"
+    #define _al0_0 "d16"
+    #define _al0_1 "d17"
+    #define _ah0 "q9"
+    #define _ah0_0 "d18"
+    #define _ah0_1 "d19"
+    #define _al2 "q10"
+    #define _al2_0 "d20"
+    #define _al2_1 "d21"
+    #define _ah2 "q11"
+    #define _ah2_0 "d22"
+    #define _ah2_1 "d23"
 
-    register int64x2_t acc0a __asm__("q12");
-    register int64x2_t acc0b __asm__("q13");
-    register int64x2_t acc1a __asm__("q14");
-    register int64x2_t acc1b __asm__("q15");
-    
+    #define _a0a "q12"
+    #define _a0a_0 "d24"
+    #define _a0a_1 "d25"
+    #define _a0b "q13"
+    #define _a0b_0 "d26"
+    #define _a0b_1 "d27"
+    #define _a1a "q14"
+    #define _a1a_0 "d28"
+    #define _a1a_1 "d29"
+    #define _a1b "q15"
+    #define _a1b_0 "d30"
+    #define _a1b_1 "d31"
+    #define VMAC(op,result,a,b,n) #op" "result", "a", "b"[" #n "]\n\t"
+    #define VOP3(op,result,a,b)   #op" "result", "a", "b"\n\t"
+    #define VOP2(op,result,a)     #op" "result", "a"\n\t"
+
+    int32x2_t *vc = (int32x2_t*) cs->limb;
+
     __asm__ __volatile__(
         
-        "vld2.32 {%e[al0],%f[al0],%e[ah0],%f[ah0]}, [%[a],:128]!" "\n\t"
-        "vadd.i32 %[as0], %[al0], %[ah0]" "\n\t"
+        "vld2.32 {"_al0_0","_al0_1","_ah0_0","_ah0_1"}, [%[a],:128]!" "\n\t"
+        VOP3(vadd.i32,_as0,_al0,_ah0)
         
-        "vld2.32 {%e[bl0],%f[bl0],%e[bh0],%f[bh0]}, [%[b],:128]!" "\n\t"
-        "vadd.i32 %f[bs0], %f[bl0], %f[bh0]" "\n\t"
-        "vsub.i32 %e[bs0], %e[bl0], %e[bh0]" "\n\t"
+        "vld2.32 {"_bl0_0","_bl0_1","_bh0_0","_bh0_1"}, [%[b],:128]!" "\n\t"
+        VOP3(vadd.i32,_bs0_1,_bl0_1,_bh0_1)
+        VOP3(vsub.i32,_bs0_0,_bl0_0,_bh0_0)
             
-        "vld2.32 {%e[bl2],%f[bl2],%e[bh2],%f[bh2]}, [%[b],:128]!" "\n\t"
-        "vadd.i32 %[bs2], %[bl2], %[bh2]" "\n\t"
+        "vld2.32 {"_bl2_0","_bl2_1","_bh2_0","_bh2_1"}, [%[b],:128]!" "\n\t"
+        VOP3(vadd.i32,_bs2,_bl2,_bh2)
             
-        "vld2.32 {%e[al2],%f[al2],%e[ah2],%f[ah2]}, [%[a],:128]!" "\n\t"
-        "vadd.i32 %[as2], %[al2], %[ah2]" "\n\t"
+        "vld2.32 {"_al2_0","_al2_1","_ah2_0","_ah2_1"}, [%[a],:128]!" "\n\t"
+        VOP3(vadd.i32,_as2,_al2,_ah2)
         
-        "vmull.s32 %[a0b], %f[as0], %f[bs2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[as2], %e[bs2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %f[as2], %f[bs0][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[as0], %e[bh0][0]" "\n\t"
+        VMAC(vmull.s32,_a0b,_as0_1,_bs2_1,0)
+        VMAC(vmlal.s32,_a0b,_as2_0,_bs2_0,0)
+        VMAC(vmlal.s32,_a0b,_as2_1,_bs0_1,0)
+        VMAC(vmlal.s32,_a0b,_as0_0,_bh0_0,0)
             
-        "vmull.s32 %[a1b], %f[as0], %f[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[as2], %e[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[as2], %f[bs0][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[as0], %e[bh0][1]" "\n\t"
+        VMAC(vmull.s32,_a1b,_as0_1,_bs2_1,1)
+        VMAC(vmlal.s32,_a1b,_as2_0,_bs2_0,1)
+        VMAC(vmlal.s32,_a1b,_as2_1,_bs0_1,1)
+        VMAC(vmlal.s32,_a1b,_as0_0,_bh0_0,1)
             
-        "vmov %[a0a], %[a0b]" "\n\t"
-        "vmlal.s32 %[a0a], %f[ah0], %f[bh2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %e[ah2], %e[bh2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %f[ah2], %f[bh0][0]" "\n\t"
-        "vmlal.s32 %[a0a], %e[ah0], %e[bl0][0]" "\n\t"
+        VOP2(vmov,_a0a,_a0b)
+        VMAC(vmlal.s32,_a0a,_ah0_1,_bh2_1,0)
+        VMAC(vmlal.s32,_a0a,_ah2_0,_bh2_0,0)
+        VMAC(vmlal.s32,_a0a,_ah2_1,_bh0_1,0)
+        VMAC(vmlal.s32,_a0a,_ah0_0,_bl0_0,0)
             
-        "vmlsl.s32 %[a0b], %f[al0], %f[bl2][0]" "\n\t"
-        "vmlsl.s32 %[a0b], %e[al2], %e[bl2][0]" "\n\t"
-        "vmlsl.s32 %[a0b], %f[al2], %f[bl0][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[al0], %e[bs0][0]" "\n\t"
+        VMAC(vmlsl.s32,_a0b,_al0_1,_bl2_1,0)
+        VMAC(vmlsl.s32,_a0b,_al2_0,_bl2_0,0)
+        VMAC(vmlsl.s32,_a0b,_al2_1,_bl0_1,0)
+        VMAC(vmlal.s32,_a0b,_al0_0,_bs0_0,0)
             
-        "vmov %[a1a], %[a1b]" "\n\t"
-        "vmlal.s32 %[a1a], %f[ah0], %f[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %e[ah2], %e[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %f[ah2], %f[bh0][1]" "\n\t"
-        "vmlal.s32 %[a1a], %e[ah0], %e[bl0][1]" "\n\t"
+        VOP2(vmov,_a1a,_a1b)
+        VMAC(vmlal.s32,_a1a,_ah0_1,_bh2_1,1)
+        VMAC(vmlal.s32,_a1a,_ah2_0,_bh2_0,1)
+        VMAC(vmlal.s32,_a1a,_ah2_1,_bh0_1,1)
+        VMAC(vmlal.s32,_a1a,_ah0_0,_bl0_0,1)
             
-            "vswp %f[a0b], %e[a0a]" "\n\t"
+            VOP2(vswp,_a0b_1,_a0a_0)
             
-        "vmlsl.s32 %[a1b], %f[al0], %f[bl2][1]" "\n\t"
-        "vmlsl.s32 %[a1b], %e[al2], %e[bl2][1]" "\n\t"
-        "vmlsl.s32 %[a1b], %f[al2], %f[bl0][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[al0], %e[bs0][1]" "\n\t"
+        VMAC(vmlsl.s32,_a1b,_al0_1,_bl2_1,1)
+        VMAC(vmlsl.s32,_a1b,_al2_0,_bl2_0,1)
+        VMAC(vmlsl.s32,_a1b,_al2_1,_bl0_1,1)
+        VMAC(vmlal.s32,_a1b,_al0_0,_bs0_0,1)
                 
-            "vsra.s64 %[a0a], %[a0b], #28" "\n\t"
-            "vsub.i32 %f[bs0], %f[bl0], %f[bh0]" "\n\t"
-            "vmovn.i64 %e[a0b], %[a0b]" "\n\t"
+            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsub.i32,_bs0_1,_bl0_1,_bh0_1)
+            VOP2(vmovn.i64,_a0b_0,_a0b)
                 
-            "vswp %f[a1b], %e[a1a]" "\n\t"
-            "vadd.i64 %[a1b], %[a0a], %[a1b]" "\n\t"
+            VOP2(vswp,_a1b_1,_a1a_0)
+            VOP3(vadd.i64,_a1b,_a0a,_a1b)
                     
                     
-        "vmull.s32 %[a0a], %e[as2], %f[bs2][0]" "\n\t"
-            "vmovn.i64 %f[a0b], %[a1b]" "\n\t"
-        "vmlal.s32 %[a0a], %f[as2], %e[bs2][0]" "\n\t"
-            "vsra.s64 %[a1a], %[a1b], #28" "\n\t"
-        "vmlal.s32 %[a0a], %e[as0], %f[bh0][0]" "\n\t"
-            "vbic.i32 %[a0b], #0xf0000000" "\n\t"
-        "vmlal.s32 %[a0a], %f[as0], %e[bh0][0]" "\n\t"
-            "vstmia %[c]!, {%e[a0b], %f[a0b]}" "\n\t"
+        VMAC(vmull.s32,_a0a,_as2_0,_bs2_1,0)
+            VOP2(vmovn.i64,_a0b_1,_a1b)
+        VMAC(vmlal.s32,_a0a,_as2_1,_bs2_0,0)
+            VOP3(vsra.s64,_a1a,_a1b,"#28")
+        VMAC(vmlal.s32,_a0a,_as0_0,_bh0_1,0)
+            VOP2(vbic.i32,_a0b,"#0xf0000000")
+        VMAC(vmlal.s32,_a0a,_as0_1,_bh0_0,0)
+            "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
                     
-        "vmull.s32 %[a1b], %e[as2], %f[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[as2], %e[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[as0], %f[bh0][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[as0], %e[bh0][1]" "\n\t"
+        VMAC(vmull.s32,_a1b,_as2_0,_bs2_1,1)
+        VMAC(vmlal.s32,_a1b,_as2_1,_bs2_0,1)
+        VMAC(vmlal.s32,_a1b,_as0_0,_bh0_1,1)
+        VMAC(vmlal.s32,_a1b,_as0_1,_bh0_0,1)
 
-        "vmov %f[a0b], %f[a0a]" "\n\t"
-        "vadd.i64 %e[a0b], %e[a0a], %e[a1a]" "\n\t"
-        "vadd.i64 %e[a0a], %e[a0a], %f[a1a]" "\n\t"
-        "vmlal.s32 %[a0a], %e[ah2], %f[bh2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %f[ah2], %e[bh2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %e[ah0], %f[bl0][0]" "\n\t"
-        "vmlal.s32 %[a0a], %f[ah0], %e[bl0][0]" "\n\t"
+        VOP2(vmov,_a0b_1,_a0a_1)
+        VOP3(vadd.i64,_a0b_0,_a0a_0,_a1a_0)
+        VOP3(vadd.i64,_a0a_0,_a0a_0,_a1a_1)
+        VMAC(vmlal.s32,_a0a,_ah2_0,_bh2_1,0)
+        VMAC(vmlal.s32,_a0a,_ah2_1,_bh2_0,0)
+        VMAC(vmlal.s32,_a0a,_ah0_0,_bl0_1,0)
+        VMAC(vmlal.s32,_a0a,_ah0_1,_bl0_0,0)
 
-        "vmlsl.s32 %[a0b], %e[al2], %f[bl2][0]" "\n\t"
-        "vmlsl.s32 %[a0b], %f[al2], %e[bl2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[al0], %f[bs0][0]" "\n\t"
-        "vmlal.s32 %[a0b], %f[al0], %e[bs0][0]" "\n\t"
+        VMAC(vmlsl.s32,_a0b,_al2_0,_bl2_1,0)
+        VMAC(vmlsl.s32,_a0b,_al2_1,_bl2_0,0)
+        VMAC(vmlal.s32,_a0b,_al0_0,_bs0_1,0)
+        VMAC(vmlal.s32,_a0b,_al0_1,_bs0_0,0)
 
-        "vmov %[a1a], %[a1b]" "\n\t"
-        "vmlal.s32 %[a1a], %e[ah2], %f[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %f[ah2], %e[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %e[ah0], %f[bl0][1]" "\n\t"
-        "vmlal.s32 %[a1a], %f[ah0], %e[bl0][1]" "\n\t"
+        VOP2(vmov,_a1a,_a1b)
+        VMAC(vmlal.s32,_a1a,_ah2_0,_bh2_1,1)
+        VMAC(vmlal.s32,_a1a,_ah2_1,_bh2_0,1)
+        VMAC(vmlal.s32,_a1a,_ah0_0,_bl0_1,1)
+        VMAC(vmlal.s32,_a1a,_ah0_1,_bl0_0,1)
 
-            "vswp %f[a0b], %e[a0a]" "\n\t"
+            VOP2(vswp,_a0b_1,_a0a_0)
 
-        "vmlsl.s32 %[a1b], %e[al2], %f[bl2][1]" "\n\t"
-        "vmlsl.s32 %[a1b], %f[al2], %e[bl2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[al0], %f[bs0][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[al0], %e[bs0][1]" "\n\t"
+        VMAC(vmlsl.s32,_a1b,_al2_0,_bl2_1,1)
+        VMAC(vmlsl.s32,_a1b,_al2_1,_bl2_0,1)
+        VMAC(vmlal.s32,_a1b,_al0_0,_bs0_1,1)
+        VMAC(vmlal.s32,_a1b,_al0_1,_bs0_0,1)
                                         
-            "vsra.s64 %[a0a], %[a0b], #28" "\n\t"
-            "vsub.i32 %e[bs2], %e[bl2], %e[bh2]" "\n\t"
-            "vmovn.i64 %e[a0b], %[a0b]" "\n\t"
+            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsub.i32,_bs2_0,_bl2_0,_bh2_0)
+            VOP2(vmovn.i64,_a0b_0,_a0b)
                         
-            "vswp %f[a1b], %e[a1a]" "\n\t"
-            "vadd.i64 %[a1b], %[a0a], %[a1b]" "\n\t"
+            VOP2(vswp,_a1b_1,_a1a_0)
+            VOP3(vadd.i64,_a1b,_a0a,_a1b)
 
-        "vmull.s32 %[a0a], %f[as2], %f[bs2][0]" "\n\t"
-            "vmovn.i64 %f[a0b], %[a1b]" "\n\t"
-        "vmlal.s32 %[a0a], %e[as0], %e[bh2][0]" "\n\t"
-            "vsra.s64 %[a1a], %[a1b], #28" "\n\t"
-        "vmlal.s32 %[a0a], %f[as0], %f[bh0][0]" "\n\t"
-            "vbic.i32 %[a0b], #0xf0000000" "\n\t"
-        "vmlal.s32 %[a0a], %e[as2], %e[bh0][0]" "\n\t"
-            "vstmia %[c]!, {%e[a0b], %f[a0b]}" "\n\t"
+        VMAC(vmull.s32,_a0a,_as2_1,_bs2_1,0)
+            VOP2(vmovn.i64,_a0b_1,_a1b)
+        VMAC(vmlal.s32,_a0a,_as0_0,_bh2_0,0)
+            VOP3(vsra.s64,_a1a,_a1b,"#28")
+        VMAC(vmlal.s32,_a0a,_as0_1,_bh0_1,0)
+            VOP2(vbic.i32,_a0b,"#0xf0000000")
+        VMAC(vmlal.s32,_a0a,_as2_0,_bh0_0,0)
+            "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
 
-        "vmull.s32 %[a1b], %f[as2], %f[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[as0], %e[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[as0], %f[bh0][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[as2], %e[bh0][1]" "\n\t"
+        VMAC(vmull.s32,_a1b,_as2_1,_bs2_1,1)
+        VMAC(vmlal.s32,_a1b,_as0_0,_bh2_0,1)
+        VMAC(vmlal.s32,_a1b,_as0_1,_bh0_1,1)
+        VMAC(vmlal.s32,_a1b,_as2_0,_bh0_0,1)
 
-        "vmov %f[a0b], %f[a0a]" "\n\t"
-        "vadd.i64 %e[a0b], %e[a0a], %e[a1a]" "\n\t"
-        "vadd.i64 %e[a0a], %e[a0a], %f[a1a]" "\n\t"
-        "vmlal.s32 %[a0a], %f[ah2], %f[bh2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %e[ah0], %e[bl2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %f[ah0], %f[bl0][0]" "\n\t"
-        "vmlal.s32 %[a0a], %e[ah2], %e[bl0][0]" "\n\t"
+        VOP2(vmov,_a0b_1,_a0a_1)
+        VOP3(vadd.i64,_a0b_0,_a0a_0,_a1a_0)
+        VOP3(vadd.i64,_a0a_0,_a0a_0,_a1a_1)
+        VMAC(vmlal.s32,_a0a,_ah2_1,_bh2_1,0)
+        VMAC(vmlal.s32,_a0a,_ah0_0,_bl2_0,0)
+        VMAC(vmlal.s32,_a0a,_ah0_1,_bl0_1,0)
+        VMAC(vmlal.s32,_a0a,_ah2_0,_bl0_0,0)
 
-        "vmlsl.s32 %[a0b], %f[al2], %f[bl2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[al0], %e[bs2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %f[al0], %f[bs0][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[al2], %e[bs0][0]" "\n\t"
+        VMAC(vmlsl.s32,_a0b,_al2_1,_bl2_1,0)
+        VMAC(vmlal.s32,_a0b,_al0_0,_bs2_0,0)
+        VMAC(vmlal.s32,_a0b,_al0_1,_bs0_1,0)
+        VMAC(vmlal.s32,_a0b,_al2_0,_bs0_0,0)
 
-        "vmov %[a1a], %[a1b]" "\n\t"
-        "vmlal.s32 %[a1a], %f[ah2], %f[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %e[ah0], %e[bl2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %f[ah0], %f[bl0][1]" "\n\t"
-        "vmlal.s32 %[a1a], %e[ah2], %e[bl0][1]" "\n\t"
+        VOP2(vmov,_a1a,_a1b)
+        VMAC(vmlal.s32,_a1a,_ah2_1,_bh2_1,1)
+        VMAC(vmlal.s32,_a1a,_ah0_0,_bl2_0,1)
+        VMAC(vmlal.s32,_a1a,_ah0_1,_bl0_1,1)
+        VMAC(vmlal.s32,_a1a,_ah2_0,_bl0_0,1)
 
-            "vswp %f[a0b], %e[a0a]" "\n\t"
+            VOP2(vswp,_a0b_1,_a0a_0)
 
-        "vmlsl.s32 %[a1b], %f[al2], %f[bl2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[al0], %e[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[al0], %f[bs0][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[al2], %e[bs0][1]" "\n\t"
+        VMAC(vmlsl.s32,_a1b,_al2_1,_bl2_1,1)
+        VMAC(vmlal.s32,_a1b,_al0_0,_bs2_0,1)
+        VMAC(vmlal.s32,_a1b,_al0_1,_bs0_1,1)
+        VMAC(vmlal.s32,_a1b,_al2_0,_bs0_0,1)
                                                                 
-            "vsub.i32 %f[bs2], %f[bl2], %f[bh2]" "\n\t"
-            "vsra.s64 %[a0a], %[a0b], #28" "\n\t"
-            "vmovn.i64 %e[a0b], %[a0b]" "\n\t"
+            VOP3(vsub.i32,_bs2_1,_bl2_1,_bh2_1)
+            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP2(vmovn.i64,_a0b_0,_a0b)
                         
-            "vswp %f[a1b], %e[a1a]" "\n\t"
-            "vadd.i64 %[a1b], %[a0a], %[a1b]" "\n\t"
+            VOP2(vswp,_a1b_1,_a1a_0)
+            VOP3(vadd.i64,_a1b,_a0a,_a1b)
 
-        "vmull.s32 %[a0a], %e[as0], %f[bh2][0]" "\n\t"
-            "vmovn.i64 %f[a0b], %[a1b]" "\n\t"
-        "vmlal.s32 %[a0a], %f[as0], %e[bh2][0]" "\n\t"
-            "vsra.s64 %[a1a], %[a1b], #28" "\n\t"
-        "vmlal.s32 %[a0a], %e[as2], %f[bh0][0]" "\n\t"
-            "vbic.i32 %[a0b], #0xf0000000" "\n\t"
-        "vmlal.s32 %[a0a], %f[as2], %e[bh0][0]" "\n\t"
-            "vstmia %[c]!, {%e[a0b], %f[a0b]}" "\n\t"
+        VMAC(vmull.s32,_a0a,_as0_0,_bh2_1,0)
+            VOP2(vmovn.i64,_a0b_1,_a1b)
+        VMAC(vmlal.s32,_a0a,_as0_1,_bh2_0,0)
+            VOP3(vsra.s64,_a1a,_a1b,"#28")
+        VMAC(vmlal.s32,_a0a,_as2_0,_bh0_1,0)
+            VOP2(vbic.i32,_a0b,"#0xf0000000")
+        VMAC(vmlal.s32,_a0a,_as2_1,_bh0_0,0)
+            "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
 
-        "vmull.s32 %[a1b], %e[as0], %f[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[as0], %e[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[as2], %f[bh0][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[as2], %e[bh0][1]" "\n\t"
+        VMAC(vmull.s32,_a1b,_as0_0,_bh2_1,1)
+        VMAC(vmlal.s32,_a1b,_as0_1,_bh2_0,1)
+        VMAC(vmlal.s32,_a1b,_as2_0,_bh0_1,1)
+        VMAC(vmlal.s32,_a1b,_as2_1,_bh0_0,1)
 
-        "vmov %f[a0b], %f[a0a]" "\n\t"
-        "vadd.i64 %e[a0b], %e[a0a], %e[a1a]" "\n\t"
-        "vadd.i64 %e[a0a], %e[a0a], %f[a1a]" "\n\t"
-        "vmlal.s32 %[a0a], %e[ah0], %f[bl2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %f[ah0], %e[bl2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %e[ah2], %f[bl0][0]" "\n\t"
-        "vmlal.s32 %[a0a], %f[ah2], %e[bl0][0]" "\n\t"
+        VOP2(vmov,_a0b_1,_a0a_1)
+        VOP3(vadd.i64,_a0b_0,_a0a_0,_a1a_0)
+        VOP3(vadd.i64,_a0a_0,_a0a_0,_a1a_1)
+        VMAC(vmlal.s32,_a0a,_ah0_0,_bl2_1,0)
+        VMAC(vmlal.s32,_a0a,_ah0_1,_bl2_0,0)
+        VMAC(vmlal.s32,_a0a,_ah2_0,_bl0_1,0)
+        VMAC(vmlal.s32,_a0a,_ah2_1,_bl0_0,0)
 
-        "vmlal.s32 %[a0b], %e[al0], %f[bs2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %f[al0], %e[bs2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[al2], %f[bs0][0]" "\n\t"
-        "vmlal.s32 %[a0b], %f[al2], %e[bs0][0]" "\n\t"
+        VMAC(vmlal.s32,_a0b,_al0_0,_bs2_1,0)
+        VMAC(vmlal.s32,_a0b,_al0_1,_bs2_0,0)
+        VMAC(vmlal.s32,_a0b,_al2_0,_bs0_1,0)
+        VMAC(vmlal.s32,_a0b,_al2_1,_bs0_0,0)
 
-        "vmov %[a1a], %[a1b]" "\n\t"
-        "vmlal.s32 %[a1a], %e[ah0], %f[bl2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %f[ah0], %e[bl2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %e[ah2], %f[bl0][1]" "\n\t"
-        "vmlal.s32 %[a1a], %f[ah2], %e[bl0][1]" "\n\t"
+        VOP2(vmov,_a1a,_a1b)
+        VMAC(vmlal.s32,_a1a,_ah0_0,_bl2_1,1)
+        VMAC(vmlal.s32,_a1a,_ah0_1,_bl2_0,1)
+        VMAC(vmlal.s32,_a1a,_ah2_0,_bl0_1,1)
+        VMAC(vmlal.s32,_a1a,_ah2_1,_bl0_0,1)
 
-            "vswp %f[a0b], %e[a0a]" "\n\t"
+            VOP2(vswp,_a0b_1,_a0a_0)
 
-        "vmlal.s32 %[a1b], %e[al0], %f[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[al0], %e[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[al2], %f[bs0][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[al2], %e[bs0][1]" "\n\t"
+        VMAC(vmlal.s32,_a1b,_al0_0,_bs2_1,1)
+        VMAC(vmlal.s32,_a1b,_al0_1,_bs2_0,1)
+        VMAC(vmlal.s32,_a1b,_al2_0,_bs0_1,1)
+        VMAC(vmlal.s32,_a1b,_al2_1,_bs0_0,1)
                         
-            "vsra.s64 %[a0a], %[a0b], #28" "\n\t"
-            "vmovn.i64 %e[a0b], %[a0b]" "\n\t"
+            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP2(vmovn.i64,_a0b_0,_a0b)
                                                                                             
-            "vswp %f[a1b], %e[a1a]" "\n\t"
-            "vadd.i64 %[a0a], %[a0a], %[a1b]" "\n\t"
+            VOP2(vswp,_a1b_1,_a1a_0)
+            VOP3(vadd.i64,_a0a,_a0a,_a1b)
 
-            "vmovn.i64 %f[a0b], %[a0a]" "\n\t"
-            "vsra.s64 %[a1a], %[a0a], #28" "\n\t"
+            VOP2(vmovn.i64,_a0b_1,_a0a)
+            VOP3(vsra.s64,_a1a,_a0a,"#28")
                                                                                             
-            "vbic.i32 %[a0b], #0xf0000000" "\n\t" 
+            VOP2(vbic.i32,_a0b,"#0xf0000000") 
                                                                                             
-        "vswp %e[a1a], %f[a1a]" "\n\t"
+        VOP2(vswp,_a1a_0,_a1a_1)
                                                                                             
-            "vstmia %[c]!, {%e[a0b], %f[a0b]}" "\n\t"  
+            "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"  
             "sub %[c], #64" "\n\t"
                                                                                                 
-        "vadd.i64 %f[a1a], %f[a1a], %e[a1a]" "\n\t"
+        VOP3(vadd.i64,_a1a_1,_a1a_1,_a1a_0)
         
-            "vldmia %[c], {%e[a0a], %f[a0a], %e[a0b]}" "\n\t"
-            "vaddw.s32 %[a1a], %e[a0a]" "\n\t"
-            "vmovn.i64 %e[a0a], %[a1a]" "\n\t"
-            "vshr.s64 %[a1a], #28" "\n\t"
+            "vldmia %[c], {"_a0a_0", "_a0a_1", "_a0b_0"}" "\n\t"
+            VOP2(vaddw.s32,_a1a,_a0a_0)
+            VOP2(vmovn.i64,_a0a_0,_a1a)
+            VOP2(vshr.s64,_a1a,"#28")
                                                 
-            "vaddw.s32 %[a1a], %f[a0a]" "\n\t"
-            "vmovn.i64 %f[a0a], %[a1a]" "\n\t"
-            "vshr.s64 %[a1a], #28" "\n\t"
+            VOP2(vaddw.s32,_a1a,_a0a_1)
+            VOP2(vmovn.i64,_a0a_1,_a1a)
+            VOP2(vshr.s64,_a1a,"#28")
                                                                                                     
-            "vbic.i32 %[a0a], #0xf0000000" "\n\t"
+            VOP2(vbic.i32,_a0a,"#0xf0000000")
                                                 
-            "vaddw.s32 %[a1a], %e[a0b]" "\n\t" 
-            "vmovn.i64 %e[a0b], %[a1a]" "\n\t"
+            VOP2(vaddw.s32,_a1a,_a0b_0) 
+            VOP2(vmovn.i64,_a0b_0,_a1a)
             
-            "vstmia %[c], {%e[a0a], %f[a0a], %e[a0b]}" "\n\t"
+            "vstmia %[c], {"_a0a_0", "_a0a_1", "_a0b_0"}" "\n\t"
         
-        : [a0a]"=w"(acc0a)
-        , [a0b]"=w"(acc0b)
-        , [a1a]"=w"(acc1a)
-        , [a1b]"=w"(acc1b)
-        , [a]"+r"(as)
+        : [a]"+r"(as)
         , [b]"+r"(bs)
-        , [c]"+r"(vcasm)
-        
-        , [al0]"=w"(al0)
-        , [ah0]"=w"(ah0)
-        , [as0]"=w"(as0)
-        , [al2]"=w"(al2)
-        , [ah2]"=w"(ah2)
-        , [as2]"=w"(as2)
-        
-        , [bh0]"=w"(bh0)
-        , [bh2]"=w"(bh2)
-        
-        , [bl0]"=w"(bl0)
-        , [bl2]"=w"(bl2)
-        
-        , [bs0]"=w"(bs0)
-        , [bs2]"=w"(bs2)
+        , [c]"+r"(vc)
                             
-        :: "memory"
+        :: "q0","q1","q2","q3",
+            "q4","q5","q6","q7",
+            "q8","q9","q10","q11",
+            "q12","q13","q14","q15",
+            "memory"
     );
-    
-    /*
-    acc0b = vmull_lane_s32(       as1, bs3, 0);
-    acc0b = vmlal_lane_s32(acc0b, as2, bs2, 0);
-    acc0b = vmlal_lane_s32(acc0b, as3, bs1, 0);
-    acc0b = vmlal_lane_s32(acc0b, as0, bh0, 0);
-    
-    acc1b = vmull_lane_s32(       as1, bs3, 1);
-    acc1b = vmlal_lane_s32(acc1b, as2, bs2, 1);
-    acc1b = vmlal_lane_s32(acc1b, as3, bs1, 1);
-    acc1b = vmlal_lane_s32(acc1b, as0, bh0, 1);
-    
-    acc0a = acc0b;
-    acc0a = vmlal_lane_s32(acc0a, ah1, bh3, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah2, bh2, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah3, bh1, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah0, bl0, 0);
-    
-    acc1a = acc1b;
-    acc1a = vmlal_lane_s32(acc1a, ah1, bh3, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah2, bh2, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah3, bh1, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah0, bl0, 1);
-    
-    acc0b = vmlsl_lane_s32(acc0b, al1, bl3, 0);
-    acc0b = vmlsl_lane_s32(acc0b, al2, bl2, 0);
-    acc0b = vmlsl_lane_s32(acc0b, al3, bl1, 0);
-    acc0b = vmlal_lane_s32(acc0b, al0, bs0, 0);
-    
-    acc1b = vmlsl_lane_s32(acc1b, al1, bl3, 1);
-    acc1b = vmlsl_lane_s32(acc1b, al2, bl2, 1);
-    acc1b = vmlsl_lane_s32(acc1b, al3, bl1, 1);
-    acc1b = vmlal_lane_s32(acc1b, al0, bs0, 1);
-    
-    xx_vtrnq_s64(&acc0b, &acc0a);
-    xx_vtrnq_s64(&acc1b, &acc1a);
-    
-    acc0a += acc1b;
-    vc[0] = vmovn_s64(acc0b) & vmask;
-    
-    acc0a = vsraq_n_s64(acc0a,acc0b,28);
-    vc[1] = vmovn_s64(acc0a) & vmask;
-    bs1 = bl1 - bh1;
-    carry = vsraq_n_s64(acc1a,acc0a,28);
-
-    
-    acc0b = vmull_lane_s32(       as2, bs3, 0);
-    acc0b = vmlal_lane_s32(acc0b, as3, bs2, 0);
-    acc0b = vmlal_lane_s32(acc0b, as0, bh1, 0);
-    acc0b = vmlal_lane_s32(acc0b, as1, bh0, 0);
-    
-    acc1b = vmull_lane_s32(       as2, bs3, 1);
-    acc1b = vmlal_lane_s32(acc1b, as3, bs2, 1);
-    acc1b = vmlal_lane_s32(acc1b, as0, bh1, 1);
-    acc1b = vmlal_lane_s32(acc1b, as1, bh0, 1);
-    
-    //acc0a = acc0b;
-    acc0a = vcombine_s64(vget_low_s64(acc0b) + vget_high_s64(carry), vget_high_s64(acc0b));
-    acc0b = vcombine_s64(vget_low_s64(acc0b) + vget_low_s64(carry), vget_high_s64(acc0b));
-    acc0a = vmlal_lane_s32(acc0a, ah2, bh3, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah3, bh2, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah0, bl1, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah1, bl0, 0);
-    
-    acc1a = acc1b;
-    acc1a = vmlal_lane_s32(acc1a, ah2, bh3, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah3, bh2, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah0, bl1, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah1, bl0, 1);
-    
-    acc0b = vmlsl_lane_s32(acc0b, al2, bl3, 0);
-    acc0b = vmlsl_lane_s32(acc0b, al3, bl2, 0);
-    acc0b = vmlal_lane_s32(acc0b, al0, bs1, 0);
-    acc0b = vmlal_lane_s32(acc0b, al1, bs0, 0);
-    
-    acc1b = vmlsl_lane_s32(acc1b, al2, bl3, 1);
-    acc1b = vmlsl_lane_s32(acc1b, al3, bl2, 1);
-    acc1b = vmlal_lane_s32(acc1b, al0, bs1, 1);
-    acc1b = vmlal_lane_s32(acc1b, al1, bs0, 1);
-    
-    xx_vtrnq_s64(&acc0b, &acc0a);
-    xx_vtrnq_s64(&acc1b, &acc1a);
-    //acc0b += carry;
-    
-    acc0a += acc1b;
-    acc0a = vsraq_n_s64(acc0a,acc0b,28);
-    
-    vc[2] = vmovn_s64(acc0b) & vmask;
-    vc[3] = vmovn_s64(acc0a) & vmask;
-    carry = vsraq_n_s64(acc1a,acc0a,28);
-
-    bs2 = bl2 - bh2;
-    
-    acc0b = vmull_lane_s32(       as0, bh2, 0);
-    acc0b = vmlal_lane_s32(acc0b, as1, bh1, 0);
-    acc0b = vmlal_lane_s32(acc0b, as2, bh0, 0);
-    acc0b = vmlal_lane_s32(acc0b, as3, bs3, 0);
-    
-    acc1b = vmull_lane_s32(       as0, bh2, 1);
-    acc1b = vmlal_lane_s32(acc1b, as1, bh1, 1);
-    acc1b = vmlal_lane_s32(acc1b, as2, bh0, 1);
-    acc1b = vmlal_lane_s32(acc1b, as3, bs3, 1);
-    
-    //acc0a = acc0b;
-    acc0a = vcombine_s64(vget_low_s64(acc0b) + vget_high_s64(acc1a), vget_high_s64(acc0b));
-    acc0b = vcombine_s64(vget_low_s64(acc0b) + vget_low_s64(acc1a), vget_high_s64(acc0b));
-    acc0a = vmlal_lane_s32(acc0a, ah3, bh3, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah0, bl2, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah1, bl1, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah2, bl0, 0);
-    
-    acc1a = acc1b;
-    acc1a = vmlal_lane_s32(acc1a, ah3, bh3, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah0, bl2, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah1, bl1, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah2, bl0, 1);
-    
-    acc0b = vmlsl_lane_s32(acc0b, al3, bl3, 0);
-    acc0b = vmlal_lane_s32(acc0b, al0, bs2, 0);
-    acc0b = vmlal_lane_s32(acc0b, al1, bs1, 0);
-    acc0b = vmlal_lane_s32(acc0b, al2, bs0, 0);
-    
-    acc1b = vmlsl_lane_s32(acc1b, al3, bl3, 1);
-    acc1b = vmlal_lane_s32(acc1b, al0, bs2, 1);
-    acc1b = vmlal_lane_s32(acc1b, al1, bs1, 1);
-    acc1b = vmlal_lane_s32(acc1b, al2, bs0, 1);
-    
-
-    __asm__ __volatile__ ("vswp %f0, %e1" : "+w"(acc0b), "+w"(acc0a));
-    __asm__ __volatile__ ("vswp %f0, %e1" : "+w"(acc1b), "+w"(acc1a));
-    //xx_vtrnq_s64_(acc0b, acc0a);
-    //xx_vtrnq_s64_(acc1b, acc1a);
-    
-    //acc0b += acc1a;
-    acc0a += acc1b;
-    acc0a = vsraq_n_s64(acc0a,acc0b,28);
-    
-    
-    vc[4] = vmovn_s64(acc0b) & vmask;
-    vc[5] = vmovn_s64(acc0a) & vmask;
-    
-    bs3 = bl3 - bh3;
-    acc1a = vsraq_n_s64(acc1a,acc0a,28);
-    
-    
-    acc0b = vmull_lane_s32(       as0, bh3, 0);
-    acc0b = vmlal_lane_s32(acc0b, as1, bh2, 0);
-    acc0b = vmlal_lane_s32(acc0b, as2, bh1, 0);
-    acc0b = vmlal_lane_s32(acc0b, as3, bh0, 0);
-    
-    acc1b = vmull_lane_s32(       as0, bh3, 1);
-    acc1b = vmlal_lane_s32(acc1b, as1, bh2, 1);
-    acc1b = vmlal_lane_s32(acc1b, as2, bh1, 1);
-    acc1b = vmlal_lane_s32(acc1b, as3, bh0, 1);
-    
-    //acc0a = acc0b;
-    acc0a = vcombine_s64(vget_low_s64(acc0b) + vget_high_s64(acc1a), vget_high_s64(acc0b));
-    acc0b = vcombine_s64(vget_low_s64(acc0b) + vget_low_s64(acc1a), vget_high_s64(acc0b));
-    acc0a = vmlal_lane_s32(acc0a, ah0, bl3, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah1, bl2, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah2, bl1, 0);
-    acc0a = vmlal_lane_s32(acc0a, ah3, bl0, 0);
-    
-    acc1a = acc1b;
-    acc1a = vmlal_lane_s32(acc1a, ah0, bl3, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah1, bl2, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah2, bl1, 1);
-    acc1a = vmlal_lane_s32(acc1a, ah3, bl0, 1);
-    
-    acc0b = vmlal_lane_s32(acc0b, al0, bs3, 0);
-    acc0b = vmlal_lane_s32(acc0b, al1, bs2, 0);
-    acc0b = vmlal_lane_s32(acc0b, al2, bs1, 0);
-    acc0b = vmlal_lane_s32(acc0b, al3, bs0, 0);
-    
-    acc1b = vmlal_lane_s32(acc1b, al0, bs3, 1);
-    acc1b = vmlal_lane_s32(acc1b, al1, bs2, 1);
-    acc1b = vmlal_lane_s32(acc1b, al2, bs1, 1);
-    acc1b = vmlal_lane_s32(acc1b, al3, bs0, 1);
-
-    __asm__ __volatile__ ("vswp %f0, %e1" : "+w"(acc0b), "+w"(acc0a));
-    __asm__ __volatile__ ("vswp %f0, %e1" : "+w"(acc1b), "+w"(acc1a));
-    //xx_vtrnq_s64_(acc0b, acc0a);
-    //xx_vtrnq_s64_(acc1b, acc1a);
-    //acc0b += acc1a;
-    acc0a += acc1b;
-    
-    acc0a = vsraq_n_s64(acc0a,acc0b,28);
-    
-    vc[6] = vmovn_s64(acc0b) & vmask;
-    vc[7] = vmovn_s64(acc0a) & vmask;
-    
-    acc1a = vsraq_n_s64(acc1a,acc0a,28);
-    
-    acc1a = xx_vaddup_s64(vrev128_s64(acc1a));
-    
-    acc1a = vaddw_s32(acc1a, vc[0]);
-    vc[0] = vmovn_s64(acc1a) & vmask;
-    
-    acc1a = vshrq_n_s64(acc1a,28);
-    acc1a = vaddw_s32(acc1a, vc[1]);
-    vc[1] = vmovn_s64(acc1a) & vmask;
-    
-    acc1a = vshrq_n_s64(acc1a,28);
-    vc[2] += vmovn_s64(acc1a);;
-    */
 }
 
 void
@@ -592,414 +372,200 @@ p448_sqr (
     p448_t *__restrict__ cs,
     const p448_t *bs
 ) {
-    const p448_t *as = bs;
-    register int32x4_t as0 __asm__("q6");
-    register int32x4_t as2 __asm__("q7");
-    
-    register int32x4_t bl0 __asm__("q0");
-    register int32x4_t bh0 __asm__("q1");
-    register int32x4_t bs0 __asm__("q2");
-    register int32x4_t bl2 __asm__("q3");
-    register int32x4_t bh2 __asm__("q4");
-    register int32x4_t bs2 __asm__("q5");
+    int32x2_t *vc = (int32x2_t*) cs->limb;
 
-    int32x2_t *vc = (int32x2_t*) cs->limb, *vcasm = vc;
-
-    register int64x2_t acc0a __asm__("q12");
-    register int64x2_t acc0b __asm__("q13");
-    register int64x2_t acc1a __asm__("q14");
-    register int64x2_t acc1b __asm__("q15");
-    
     __asm__ __volatile__ (
-        "vld2.32 {%e[bl0],%f[bl0],%e[bh0],%f[bh0]}, [%[b],:128]!" "\n\t"
-        "vadd.i32 %f[bs0], %f[bl0], %f[bh0]" "\n\t"
-        "vsub.i32 %e[bs0], %e[bl0], %e[bh0]" "\n\t"
-        "vadd.i32 %[as0], %[bl0], %[bh0]" "\n\t"
+        "vld2.32 {"_bl0_0","_bl0_1","_bh0_0","_bh0_1"}, [%[b],:128]!" "\n\t"
+        VOP3(vadd.i32,_bs0_1,_bl0_1,_bh0_1)
+        VOP3(vsub.i32,_bs0_0,_bl0_0,_bh0_0)
+        VOP3(vadd.i32,_as0,_bl0,_bh0)
             
-        "vld2.32 {%e[bl2],%f[bl2],%e[bh2],%f[bh2]}, [%[b],:128]!" "\n\t"
-        "vadd.i32 %[bs2], %[bl2], %[bh2]" "\n\t"
-        "vmov %[as2], %[bs2]" "\n\t"
+        "vld2.32 {"_bl2_0","_bl2_1","_bh2_0","_bh2_1"}, [%[b],:128]!" "\n\t"
+        VOP3(vadd.i32,_bs2,_bl2,_bh2)
+        VOP2(vmov,_as2,_bs2)
         
-        "vqdmull.s32 %[a0b], %f[as0], %f[bs2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[as2], %e[bs2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[as0], %e[bh0][0]" "\n\t"
+        VMAC(vqdmull.s32,_a0b,_as0_1,_bs2_1,0)
+        VMAC(vmlal.s32,_a0b,_as2_0,_bs2_0,0)
+        VMAC(vmlal.s32,_a0b,_as0_0,_bh0_0,0)
             
-        "vqdmull.s32 %[a1b], %f[as0], %f[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[as2], %e[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[as0], %e[bh0][1]" "\n\t"
+        VMAC(vqdmull.s32,_a1b,_as0_1,_bs2_1,1)
+        VMAC(vmlal.s32,_a1b,_as2_0,_bs2_0,1)
+        VMAC(vmlal.s32,_a1b,_as0_0,_bh0_0,1)
             
-        "vmov %[a0a], %[a0b]" "\n\t"
-        "vqdmlal.s32 %[a0a], %f[bh0], %f[bh2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %e[bh2], %e[bh2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %e[bh0], %e[bl0][0]" "\n\t"
+        VOP2(vmov,_a0a,_a0b)
+        VMAC(vqdmlal.s32,_a0a,_bh0_1,_bh2_1,0)
+        VMAC(vmlal.s32,_a0a,_bh2_0,_bh2_0,0)
+        VMAC(vmlal.s32,_a0a,_bh0_0,_bl0_0,0)
             
-        "vqdmlsl.s32 %[a0b], %f[bl0], %f[bl2][0]" "\n\t"
-        "vmlsl.s32 %[a0b], %e[bl2], %e[bl2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %e[bl0], %e[bs0][0]" "\n\t"
+        VMAC(vqdmlsl.s32,_a0b,_bl0_1,_bl2_1,0)
+        VMAC(vmlsl.s32,_a0b,_bl2_0,_bl2_0,0)
+        VMAC(vmlal.s32,_a0b,_bl0_0,_bs0_0,0)
             
-        "vmov %[a1a], %[a1b]" "\n\t"
-        "vqdmlal.s32 %[a1a], %f[bh0], %f[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %e[bh2], %e[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %e[bh0], %e[bl0][1]" "\n\t"
+        VOP2(vmov,_a1a,_a1b)
+        VMAC(vqdmlal.s32,_a1a,_bh0_1,_bh2_1,1)
+        VMAC(vmlal.s32,_a1a,_bh2_0,_bh2_0,1)
+        VMAC(vmlal.s32,_a1a,_bh0_0,_bl0_0,1)
             
-            "vswp %f[a0b], %e[a0a]" "\n\t"
+            VOP2(vswp,_a0b_1,_a0a_0)
             
-        "vqdmlsl.s32 %[a1b], %f[bl0], %f[bl2][1]" "\n\t"
-        "vmlsl.s32 %[a1b], %e[bl2], %e[bl2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %e[bl0], %e[bs0][1]" "\n\t"
+        VMAC(vqdmlsl.s32,_a1b,_bl0_1,_bl2_1,1)
+        VMAC(vmlsl.s32,_a1b,_bl2_0,_bl2_0,1)
+        VMAC(vmlal.s32,_a1b,_bl0_0,_bs0_0,1)
                 
-            "vsra.s64 %[a0a], %[a0b], #28" "\n\t"
-            "vsub.i32 %f[bs0], %f[bl0], %f[bh0]" "\n\t"
-            "vmovn.i64 %e[a0b], %[a0b]" "\n\t"
+            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsub.i32,_bs0_1,_bl0_1,_bh0_1)
+            VOP2(vmovn.i64,_a0b_0,_a0b)
                 
-            "vswp %f[a1b], %e[a1a]" "\n\t"
-            "vadd.i64 %[a1b], %[a0a], %[a1b]" "\n\t"
+            VOP2(vswp,_a1b_1,_a1a_0)
+            VOP3(vadd.i64,_a1b,_a0a,_a1b)
                     
                     
-        "vqdmull.s32 %[a0a], %e[as2], %f[bs2][0]" "\n\t"
-            "vmovn.i64 %f[a0b], %[a1b]" "\n\t"
-            "vsra.s64 %[a1a], %[a1b], #28" "\n\t"
-        "vqdmlal.s32 %[a0a], %e[as0], %f[bh0][0]" "\n\t"
-            "vbic.i32 %[a0b], #0xf0000000" "\n\t"
-            "vstmia %[c]!, {%e[a0b], %f[a0b]}" "\n\t"
+        VMAC(vqdmull.s32,_a0a,_as2_0,_bs2_1,0)
+            VOP2(vmovn.i64,_a0b_1,_a1b)
+            VOP3(vsra.s64,_a1a,_a1b,"#28")
+        VMAC(vqdmlal.s32,_a0a,_as0_0,_bh0_1,0)
+            VOP2(vbic.i32,_a0b,"#0xf0000000")
+            "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
                     
-        "vqdmull.s32 %[a1b], %e[as2], %f[bs2][1]" "\n\t"
-        "vqdmlal.s32 %[a1b], %e[as0], %f[bh0][1]" "\n\t"
+        VMAC(vqdmull.s32,_a1b,_as2_0,_bs2_1,1)
+        VMAC(vqdmlal.s32,_a1b,_as0_0,_bh0_1,1)
 
-        "vmov %f[a0b], %f[a0a]" "\n\t"
-        "vadd.i64 %e[a0b], %e[a0a], %e[a1a]" "\n\t"
-        "vadd.i64 %e[a0a], %e[a0a], %f[a1a]" "\n\t"
-        "vqdmlal.s32 %[a0a], %e[bh2], %f[bh2][0]" "\n\t"
-        "vqdmlal.s32 %[a0a], %e[bh0], %f[bl0][0]" "\n\t"
+        VOP2(vmov,_a0b_1,_a0a_1)
+        VOP3(vadd.i64,_a0b_0,_a0a_0,_a1a_0)
+        VOP3(vadd.i64,_a0a_0,_a0a_0,_a1a_1)
+        VMAC(vqdmlal.s32,_a0a,_bh2_0,_bh2_1,0)
+        VMAC(vqdmlal.s32,_a0a,_bh0_0,_bl0_1,0)
 
-        "vqdmlsl.s32 %[a0b], %e[bl2], %f[bl2][0]" "\n\t"
-        "vqdmlal.s32 %[a0b], %e[bl0], %f[bs0][0]" "\n\t"
+        VMAC(vqdmlsl.s32,_a0b,_bl2_0,_bl2_1,0)
+        VMAC(vqdmlal.s32,_a0b,_bl0_0,_bs0_1,0)
 
-        "vmov %[a1a], %[a1b]" "\n\t"
-        "vqdmlal.s32 %[a1a], %e[bh2], %f[bh2][1]" "\n\t"
-        "vqdmlal.s32 %[a1a], %e[bh0], %f[bl0][1]" "\n\t"
+        VOP2(vmov,_a1a,_a1b)
+        VMAC(vqdmlal.s32,_a1a,_bh2_0,_bh2_1,1)
+        VMAC(vqdmlal.s32,_a1a,_bh0_0,_bl0_1,1)
 
-            "vswp %f[a0b], %e[a0a]" "\n\t"
+            VOP2(vswp,_a0b_1,_a0a_0)
 
-        "vqdmlsl.s32 %[a1b], %e[bl2], %f[bl2][1]" "\n\t"
-        "vqdmlal.s32 %[a1b], %e[bl0], %f[bs0][1]" "\n\t"
+        VMAC(vqdmlsl.s32,_a1b,_bl2_0,_bl2_1,1)
+        VMAC(vqdmlal.s32,_a1b,_bl0_0,_bs0_1,1)
                                         
-            "vsra.s64 %[a0a], %[a0b], #28" "\n\t"
-            "vsub.i32 %e[bs2], %e[bl2], %e[bh2]" "\n\t"
-            "vmovn.i64 %e[a0b], %[a0b]" "\n\t"
+            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsub.i32,_bs2_0,_bl2_0,_bh2_0)
+            VOP2(vmovn.i64,_a0b_0,_a0b)
                         
-            "vswp %f[a1b], %e[a1a]" "\n\t"
-            "vadd.i64 %[a1b], %[a0a], %[a1b]" "\n\t"
+            VOP2(vswp,_a1b_1,_a1a_0)
+            VOP3(vadd.i64,_a1b,_a0a,_a1b)
 
-        "vmull.s32 %[a0a], %f[as2], %f[bs2][0]" "\n\t"
-            "vmovn.i64 %f[a0b], %[a1b]" "\n\t"
-        "vqdmlal.s32 %[a0a], %e[as0], %e[bh2][0]" "\n\t"
-            "vsra.s64 %[a1a], %[a1b], #28" "\n\t"
-        "vmlal.s32 %[a0a], %f[as0], %f[bh0][0]" "\n\t"
-            "vbic.i32 %[a0b], #0xf0000000" "\n\t"
-            "vstmia %[c]!, {%e[a0b], %f[a0b]}" "\n\t"
+        VMAC(vmull.s32,_a0a,_as2_1,_bs2_1,0)
+            VOP2(vmovn.i64,_a0b_1,_a1b)
+        VMAC(vqdmlal.s32,_a0a,_as0_0,_bh2_0,0)
+            VOP3(vsra.s64,_a1a,_a1b,"#28")
+        VMAC(vmlal.s32,_a0a,_as0_1,_bh0_1,0)
+            VOP2(vbic.i32,_a0b,"#0xf0000000")
+            "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
 
-        "vmull.s32 %[a1b], %f[as2], %f[bs2][1]" "\n\t"
-        "vqdmlal.s32 %[a1b], %e[as0], %e[bh2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[as0], %f[bh0][1]" "\n\t"
+        VMAC(vmull.s32,_a1b,_as2_1,_bs2_1,1)
+        VMAC(vqdmlal.s32,_a1b,_as0_0,_bh2_0,1)
+        VMAC(vmlal.s32,_a1b,_as0_1,_bh0_1,1)
 
-        "vmov %f[a0b], %f[a0a]" "\n\t"
-        "vadd.i64 %e[a0b], %e[a0a], %e[a1a]" "\n\t"
-        "vadd.i64 %e[a0a], %e[a0a], %f[a1a]" "\n\t"
-        "vmlal.s32 %[a0a], %f[bh2], %f[bh2][0]" "\n\t"
-        "vqdmlal.s32 %[a0a], %e[bh0], %e[bl2][0]" "\n\t"
-        "vmlal.s32 %[a0a], %f[bh0], %f[bl0][0]" "\n\t"
+        VOP2(vmov,_a0b_1,_a0a_1)
+        VOP3(vadd.i64,_a0b_0,_a0a_0,_a1a_0)
+        VOP3(vadd.i64,_a0a_0,_a0a_0,_a1a_1)
+        VMAC(vmlal.s32,_a0a,_bh2_1,_bh2_1,0)
+        VMAC(vqdmlal.s32,_a0a,_bh0_0,_bl2_0,0)
+        VMAC(vmlal.s32,_a0a,_bh0_1,_bl0_1,0)
 
-        "vmlsl.s32 %[a0b], %f[bl2], %f[bl2][0]" "\n\t"
-        "vqdmlal.s32 %[a0b], %e[bl0], %e[bs2][0]" "\n\t"
-        "vmlal.s32 %[a0b], %f[bl0], %f[bs0][0]" "\n\t"
+        VMAC(vmlsl.s32,_a0b,_bl2_1,_bl2_1,0)
+        VMAC(vqdmlal.s32,_a0b,_bl0_0,_bs2_0,0)
+        VMAC(vmlal.s32,_a0b,_bl0_1,_bs0_1,0)
 
-        "vmov %[a1a], %[a1b]" "\n\t"
-        "vmlal.s32 %[a1a], %f[bh2], %f[bh2][1]" "\n\t"
-        "vqdmlal.s32 %[a1a], %e[bh0], %e[bl2][1]" "\n\t"
-        "vmlal.s32 %[a1a], %f[bh0], %f[bl0][1]" "\n\t"
+        VOP2(vmov,_a1a,_a1b)
+        VMAC(vmlal.s32,_a1a,_bh2_1,_bh2_1,1)
+        VMAC(vqdmlal.s32,_a1a,_bh0_0,_bl2_0,1)
+        VMAC(vmlal.s32,_a1a,_bh0_1,_bl0_1,1)
 
-            "vswp %f[a0b], %e[a0a]" "\n\t"
+            VOP2(vswp,_a0b_1,_a0a_0)
 
-        "vmlsl.s32 %[a1b], %f[bl2], %f[bl2][1]" "\n\t"
-        "vqdmlal.s32 %[a1b], %e[bl0], %e[bs2][1]" "\n\t"
-        "vmlal.s32 %[a1b], %f[bl0], %f[bs0][1]" "\n\t"
+        VMAC(vmlsl.s32,_a1b,_bl2_1,_bl2_1,1)
+        VMAC(vqdmlal.s32,_a1b,_bl0_0,_bs2_0,1)
+        VMAC(vmlal.s32,_a1b,_bl0_1,_bs0_1,1)
                                                                 
-            "vsub.i32 %f[bs2], %f[bl2], %f[bh2]" "\n\t"
-            "vsra.s64 %[a0a], %[a0b], #28" "\n\t"
-            "vmovn.i64 %e[a0b], %[a0b]" "\n\t"
+            VOP3(vsub.i32,_bs2_1,_bl2_1,_bh2_1)
+            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP2(vmovn.i64,_a0b_0,_a0b)
                         
-            "vswp %f[a1b], %e[a1a]" "\n\t"
-            "vadd.i64 %[a1b], %[a0a], %[a1b]" "\n\t"
+            VOP2(vswp,_a1b_1,_a1a_0)
+            VOP3(vadd.i64,_a1b,_a0a,_a1b)
 
-        "vqdmull.s32 %[a0a], %e[as0], %f[bh2][0]" "\n\t"
-            "vmovn.i64 %f[a0b], %[a1b]" "\n\t"
-            "vsra.s64 %[a1a], %[a1b], #28" "\n\t"
-        "vqdmlal.s32 %[a0a], %e[as2], %f[bh0][0]" "\n\t"
-            "vbic.i32 %[a0b], #0xf0000000" "\n\t"
-            "vstmia %[c]!, {%e[a0b], %f[a0b]}" "\n\t"
+        VMAC(vqdmull.s32,_a0a,_as0_0,_bh2_1,0)
+            VOP2(vmovn.i64,_a0b_1,_a1b)
+            VOP3(vsra.s64,_a1a,_a1b,"#28")
+        VMAC(vqdmlal.s32,_a0a,_as2_0,_bh0_1,0)
+            VOP2(vbic.i32,_a0b,"#0xf0000000")
+            "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
 
-        "vqdmull.s32 %[a1b], %e[as0], %f[bh2][1]" "\n\t"
-        "vqdmlal.s32 %[a1b], %e[as2], %f[bh0][1]" "\n\t"
+        VMAC(vqdmull.s32,_a1b,_as0_0,_bh2_1,1)
+        VMAC(vqdmlal.s32,_a1b,_as2_0,_bh0_1,1)
 
-        "vmov %f[a0b], %f[a0a]" "\n\t"
-        "vadd.i64 %e[a0b], %e[a0a], %e[a1a]" "\n\t"
-        "vadd.i64 %e[a0a], %e[a0a], %f[a1a]" "\n\t"
-        "vqdmlal.s32 %[a0a], %e[bh0], %f[bl2][0]" "\n\t"
-        "vqdmlal.s32 %[a0a], %e[bh2], %f[bl0][0]" "\n\t"
+        VOP2(vmov,_a0b_1,_a0a_1)
+        VOP3(vadd.i64,_a0b_0,_a0a_0,_a1a_0)
+        VOP3(vadd.i64,_a0a_0,_a0a_0,_a1a_1)
+        VMAC(vqdmlal.s32,_a0a,_bh0_0,_bl2_1,0)
+        VMAC(vqdmlal.s32,_a0a,_bh2_0,_bl0_1,0)
 
-        "vqdmlal.s32 %[a0b], %e[bl0], %f[bs2][0]" "\n\t"
-        "vqdmlal.s32 %[a0b], %e[bl2], %f[bs0][0]" "\n\t"
+        VMAC(vqdmlal.s32,_a0b,_bl0_0,_bs2_1,0)
+        VMAC(vqdmlal.s32,_a0b,_bl2_0,_bs0_1,0)
 
-        "vmov %[a1a], %[a1b]" "\n\t"
-        "vqdmlal.s32 %[a1a], %e[bh0], %f[bl2][1]" "\n\t"
-        "vqdmlal.s32 %[a1a], %e[bh2], %f[bl0][1]" "\n\t"
+        VOP2(vmov,_a1a,_a1b)
+        VMAC(vqdmlal.s32,_a1a,_bh0_0,_bl2_1,1)
+        VMAC(vqdmlal.s32,_a1a,_bh2_0,_bl0_1,1)
 
-            "vswp %f[a0b], %e[a0a]" "\n\t"
+            VOP2(vswp,_a0b_1,_a0a_0)
 
-        "vqdmlal.s32 %[a1b], %e[bl0], %f[bs2][1]" "\n\t"
-        "vqdmlal.s32 %[a1b], %e[bl2], %f[bs0][1]" "\n\t"
+        VMAC(vqdmlal.s32,_a1b,_bl0_0,_bs2_1,1)
+        VMAC(vqdmlal.s32,_a1b,_bl2_0,_bs0_1,1)
                         
-            "vsra.s64 %[a0a], %[a0b], #28" "\n\t"
-            "vmovn.i64 %e[a0b], %[a0b]" "\n\t"
+            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP2(vmovn.i64,_a0b_0,_a0b)
                                                                                             
-            "vswp %f[a1b], %e[a1a]" "\n\t"
-            "vadd.i64 %[a0a], %[a0a], %[a1b]" "\n\t"
+            VOP2(vswp,_a1b_1,_a1a_0)
+            VOP3(vadd.i64,_a0a,_a0a,_a1b)
 
-            "vmovn.i64 %f[a0b], %[a0a]" "\n\t"
-            "vsra.s64 %[a1a], %[a0a], #28" "\n\t"
+            VOP2(vmovn.i64,_a0b_1,_a0a)
+            VOP3(vsra.s64,_a1a,_a0a,"#28")
                                                                                             
-            "vbic.i32 %[a0b], #0xf0000000" "\n\t" 
+            VOP2(vbic.i32,_a0b,"#0xf0000000") 
                                                                                             
-        "vswp %e[a1a], %f[a1a]" "\n\t"
+        VOP2(vswp,_a1a_0,_a1a_1)
                                                                                             
-            "vstmia %[c]!, {%e[a0b], %f[a0b]}" "\n\t"  
+            "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"  
             "sub %[c], #64" "\n\t"
                                                                                                 
-        "vadd.i64 %f[a1a], %f[a1a], %e[a1a]" "\n\t"
+        VOP3(vadd.i64,_a1a_1,_a1a_1,_a1a_0)
         
-            "vldmia %[c], {%e[a0a], %f[a0a], %e[a0b]}" "\n\t"
-            "vaddw.s32 %[a1a], %e[a0a]" "\n\t"
-            "vmovn.i64 %e[a0a], %[a1a]" "\n\t"
-            "vshr.s64 %[a1a], #28" "\n\t"
+            "vldmia %[c], {"_a0a_0", "_a0a_1", "_a0b_0"}" "\n\t"
+            VOP2(vaddw.s32,_a1a,_a0a_0)
+            VOP2(vmovn.i64,_a0a_0,_a1a)
+            VOP2(vshr.s64,_a1a,"#28")
                                                 
-            "vaddw.s32 %[a1a], %f[a0a]" "\n\t"
-            "vmovn.i64 %f[a0a], %[a1a]" "\n\t"
-            "vshr.s64 %[a1a], #28" "\n\t"
+            VOP2(vaddw.s32,_a1a,_a0a_1)
+            VOP2(vmovn.i64,_a0a_1,_a1a)
+            VOP2(vshr.s64,_a1a,"#28")
                                                                                                     
-            "vbic.i32 %[a0a], #0xf0000000" "\n\t"
+            VOP2(vbic.i32,_a0a,"#0xf0000000")
                                                 
-            "vaddw.s32 %[a1a], %e[a0b]" "\n\t" 
-            "vmovn.i64 %e[a0b], %[a1a]" "\n\t"
+            VOP2(vaddw.s32,_a1a,_a0b_0) 
+            VOP2(vmovn.i64,_a0b_0,_a1a)
             
-            "vstmia %[c], {%e[a0a], %f[a0a], %e[a0b]}" "\n\t"
+            "vstmia %[c], {"_a0a_0", "_a0a_1", "_a0b_0"}" "\n\t"
         
-        : [a0a]"=w"(acc0a)
-        , [a0b]"=w"(acc0b)
-        , [a1a]"=w"(acc1a)
-        , [a1b]"=w"(acc1b)
-        , [a]"+r"(as)
-        , [b]"+r"(bs)
-        , [c]"+r"(vcasm)
-        
-        , [as0]"=w"(as0)
-        , [as2]"=w"(as2)
-        
-        , [bh0]"=w"(bh0)
-        , [bh2]"=w"(bh2)
-        
-        , [bl0]"=w"(bl0)
-        , [bl2]"=w"(bl2)
-        
-        , [bs0]"=w"(bs0)
-        , [bs2]"=w"(bs2)
+        : [b]"+r"(bs)
+        , [c]"+r"(vc)
                             
-        :: "memory"
+        :: "q0","q1","q2","q3",
+            "q4","q5","q6","q7",
+            "q12","q13","q14","q15",
+            "memory"
     );
-    
-    
-    /*
-    const int32x2x2_t b0 = vld2_s32((const int32_t *) &bs->limb[0]);
-    const int32x2x2_t b1 = vld2_s32((const int32_t *) &bs->limb[4]);
-    const int32x2x2_t b2 = vld2_s32((const int32_t *) &bs->limb[8]);
-    const int32x2x2_t b3 = vld2_s32((const int32_t *) &bs->limb[12]);
-    const int32x2_t vbl[4] = { b0.val[0],  b1.val[0],  b2.val[0],  b3.val[0] };
-    const int32x2_t vbh[4] = { b0.val[1],  b1.val[1],  b2.val[1],  b3.val[1] };
-    int32x2_t vbm[4];
-    
-    int i;
-    for (i=0; i<4; i++) {
-        vbm[i] = vbl[i] - vbh[i];
-    }
-
-    int32x2_t *vc = (int32x2_t*) cs->limb;
-    */
-    
-    /* FUTURE possible improvements:
-     *    don't use nega-phi algorithm, so as to avoid extra phi-twiddle at end
-     *        or use phi/nega-phi for everything, montgomery style
-     *        or find some sort of phi algorithm which doesn't have this problem
-     *    break up lanemuls so that only diags get 1mul'd instead of diag 2x2 blocks
-     *
-     * These improvements are all pretty minor, but I guess together they might matter?
-     */
-    
-
-        
-    /*
-    int32x2_t vmask = {(1<<28) - 1, (1<<28)-1};
-
-    int64x2_t acc0a, acc0b;
-    int64x2_t acc1a, acc1b;
-    int64x2_t acc2a, acc2b;
-    int64x2_t acc3a, acc3b;
-    int64x2_t acc4a, acc4b;
-    int64x2_t acc5a, acc5b;
-    int64x2_t acc6a, acc6b;
-    int64x2_t acc7a, acc7b;
-    int64x2_t carry;
-    
-    acc0a = vqdmull_lane_s32(          vbh[1], vbh[3], 0);
-    acc1a = vqdmull_lane_s32(          vbh[1], vbh[3], 1);
-    acc2a = vqdmull_lane_s32(          vbh[2], vbh[3], 0);
-    acc3a = vqdmull_lane_s32(          vbh[2], vbh[3], 1);
-    acc0a =   vmlal_lane_s32(acc0a, vbh[2], vbh[2], 0);
-    acc1a =   vmlal_lane_s32(acc1a, vbh[2], vbh[2], 1);
-    acc2b = acc2a;
-    acc3b = acc3a;
-    acc2b = vqdmlal_lane_s32(acc2b, vbh[0], vbh[1], 0);
-    acc3b = vqdmlal_lane_s32(acc3b, vbh[0], vbh[1], 1);
-    acc0b = acc0a;
-    acc1b = acc1a;
-    acc0b =   vmlal_lane_s32(acc0b, vbh[0], vbh[0], 0);
-    acc1b =   vmlal_lane_s32(acc1b, vbh[0], vbh[0], 1);
-    acc0b = vqdmlal_lane_s32(acc0b, vbl[1], vbl[3], 0);
-    acc1b = vqdmlal_lane_s32(acc1b, vbl[1], vbl[3], 1);
-    acc2b = vqdmlal_lane_s32(acc2b, vbl[2], vbl[3], 0);
-    acc3b = vqdmlal_lane_s32(acc3b, vbl[2], vbl[3], 1);
-    acc0b =   vmlal_lane_s32(acc0b, vbl[2], vbl[2], 0);
-    acc1b =   vmlal_lane_s32(acc1b, vbl[2], vbl[2], 1);
-    acc2a += acc2b;
-    acc3a += acc3b;
-    acc2a = vqdmlal_lane_s32(acc2a, vbl[0], vbl[1], 0);
-    acc3a = vqdmlal_lane_s32(acc3a, vbl[0], vbl[1], 1);
-    acc0a += acc0b;
-    acc1a += acc1b;
-    acc0a =   vmlal_lane_s32(acc0a, vbl[0], vbl[0], 0);
-    acc1a =   vmlal_lane_s32(acc1a, vbl[0], vbl[0], 1);
-    acc0a = vqdmlsl_lane_s32(acc0a, vbm[1], vbm[3], 0);
-    acc1a = vqdmlsl_lane_s32(acc1a, vbm[1], vbm[3], 1);
-    acc0a =   vmlsl_lane_s32(acc0a, vbm[2], vbm[2], 0);
-    acc1a =   vmlsl_lane_s32(acc1a, vbm[2], vbm[2], 1);
-    acc2a = vqdmlsl_lane_s32(acc2a, vbm[2], vbm[3], 0);
-    acc3a = vqdmlsl_lane_s32(acc3a, vbm[2], vbm[3], 1);
-    acc0b += acc0a;
-    acc1b += acc1a;
-    acc0b =   vmlsl_lane_s32(acc0b, vbm[0], vbm[0], 0);
-    acc1b =   vmlsl_lane_s32(acc1b, vbm[0], vbm[0], 1);
-    acc2b += acc2a;
-    acc3b += acc3a;
-    acc2b = vqdmlsl_lane_s32(acc2b, vbm[0], vbm[1], 0);
-    acc3b = vqdmlsl_lane_s32(acc3b, vbm[0], vbm[1], 1);
-    
-    xx_vtrnq_s64(&acc0a, &acc0b);
-    xx_vtrnq_s64(&acc1a, &acc1b);
-    xx_vtrnq_s64(&acc2a, &acc2b);
-    xx_vtrnq_s64(&acc3a, &acc3b);
-    
-    acc0b += acc1a;
-    acc0b = vsraq_n_s64(acc0b,acc0a,28);
-    acc1b = vsraq_n_s64(acc1b,acc0b,28);
-    acc2a += acc1b;
-    acc2b += acc3a;
-    acc2b = vsraq_n_s64(acc2b,acc2a,28);
-    acc3b = vsraq_n_s64(acc3b,acc2b,28);
-    
-    vc[0] = (vmovn_s64(acc0a)) & vmask;
-    vc[1] = (vmovn_s64(acc0b)) & vmask;
-    
-    vc[2] = (vmovn_s64(acc2a)) & vmask;
-    vc[3] = (vmovn_s64(acc2b)) & vmask;
-    carry = acc3b;
-    
-    acc4a =   vmull_lane_s32(          vbh[3], vbh[3], 0);
-    acc5a =   vmull_lane_s32(          vbh[3], vbh[3], 1);
-    acc6b = vqdmull_lane_s32(          vbh[0], vbh[3], 0);
-    acc7b = vqdmull_lane_s32(          vbh[0], vbh[3], 1);
-    acc4b = acc4a;
-    acc5b = acc5a;
-    acc4b = vqdmlal_lane_s32(acc4b, vbh[0], vbh[2], 0);
-    acc5b = vqdmlal_lane_s32(acc5b, vbh[0], vbh[2], 1);
-    acc6b = vqdmlal_lane_s32(acc6b, vbh[1], vbh[2], 0);
-    acc7b = vqdmlal_lane_s32(acc7b, vbh[1], vbh[2], 1);
-    acc4b =   vmlal_lane_s32(acc4b, vbh[1], vbh[1], 0);
-    acc5b =   vmlal_lane_s32(acc5b, vbh[1], vbh[1], 1);
-    acc4b =   vmlal_lane_s32(acc4b, vbl[3], vbl[3], 0);
-    acc5b =   vmlal_lane_s32(acc5b, vbl[3], vbl[3], 1);
-    acc6a = acc6b;
-    acc7a = acc7b;
-    acc6a = vqdmlal_lane_s32(acc6a, vbl[0], vbl[3], 0);
-    acc7a = vqdmlal_lane_s32(acc7a, vbl[0], vbl[3], 1);
-    acc4a += acc4b;
-    acc5a += acc5b;
-    acc4a = vqdmlal_lane_s32(acc4a, vbl[0], vbl[2], 0);
-    acc5a = vqdmlal_lane_s32(acc5a, vbl[0], vbl[2], 1);
-    acc6a = vqdmlal_lane_s32(acc6a, vbl[1], vbl[2], 0);
-    acc7a = vqdmlal_lane_s32(acc7a, vbl[1], vbl[2], 1);
-    acc4a =   vmlal_lane_s32(acc4a, vbl[1], vbl[1], 0);
-    acc5a =   vmlal_lane_s32(acc5a, vbl[1], vbl[1], 1);
-    acc4a =   vmlsl_lane_s32(acc4a, vbm[3], vbm[3], 0);
-    acc5a =   vmlsl_lane_s32(acc5a, vbm[3], vbm[3], 1);
-    acc6b += acc6a;
-    acc7b += acc7a;
-    acc6b = vqdmlsl_lane_s32(acc6b, vbm[0], vbm[3], 0);
-    acc7b = vqdmlsl_lane_s32(acc7b, vbm[0], vbm[3], 1);
-    acc4b += acc4a;
-    acc5b += acc5a;
-    acc4b = vqdmlsl_lane_s32(acc4b, vbm[0], vbm[2], 0);
-    acc5b = vqdmlsl_lane_s32(acc5b, vbm[0], vbm[2], 1);
-    acc4b =   vmlsl_lane_s32(acc4b, vbm[1], vbm[1], 0);
-    acc5b =   vmlsl_lane_s32(acc5b, vbm[1], vbm[1], 1);
-    acc6b = vqdmlsl_lane_s32(acc6b, vbm[1], vbm[2], 0);
-    acc7b = vqdmlsl_lane_s32(acc7b, vbm[1], vbm[2], 1);
-    
-    xx_vtrnq_s64(&acc4a, &acc4b);
-    xx_vtrnq_s64(&acc5a, &acc5b);
-    xx_vtrnq_s64(&acc6a, &acc6b);
-    xx_vtrnq_s64(&acc7a, &acc7b);
-    
-    acc4a += carry;
-    acc4b += acc5a;
-    acc4b = vsraq_n_s64(acc4b,acc4a,28);
-    acc5b = vsraq_n_s64(acc5b,acc4b,28);
-    acc6a += acc5b;
-    acc6b += acc7a;
-    
-    
-    vc[4] = (vmovn_s64(acc4a)) & vmask;
-    vc[5] = (vmovn_s64(acc4b)) & vmask;
-    
-    acc6b = vsraq_n_s64(acc6b,acc6a,28);
-    acc7b = vsraq_n_s64(acc7b,acc6b,28);
-    
-    vc[6] = (vmovn_s64(acc6a)) & vmask;
-    vc[7] = (vmovn_s64(acc6b)) & vmask;
-    
-    acc7a = xx_vaddup_s64(vrev128_s64(acc7b));
-
-    int32x2_t t0 = vc[0], t1 = vc[1];
-    
-    acc7a = vaddw_s32(acc7a, t0);
-    t0 = vmovn_s64(acc7a) & vmask;
-    acc7a = vshrq_n_s64(acc7a,28);
-    acc7a = vaddw_s32(acc7a, t1);
-    t1 = vmovn_s64(acc7a) & vmask;
-    vc[0] = t0;
-    vc[1] = t1;
-    acc7a = vshrq_n_s64(acc7a,28);
-
-    vc[2] += vmovn_s64(acc7a);
-    */
 }
 
 void
