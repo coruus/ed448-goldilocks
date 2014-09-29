@@ -26,7 +26,8 @@
 #include <immintrin.h>
 #endif
 
-#if (__SIZEOF_INT128__ == 16 \
+#if ((__SIZEOF_INT128__ == 16 \
+        || 10*__clang_major__ + __clang_minor <= 32) \
         && __SIZEOF_SIZE_T__ == 8 \
         && (__SIZEOF_LONG__==8 || __POINTER_WIDTH__==64) \
         && !defined(GOLDI_FORCE_32_BIT))
