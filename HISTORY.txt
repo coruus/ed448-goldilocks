@@ -1,7 +1,8 @@
 September 29, 2014:
     Yesterday I put in some more architecture detection, but it should
     really be based on the arch directory, because what's in there really
-    is a terrible hack.
+    was a terrible hack.  So I've changed it to use $arch/arch_config.h
+    to get WORD_BITS.
     
     I've tweaked the eBAT construction code to rename the architectures
     using test/batarch.map.  Maybe I should also rename them internally,
