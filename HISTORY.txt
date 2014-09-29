@@ -1,3 +1,20 @@
+September 29, 2014:
+    Yesterday I put in some more architecture detection, but it should
+    really be based on the arch directory, because what's in there really
+    is a terrible hack.
+    
+    I've tweaked the eBAT construction code to rename the architectures
+    using test/batarch.map.  Maybe I should also rename them internally,
+    but not yet.
+    
+    I added some new TODO.txt items.  Some folks have been asking for a
+    more factored library, instead of this combined arithmetic, curve code,
+    encodings and protocol all-in-one jumble.  Likewise the hash and RNG
+    should be flexible.
+    
+    I've also been meaning to put more work in on SPAKE2EE, which would
+    also mean finalizing the Elligator code.
+
 September 18, 2014:
     Begin work on a "ref" implementation.  Currently this is just the
     arch_ref64 architecture.  The ref implementation always weak_reduces

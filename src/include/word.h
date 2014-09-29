@@ -5,6 +5,8 @@
 #ifndef __WORD_H__
 #define __WORD_H__
 
+#include "arch_config.h"
+
 /* for posix_memalign */
 #define _XOPEN_SOURCE 600
 
@@ -26,18 +28,7 @@
 #include <immintrin.h>
 #endif
 
-#if ((__SIZEOF_INT128__ == 16 \
-        || 10*__clang_major__ + __clang_minor__ <= 32) \
-        && __SIZEOF_SIZE_T__ == 8 \
-        && (__SIZEOF_LONG__==8 || __POINTER_WIDTH__==64) \
-        && !defined(GOLDI_FORCE_32_BIT))
-/* It's a 64-bit machine if:
- * __uint128_t exists
- * size_t is 64 bits
- * Either longs are 64-bits (doesn't happen on Windows)
- *   or pointers are 64-bits (doesn't happen on 32/64 arches)
- * FUTURE: validate this hack on more architectures.
- */
+#if (WORD_BITS == 64)
 typedef uint32_t hword_t;
 typedef uint64_t word_t;
 typedef __uint128_t dword_t;
@@ -67,7 +58,6 @@ typedef int64_t dsword_t;
 #define GOLDI_BITS 32
 #endif
 
-#define WORD_BITS (sizeof(word_t) * 8)
 #define DIV_CEIL(_x,_y) (((_x) + (_y) - 1)/(_y))
 #define ROUND_UP(_x,_y) (DIV_CEIL((_x),(_y))*(_y))
 #define WORDS_FOR_BITS(_x) (DIV_CEIL((_x),WORD_BITS))

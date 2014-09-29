@@ -122,14 +122,15 @@ doc: Doxyfile doc/timestamp src/*.c src/include/*.h src/$(ARCH)/*.c src/$(ARCH)/
 
 bat: $(BATNAME)
 
-$(BATNAME): include/* src/* src/*/*
+$(BATNAME): include/* src/* src/*/* test/batarch.map
 	rm -fr $@
-	for arch in src/arch*; do \
+	(while read arch where; do \
 		mkdir -p $@/`basename $$arch`; \
-		cp include/* src/*.c src/include/* $$arch/* $@/`basename $$arch`; \
+		cp include/*.h src/*.c src/include/*.h src/$$where/*.c src/$$where/*.h $@/`basename $$arch`; \
 		perl -p -i -e 's/.*endif.*GOLDILOCKS_CONFIG_H/#define SUPERCOP_WONT_LET_ME_OPEN_FILES 1\n\n$$&/' $@/`basename $$arch`/config.h; \
 		perl -p -i -e 's/SYSNAME/'`basename $(BATNAME)`_`basename $$arch`'/g' $@/`basename $$arch`/api.h;  \
-		done
+		done \
+	) < test/batarch.map
 	echo 'Mike Hamburg' > $@/designers
 	echo 'Ed448-Goldilocks sign and dh' > $@/description
 	
