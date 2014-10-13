@@ -30,6 +30,8 @@ LANGFLAGS = -std=c99 -fno-strict-aliasing
 GENFLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
 OFLAGS = -O3
 
+TODAY = $(shell date "+%Y-%m-%d")
+
 ifneq (,$(findstring arm,$(MACHINE)))
 ifneq (,$(findstring neon,$(ARCH)))
 ARCHFLAGS += -mfpu=neon
@@ -68,7 +70,8 @@ TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 
 BENCHCOMPONENTS=build/bench.o
 
-BATNAME=build/ed448goldilocks
+BATBASE=ed448goldilocks-bats-$(TODAY)
+BATNAME=build/$(BATBASE)
 
 all: lib build/test build/bench
 
@@ -124,15 +127,21 @@ bat: $(BATNAME)
 
 $(BATNAME): include/* src/* src/*/* test/batarch.map
 	rm -fr $@
-	(while read arch where; do \
-		mkdir -p $@/`basename $$arch`; \
-		cp include/*.h src/*.c src/include/*.h src/$$where/*.c src/$$where/*.h $@/`basename $$arch`; \
-		perl -p -i -e 's/.*endif.*GOLDILOCKS_CONFIG_H/#define SUPERCOP_WONT_LET_ME_OPEN_FILES 1\n\n$$&/' $@/`basename $$arch`/config.h; \
-		perl -p -i -e 's/SYSNAME/'`basename $(BATNAME)`_`basename $$arch`'/g' $@/`basename $$arch`/api.h;  \
-		done \
-	) < test/batarch.map
-	echo 'Mike Hamburg' > $@/designers
-	echo 'Ed448-Goldilocks sign and dh' > $@/description
+	for prim in dh sign; do \
+          targ="$@/crypto_$$prim/ed448goldilocks"; \
+	  (while read arch where; do \
+	    mkdir -p $$targ/`basename $$arch`; \
+	    cp include/*.h src/*.c src/include/*.h src/bat/$$prim.c src/$$where/*.c src/$$where/*.h $$targ/`basename $$arch`; \
+	    cp src/bat/api_$$prim.h $$targ/`basename $$arch`/api.h; \
+	    perl -p -i -e 's/.*endif.*GOLDILOCKS_CONFIG_H/#define SUPERCOP_WONT_LET_ME_OPEN_FILES 1\n\n$$&/' $$targ/`basename $$arch`/config.h; \
+	    perl -p -i -e 's/SYSNAME/'`basename $(BATNAME)`_`basename $$arch`'/g' $$targ/`basename $$arch`/api.h;  \
+	    perl -p -i -e 's/__TODAY__/'$(TODAY)'/g' $$targ/`basename $$arch`/api.h;  \
+	    done \
+	  ) < test/batarch.map; \
+	  echo 'Mike Hamburg' > $$targ/designers; \
+	  echo 'Ed448-Goldilocks sign and dh' > $$targ/description; \
+        done
+	(cd build && tar czf $(BATBASE).tgz $(BATBASE) )
 	
 
 todo::
