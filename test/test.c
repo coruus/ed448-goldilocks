@@ -80,16 +80,16 @@ hexprint (
     printf("\n");
 }
 
-void p448_print (
+void field_print (
     const char *descr,
-    const struct p448_t *a
+    const struct field_t *a
 ) {
-    p448_t b;
-    p448_copy(&b, a);
-    p448_strong_reduce(&b);
+    field_t b;
+    field_copy(&b, a);
+    field_strong_reduce(&b);
     int j;
     printf("%s = 0x", descr);
-    for (j=sizeof(*a)/sizeof(word_t)-1; j>=0; j--) {
+    for (j=FIELD_WORDS - 1; j>=0; j--) {
         printf(PRIxWORD58, b.limb[LIMBPERM(j)]);
     }
     printf("\n");

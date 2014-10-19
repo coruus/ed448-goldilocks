@@ -3,7 +3,7 @@
 #include <stdio.h>
 
 #include "ec_point.h"
-#include "p448.h"
+#include "field.h"
 #include "crandom.h"
 
 
@@ -11,15 +11,15 @@ static void
 failprint_ext (
     const struct extensible_t *a
 ) {
-    struct p448_t zi, scaled;
-    p448_print("    x", &a->x);
-    p448_print("    y", &a->y);
-    p448_print("    z", &a->z);
-    p448_inverse(&zi, &a->z);
-    p448_mul(&scaled, &zi, &a->x);
-    p448_print("    X", &scaled);
-    p448_mul(&scaled, &zi, &a->y);
-    p448_print("    Y", &scaled);
+    struct field_t zi, scaled;
+    field_print("    x", &a->x);
+    field_print("    y", &a->y);
+    field_print("    z", &a->z);
+    field_inverse(&zi, &a->z);
+    field_mul(&scaled, &zi, &a->x);
+    field_print("    X", &scaled);
+    field_mul(&scaled, &zi, &a->y);
+    field_print("    Y", &scaled);
     printf("\n");
 }
 
@@ -164,10 +164,10 @@ add_double_test (
     
     if (~succ) {
         printf("    Bases were:\n");
-        p448_print("    x1", &base1->x);
-        p448_print("    y1", &base1->y);
-        p448_print("    x2", &base2->x);
-        p448_print("    y2", &base2->y);
+        field_print("    x1", &base1->x);
+        field_print("    y1", &base1->y);
+        field_print("    x2", &base2->x);
+        field_print("    y2", &base2->y);
     }
     
     return succ ? 0 : -1;
@@ -210,18 +210,18 @@ single_twisting_test (
         succ = 0;
     } /* FUTURE: quadness */
     
-    p448_t sera,serb;
+    field_t sera,serb;
     untwist_and_double_and_serialize(&sera,&text);
     copy_extensible(&tmpext,&exb);
     double_extensible(&tmpext);
     serialize_extensible(&serb,&tmpext);
     
     /* check that their (doubled; FUTURE?) serializations are equal */
-    if (~p448_eq(&sera,&serb)) {
+    if (~field_eq(&sera,&serb)) {
         youfail();
         printf("    Different serialization from twist + double ()\n");
-        p448_print("    t", &sera);
-        p448_print("    b", &serb);
+        field_print("    t", &sera);
+        field_print("    b", &serb);
         succ = 0;
     }
     
@@ -241,8 +241,8 @@ single_twisting_test (
     
     if (~succ) {
         printf("    Base was:\n");
-        p448_print("    x", &base->x);
-        p448_print("    y", &base->y);
+        field_print("    x", &base->x);
+        field_print("    y", &base->y);
     }
     
     
@@ -251,28 +251,28 @@ single_twisting_test (
 
 int test_pointops (void) {
     struct affine_t base, pbase;
-    struct p448_t ser448;
+    struct field_t serf;
     
     struct crandom_state_t crand;
     crandom_init_from_buffer(&crand, "test_pointops random initializer");
     
     int i, ret;
     for (i=0; i<1000; i++) {
-        uint8_t ser[56];
+        uint8_t ser[FIELD_BYTES];
         crandom_generate(&crand, ser, sizeof(ser));
         
-        /* TODO: we need a p448 generate, which can return random or pathological. */
-        mask_t succ = p448_deserialize(&ser448, ser);
+        /* TODO: we need a field generate, which can return random or pathological. */
+        mask_t succ = field_deserialize(&serf, ser);
         if (!succ) {
             youfail();
-            printf("   Unlikely: fail at p448_deserialize\n");
+            printf("   Unlikely: fail at field_deserialize\n");
             return -1;
         }
         
         if (i) {
             copy_affine(&pbase, &base);
         }
-        elligator_2s_inject(&base, &ser448);
+        elligator_2s_inject(&base, &serf);
         
         if (i) {
             ret = add_double_test(&base, &pbase);

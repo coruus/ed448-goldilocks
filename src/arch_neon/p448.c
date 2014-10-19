@@ -721,39 +721,3 @@ p448_deserialize (
     
     return ~is_zero(ge ^ mask);
 }
-
-void
-simultaneous_invert_p448(
-    struct p448_t *__restrict__ out,
-    const struct p448_t *in,
-    unsigned int n
-) {
-  if (n==0) {
-      return;
-  } else if (n==1) {
-      p448_inverse(out,in);
-      return;
-  }
-  
-  p448_copy(&out[1], &in[0]);
-  int i;
-  for (i=1; i<(int) (n-1); i++) {
-      p448_mul(&out[i+1], &out[i], &in[i]);
-  }
-  p448_mul(&out[0], &out[n-1], &in[n-1]);
-  
-  struct p448_t tmp;
-  p448_inverse(&tmp, &out[0]);
-  p448_copy(&out[0], &tmp);
-  
-  /* at this point, out[0] = product(in[i]) ^ -1
-   * out[i] = product(in[0]..in[i-1]) if i != 0
-   */
-  for (i=n-1; i>0; i--) {
-      p448_mul(&tmp, &out[i], &out[0]);
-      p448_copy(&out[i], &tmp);
-      
-      p448_mul(&tmp, &out[0], &in[i]);
-      p448_copy(&out[0], &tmp);
-  }
-}

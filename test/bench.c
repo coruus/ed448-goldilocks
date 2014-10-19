@@ -9,7 +9,7 @@
 #include <stdio.h>
 #include <memory.h>
 
-#include "p448.h"
+#include "field.h"
 #include "ec_point.h"
 #include "scalarmul.h"
 #include "barrett_field.h"
@@ -29,19 +29,19 @@ static double now(void) {
   return tv.tv_sec + tv.tv_usec/1000000.0;
 }
 
-static void p448_randomize( struct crandom_state_t *crand, struct p448_t *a ) {
+static void field_randomize( struct crandom_state_t *crand, struct field_t *a ) {
     crandom_generate(crand, (unsigned char *)a, sizeof(*a));
-    p448_strong_reduce(a);
+    field_strong_reduce(a);
 }
 
-static void q448_randomize( struct crandom_state_t *crand, word_t sk[448/WORD_BITS] ) {
-    crandom_generate(crand, (unsigned char *)sk, 448/8);
+static void q448_randomize( struct crandom_state_t *crand, word_t sk[SCALAR_WORDS] ) {
+    crandom_generate(crand, (unsigned char *)sk, SCALAR_BYTES);
 }
 
-static void p448_print( const char *descr, const struct p448_t *a ) {
-    p448_t b;
-    p448_copy(&b, a);
-    p448_strong_reduce(&b);
+static void field_print( const char *descr, const struct field_t *a ) {
+    field_t b;
+    field_copy(&b, a);
+    field_strong_reduce(&b);
     int j;
     printf("%s = 0x", descr);
     for (j=sizeof(*a)/sizeof(a->limb[0])-1; j>=0; j--) {
@@ -51,9 +51,9 @@ static void p448_print( const char *descr, const struct p448_t *a ) {
 }
 
 static void __attribute__((unused))
-p448_print_full (
+field_print_full (
     const char *descr,
-    const struct p448_t *a
+    const struct field_t *a
 ) {
     int j;
     printf("%s = 0x", descr);
@@ -64,10 +64,10 @@ p448_print_full (
     printf("\n");
 }
 
-static void q448_print( const char *descr, const word_t secret[448/WORD_BITS] ) {
+static void q448_print( const char *descr, const word_t secret[SCALAR_WORDS] ) {
     int j;
     printf("%s = 0x", descr);
-    for (j=448/WORD_BITS-1; j>=0; j--) {
+    for (j=SCALAR_WORDS-1; j>=0; j--) {
         printf(PRIxWORDfull, secret[j]);
     }
     printf("\n");
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
     struct tw_pniels_t pniels;
     struct affine_t affine;
     struct montgomery_t mb;
-    struct p448_t a,b,c,d;
+    struct field_t a,b,c,d;
     
     
     double when;
@@ -104,41 +104,41 @@ int main(int argc, char **argv) {
         ignore_result(crandom_init_from_file(&crand, "/dev/urandom", 10000, 1));
     */
     
-    word_t sk[448/WORD_BITS],tk[448/WORD_BITS];
+    word_t sk[SCALAR_WORDS],tk[SCALAR_WORDS];
     q448_randomize(&crand, sk);
     
     when = now();
     for (i=0; i<nbase*5000; i++) {
-        p448_mul(&c, &b, &a);
+        field_mul(&c, &b, &a);
     }
     when = now() - when;
     printf("mul:         %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*5000; i++) {
-        p448_sqr(&c, &a);
+        field_sqr(&c, &a);
     }
     when = now() - when;
     printf("sqr:         %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*5000; i++) {
-        p448_mulw(&c, &b, 1234562);
+        field_mulw(&c, &b, 1234562);
     }
     when = now() - when;
     printf("mulw:        %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*500; i++) {
-        p448_mul(&c, &b, &a);
-        p448_mul(&a, &b, &c);
+        field_mul(&c, &b, &a);
+        field_mul(&a, &b, &c);
     }
     when = now() - when;
     printf("mul dep:     %5.1fns\n", when * 1e9 / i / 2);
     
     when = now();
     for (i=0; i<nbase*10; i++) {
-        p448_randomize(&crand, &a);
+        field_randomize(&crand, &a);
     }
     when = now() - when;
     printf("rand448:     %5.1fns\n", when * 1e9 / i);
@@ -162,23 +162,23 @@ int main(int argc, char **argv) {
     
     when = now();
     for (i=0; i<nbase; i++) {
-        p448_isr(&c, &a);
+        field_isr(&c, &a);
     }
     when = now() - when;
     printf("isr auto:    %5.1fµs\n", when * 1e6 / i);
     
     for (i=0; i<100; i++) {
-        p448_randomize(&crand, &a);
-        p448_isr(&d,&a);
-        p448_sqr(&b,&d);
-        p448_mul(&c,&b,&a);
-        p448_sqr(&b,&c);
-        p448_subw(&b,1);
-        p448_bias(&b,1);
-        if (!p448_is_zero(&b)) {
+        field_randomize(&crand, &a);
+        field_isr(&d,&a);
+        field_sqr(&b,&d);
+        field_mul(&c,&b,&a);
+        field_sqr(&b,&c);
+        field_subw(&b,1);
+        field_bias(&b,1);
+        if (!field_is_zero(&b)) {
             printf("ISR validation failure!\n");
-            p448_print("a", &a);
-            p448_print("s", &d);
+            field_print("a", &a);
+            field_print("s", &d);
         }
     }
     
@@ -190,13 +190,13 @@ int main(int argc, char **argv) {
     printf("elligator:   %5.1fµs\n", when * 1e6 / i);
     
     for (i=0; i<100; i++) {
-        p448_randomize(&crand, &a);
+        field_randomize(&crand, &a);
         elligator_2s_inject(&affine, &a);
         if (!validate_affine(&affine)) {
             printf("Elligator validation failure!\n");
-            p448_print("a", &a);
-            p448_print("x", &affine.x);
-            p448_print("y", &affine.y);
+            field_print("a", &a);
+            field_print("x", &affine.x);
+            field_print("y", &affine.y);
         }
     }
     
@@ -216,28 +216,28 @@ int main(int argc, char **argv) {
     
     int goods = 0;
     for (i=0; i<100; i++) {
-        p448_randomize(&crand, &a);
+        field_randomize(&crand, &a);
         mask_t good = deserialize_affine(&affine, &a);
         if (good & !validate_affine(&affine)) {
             printf("Deserialize validation failure!\n");
-            p448_print("a", &a);
-            p448_print("x", &affine.x);
-            p448_print("y", &affine.y);
+            field_print("a", &a);
+            field_print("x", &affine.x);
+            field_print("y", &affine.y);
         } else if (good) {
             goods++;
             convert_affine_to_extensible(&exta,&affine);
             serialize_extensible(&b, &exta);
-            p448_sub(&c,&b,&a);
-            p448_bias(&c,2);
-            if (!p448_is_zero(&c)) {
+            field_sub(&c,&b,&a);
+            field_bias(&c,2);
+            if (!field_is_zero(&c)) {
                 printf("Reserialize validation failure!\n");
-                p448_print("a", &a);
-                p448_print("x", &affine.x);
-                p448_print("y", &affine.y);
+                field_print("a", &a);
+                field_print("x", &affine.x);
+                field_print("y", &affine.y);
                 deserialize_affine(&affine, &b);
-                p448_print("b", &b);
-                p448_print("x", &affine.x);
-                p448_print("y", &affine.y);
+                field_print("b", &b);
+                field_print("x", &affine.x);
+                field_print("y", &affine.y);
                 printf("\n");
             }
         }
@@ -258,7 +258,7 @@ int main(int argc, char **argv) {
     
     when = now();
     for (i=0; i<nbase*10; i++) {
-        barrett_mac(lsk,448/WORD_BITS,lsk,448/WORD_BITS,lsk,448/WORD_BITS,&curve_prime_order);
+        barrett_mac(lsk,SCALAR_WORDS,lsk,SCALAR_WORDS,lsk,SCALAR_WORDS,&curve_prime_order);
     }
     when = now() - when;
     printf("barrett mac: %5.1fns\n", when * 1e9 / i);
@@ -307,7 +307,7 @@ int main(int argc, char **argv) {
 	
     when = now();
     for (i=0; i<nbase/10; i++) {
-        ignore_result(montgomery_ladder(&a,&b,sk,448,0));
+        ignore_result(montgomery_ladder(&a,&b,sk,FIELD_BITS,0));
     }
     when = now() - when;
     printf("full ladder: %5.1fµs\n", when * 1e6 / i);
@@ -337,7 +337,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
-        scalarmul_vt(&ext,sk,446);
+        scalarmul_vt(&ext,sk,SCALAR_BITS);
     }
     when = now() - when;
     printf("edwards vtm: %5.1fµs\n", when * 1e6 / i);
@@ -353,7 +353,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
-        scalarmul_fixed_base_wnaf_vt(&ext,sk,446,wnaft,6);
+        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,wnaft,6);
     }
     when = now() - when;
     printf("edwards vt6: %5.1fµs\n", when * 1e6 / i);
@@ -368,7 +368,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
-        scalarmul_fixed_base_wnaf_vt(&ext,sk,446,wnaft,4);
+        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,wnaft,4);
     }
     when = now() - when;
     printf("edwards vt4: %5.1fµs\n", when * 1e6 / i);
@@ -383,7 +383,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
-        scalarmul_fixed_base_wnaf_vt(&ext,sk,446,wnaft,5);
+        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,wnaft,5);
     }
     when = now() - when;
     printf("edwards vt5: %5.1fµs\n", when * 1e6 / i);
@@ -392,7 +392,7 @@ int main(int argc, char **argv) {
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
         q448_randomize(&crand, tk);
-        linear_combo_var_fixed_vt(&ext,sk,448,tk,448,wnaft,5);
+        linear_combo_var_fixed_vt(&ext,sk,FIELD_BITS,tk,FIELD_BITS,wnaft,5);
     }
     when = now() - when;
     printf("vt vf combo: %5.1fµs\n", when * 1e6 / i);
@@ -412,7 +412,7 @@ int main(int argc, char **argv) {
     struct fixed_base_table_t t_5_5_18, t_3_5_30, t_8_4_14, t_5_3_30, t_15_3_10;
 
     while (1) {
-        p448_randomize(&crand, &a);
+        field_randomize(&crand, &a);
         if (deserialize_affine(&affine, &a)) break;
     }
     convert_affine_to_extensible(&exta,&affine);
@@ -459,35 +459,35 @@ int main(int argc, char **argv) {
 	
     when = now();
     for (i=0; i<nbase; i++) {
-        scalarmul_fixed_base(&ext, sk, 448, &t_5_5_18);
+        scalarmul_fixed_base(&ext, sk, FIELD_BITS, &t_5_5_18);
     }
     when = now() - when;
     printf("com(5,5,18): %5.1fµs\n", when * 1e6 / i);
     
     when = now();
     for (i=0; i<nbase; i++) {
-        scalarmul_fixed_base(&ext, sk, 448, &t_3_5_30);
+        scalarmul_fixed_base(&ext, sk, FIELD_BITS, &t_3_5_30);
     }
     when = now() - when;
     printf("com(3,5,30): %5.1fµs\n", when * 1e6 / i);
 
     when = now();
     for (i=0; i<nbase; i++) {
-        scalarmul_fixed_base(&ext, sk, 448, &t_8_4_14);
+        scalarmul_fixed_base(&ext, sk, FIELD_BITS, &t_8_4_14);
     }
     when = now() - when;
     printf("com(8,4,14): %5.1fµs\n", when * 1e6 / i);
 
     when = now();
     for (i=0; i<nbase; i++) {
-        scalarmul_fixed_base(&ext, sk, 448, &t_5_3_30);
+        scalarmul_fixed_base(&ext, sk, FIELD_BITS, &t_5_3_30);
     }
     when = now() - when;
     printf("com(5,3,30): %5.1fµs\n", when * 1e6 / i);
 
     when = now();
     for (i=0; i<nbase; i++) {
-        scalarmul_fixed_base(&ext, sk, 448, &t_15_3_10);
+        scalarmul_fixed_base(&ext, sk, FIELD_BITS, &t_15_3_10);
     }
     when = now() - when;
     printf("com(15,3,10):%5.1fµs\n", when * 1e6 / i);
@@ -528,25 +528,25 @@ int main(int argc, char **argv) {
         printf("[FAIL] %d %d\n",gres1,gres2);
         
         printf("sk1 = ");
-        for (i=0; i<56; i++) {
+        for (i=0; i<SCALAR_BYTES; i++) {
             printf("%02x", gsk.opaque[i]);
         }
         printf("\nsk2 = ");
-        for (i=0; i<56; i++) {
+        for (i=0; i<SCALAR_BYTES; i++) {
             printf("%02x", hsk.opaque[i]);
         }
         printf("\nss1 = ");
-        for (i=0; i<56; i++) {
+        for (i=0; i<FIELD_BYTES; i++) {
             printf("%02x", ss1[i]);
         }
         printf("\nss2 = ");
-        for (i=0; i<56; i++) {
+        for (i=0; i<FIELD_BYTES; i++) {
             printf("%02x", ss2[i]);
         }
         printf("\n");
     }
     
-    uint8_t sout[56*2];
+    uint8_t sout[FIELD_BYTES*2];
     const char *message = "hello world";
     size_t message_len = strlen(message);
     when = now();
@@ -610,7 +610,7 @@ int main(int argc, char **argv) {
     
     failures=0; successes = 0;
     for (i=0; i<nbase/10; i++) {
-        p448_randomize(&crand, &a);
+        field_randomize(&crand, &a);
 		word_t two = 2;
         mask_t good = montgomery_ladder(&b,&a,&two,2,0);
 		if (!good) continue;
@@ -626,14 +626,14 @@ int main(int argc, char **argv) {
         ignore_result(montgomery_ladder(&c,&b,&y,WORD_BITS,0));
         ignore_result(montgomery_ladder(&b,&a,&z,WORD_BITS,0));
         
-        p448_sub(&d,&b,&c);
-        p448_bias(&d,2);
-		if (!p448_is_zero(&d)) {
+        field_sub(&d,&b,&c);
+        field_bias(&d,2);
+		if (!field_is_zero(&d)) {
             printf("Odd ladder validation failure %d!\n", ++failures);
-            p448_print("a", &a);
+            field_print("a", &a);
             printf("x=%"PRIxWORD", y=%"PRIxWORD", z=%"PRIxWORD"\n", x,y,z);
-            p448_print("c", &c);
-            p448_print("b", &b);
+            field_print("c", &c);
+            field_print("b", &b);
 			printf("\n");
 		}
 	}
@@ -642,7 +642,7 @@ int main(int argc, char **argv) {
     for (i=0; i<nbase/10; i++) {
         mask_t good;
         do {
-            p448_randomize(&crand, &a);
+            field_randomize(&crand, &a);
             good = deserialize_affine(&affine, &a);
         } while (!good);
         
@@ -652,14 +652,14 @@ int main(int argc, char **argv) {
         serialize_extensible(&b, &exta);
         untwist_and_double_and_serialize(&c, &ext);
         
-        p448_sub(&d,&b,&c);
-        p448_bias(&d,2);
+        field_sub(&d,&b,&c);
+        field_bias(&d,2);
         
-        if (good && !p448_is_zero(&d)){
+        if (good && !field_is_zero(&d)){
             printf("Iso+serial validation failure %d!\n", ++failures);
-            p448_print("a", &a);
-            p448_print("b", &b);
-            p448_print("c", &c);
+            field_print("a", &a);
+            field_print("b", &b);
+            field_print("c", &c);
             printf("\n");
         } else if (good) {
             successes ++;
@@ -671,23 +671,23 @@ int main(int argc, char **argv) {
     
     successes = failures = 0;
     for (i=0; i<nbase/10; i++) {
-        struct p448_t aa;
+        struct field_t aa;
         struct tw_extensible_t exu,exv,exw;
         
         mask_t good;
         do {
-            p448_randomize(&crand, &a);
+            field_randomize(&crand, &a);
             good = deserialize_affine(&affine, &a);
             convert_affine_to_extensible(&exta,&affine);
             twist_and_double(&ext,&exta);
         } while (!good);
         do {
-            p448_randomize(&crand, &aa);
+            field_randomize(&crand, &aa);
             good = deserialize_affine(&affine, &aa);
             convert_affine_to_extensible(&exta,&affine);
             twist_and_double(&exu,&exta);
         } while (!good);
-        p448_randomize(&crand, &aa);
+        field_randomize(&crand, &aa);
         
         q448_randomize(&crand, sk);
 		if (i==0 || i==2) memset(&sk, 0, sizeof(sk));
@@ -704,21 +704,21 @@ int main(int argc, char **argv) {
         serialize_extensible(&b, &exta);
 
         ignore_result(precompute_fixed_base_wnaf(wnaft,&exu,5));
-        linear_combo_var_fixed_vt(&ext,sk,448,tk,448,wnaft,5);
+        linear_combo_var_fixed_vt(&ext,sk,FIELD_BITS,tk,FIELD_BITS,wnaft,5);
         untwist_and_double(&exta,&exv);
         serialize_extensible(&c, &exta);
         
-        p448_sub(&d,&b,&c);
-        p448_bias(&d,2);
+        field_sub(&d,&b,&c);
+        field_bias(&d,2);
         
-        if (!p448_is_zero(&d)){
+        if (!field_is_zero(&d)){
             printf("PreWNAF combo validation failure %d!\n", ++failures);
-            p448_print("a", &a);
-            p448_print("A", &aa);
+            field_print("a", &a);
+            field_print("A", &aa);
             q448_print("s", sk);
             q448_print("t", tk);
-            p448_print("c", &c);
-            p448_print("b", &b);
+            field_print("c", &c);
+            field_print("b", &b);
             printf("\n\n");
         } else if (good) {
             successes ++;

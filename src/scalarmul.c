@@ -570,7 +570,7 @@ precompute_fixed_base (
         }
     }
 	
-    simultaneous_invert(zis, zs, n<<(t-1));
+    field_simultaneous_invert(zis, zs, n<<(t-1));
 
     field_t product;
     for (i=0; i<n<<(t-1); i++) {
@@ -658,7 +658,7 @@ precompute_fixed_base_wnaf (
         }
     }
     
-    simultaneous_invert(zis, zs, 1<<tbits);
+    field_simultaneous_invert(zis, zs, 1<<tbits);
 
     field_t product;
     for (i=0; i<1<<tbits; i++) {

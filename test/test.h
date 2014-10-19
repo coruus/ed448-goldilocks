@@ -2,7 +2,7 @@
 #define __GOLDILOCKS_TEST_H__ 1
 
 #include "word.h"
-#include "p448.h"
+#include "field.h"
 
 int
 hexdecode (
@@ -18,9 +18,9 @@ hexprint (
     unsigned int nbytes
 );
     
-void p448_print (
+void field_print (
     const char *descr,
-    const struct p448_t *a
+    const struct field_t *a
 );
     
 void scalar_print (

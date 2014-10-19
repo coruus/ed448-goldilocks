@@ -151,13 +151,6 @@ p448_inverse (
    struct p448_t*       a,
    const struct p448_t* x
 );
-       
-void
-simultaneous_invert_p448 (
-    struct p448_t *__restrict__ out,
-    const struct p448_t *in,
-    unsigned int n
-);
 
 static inline mask_t
 p448_eq (

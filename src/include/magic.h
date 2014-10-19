@@ -17,18 +17,17 @@
 
 /* TODO: standardize notation */
 
-
-/** @brief The number of bits in the Goldilocks field. */
-#define GOLDI_FIELD_BITS 448
-
 /** @brief The number of words in the Goldilocks field. */
-#define GOLDI_FIELD_WORDS DIV_CEIL(GOLDI_FIELD_BITS,WORD_BITS)
+#define GOLDI_FIELD_WORDS DIV_CEIL(FIELD_BITS,WORD_BITS)
 
 /** @brief The number of bits in the Goldilocks curve's cofactor (cofactor=4). */
 #define COFACTOR_BITS 2
 
 /** @brief The number of bits in a Goldilocks scalar. */
-#define SCALAR_BITS (GOLDI_FIELD_BITS - COFACTOR_BITS)
+#define SCALAR_BITS (FIELD_BITS - COFACTOR_BITS)
+
+/** @brief The number of bytes in a Goldilocks scalar. */
+#define SCALAR_BYTES (1+(SCALAR_BITS)/8)
 
 /** @brief The number of words in the Goldilocks field. */
 #define SCALAR_WORDS WORDS_FOR_BITS(SCALAR_BITS)
@@ -36,7 +35,12 @@
 /**
  * @brief sqrt(d-1), used for point formats and twisting.
  */
-extern const struct p448_t sqrt_d_minus_1;
+extern const struct field_t sqrt_d_minus_1;
+
+/**
+ * @brief The Edwards "d" term for this curve.
+ */
+static const int64_t EDWARDS_D = -39081;
 
 /**
  * @brief The base point for Goldilocks.
