@@ -48,23 +48,6 @@ montgomery_ladder (
 }
 
 static __inline__ void
-cond_negate_tw_niels (
-    struct tw_niels_t *n,
-    mask_t doNegate
-) {
-    field_cond_swap(&n->a, &n->b, doNegate);
-    field_cond_neg(&n->c, doNegate);
-}
-
-static __inline__ void
-cond_negate_tw_pniels (
-    struct tw_pniels_t *n,
-    mask_t doNegate
-) {
-    cond_negate_tw_niels(&n->n, doNegate);
-}
-
-static __inline__ void
 constant_time_lookup_tw_pniels (
     struct tw_pniels_t *out,
     const struct tw_pniels_t *in,

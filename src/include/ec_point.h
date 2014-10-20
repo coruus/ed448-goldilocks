@@ -481,6 +481,30 @@ validate_extensible (
     const struct extensible_t* ext
 );
 
+/**
+ * If doNegate, then negate a twisted niels point.
+ */
+static __inline__ void
+__attribute__((unused))
+cond_negate_tw_niels (
+    struct tw_niels_t *n,
+    mask_t doNegate
+) {
+    field_cond_swap(&n->a, &n->b, doNegate);
+    field_cond_neg(&n->c, doNegate);
+}
+
+/**
+ * If doNegate, then negate a twisted projective niels point.
+ */
+static __inline__ void
+__attribute__((unused))
+cond_negate_tw_pniels (
+    struct tw_pniels_t *n,
+    mask_t doNegate
+) {
+    cond_negate_tw_niels(&n->n, doNegate);
+}
 
 void
 copy_affine (

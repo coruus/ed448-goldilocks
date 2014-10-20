@@ -827,6 +827,18 @@ elligator_2s_inject (
     IF32( field_weak_reduce(   &L7 ) );
     field_mulw_scc (   &L6, &a->y, -2-2*EDWARDS_D );
     field_mul  (   &L5,   &L7,   &L6 );
+        /* FIXME Stability problem (API stability, not crash) / possible bug.
+         * change to: p448_mul  (   &L5,   &L7,   &L4 ); ?
+         * This isn't a deep change: it's for sign adjustment.
+         * Need to check which one leads to the correct sign, probably by writig
+         * the invert routine.
+         *
+         * Also, the tool doesn't produce the optimal route to this.
+         * Let incoming L6 = a, L7 = e, L4 = b.
+         *
+         * Could compute be, (be)^2, (be)^3, a b^3 e^3, a b^3 e^4. = 4M+S
+         * instead of 6M.
+         */
     field_mul  (   &L8,   &L5,   &L4 );
     field_mul  (   &L4,   &L5,   &L6 );
     field_mul  (   &L5,   &L7,   &L8 );
