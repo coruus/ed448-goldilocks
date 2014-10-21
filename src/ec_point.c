@@ -52,8 +52,30 @@ field_mulw_scc_wr (
         field_weak_reduce(out);
 }
 
-void
-field_isr (
+static __inline__ void
+field_sqrn (
+    field_t *__restrict__ y,
+    const field_t *x,
+    int n
+) {
+    field_t tmp;
+    assert(n>0);
+    if (n&1) {
+        field_sqr(y,x);
+        n--;
+    } else {
+        field_sqr(&tmp,x);
+        field_sqr(y,&tmp);
+        n-=2;
+    }
+    for (; n; n-=2) {
+        field_sqr(&tmp,y);
+        field_sqr(y,&tmp);
+    }
+}
+
+void 
+field_isr ( /* TODO: MAGIC */
     struct field_t*       a,
     const struct field_t* x
 ) {
@@ -433,7 +455,7 @@ serialize_montgomery (
     field_mul  (   &L0, &a->xd,   &L2 );
        L5 = field_is_zero( &a->zd );
        L6 = -   L5;
-    field_mask (   &L1,   &L0,    L5 );
+    constant_time_mask (   &L1,   &L0, sizeof(L1), L5 );
     field_add  (   &L2,   &L1, &a->zd );
        L4 = ~   L5;
     field_mul  (   &L1,   sbz,   &L3 );
@@ -446,7 +468,7 @@ serialize_montgomery (
     field_mul  (   &L2,   &L1,   &L0 );
     field_sqr  (   &L1,   &L0 );
     field_mul  (   &L0,   &L3,   &L1 );
-    field_mask (     b,   &L2,    L4 );
+    constant_time_mask (     b,   &L2, sizeof(L1), L4 );
     field_subw (   &L0,     1 );
     field_bias (   &L0,     1 );
        L5 = field_is_zero(   &L0 );

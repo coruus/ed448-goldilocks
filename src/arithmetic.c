@@ -11,6 +11,21 @@
 #include "field.h"
 #include "ec_point.h" // TODO
 
+mask_t
+field_eq (
+    const struct field_t *a,
+    const struct field_t *b
+) {
+    struct field_t ra, rb;
+    field_copy(&ra, a);
+    field_copy(&rb, b);
+    field_weak_reduce(&ra);
+    field_weak_reduce(&rb);
+    field_sub(&ra, &ra, &rb);
+    field_bias(&ra, 2);
+    return field_is_zero(&ra);
+}
+
 void
 field_inverse (
     struct field_t*       a,

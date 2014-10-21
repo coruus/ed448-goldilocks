@@ -143,6 +143,15 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
         return (big_register_t)x;
     }
 #endif
+    
+/**
+ * Return -1 if x==0, and 0 otherwise.
+ */
+static __inline__ mask_t
+__attribute__((always_inline,unused))
+word_is_zero(word_t x) {
+    return (mask_t)((((dword_t)(x)) - 1)>>WORD_BITS);
+}
 
 #if __AVX2__
 static __inline__ big_register_t

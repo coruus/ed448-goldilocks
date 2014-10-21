@@ -11,6 +11,7 @@
 #define __CC_INCLUDED_EC_POINT_H__
 
 #include "field.h"
+#include "constant_time.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -149,43 +150,6 @@ copy_tw_pniels (
     struct tw_pniels_t*       a,
     const struct tw_pniels_t* ds
 ) __attribute__((unused,always_inline));
-
-/**
- * Returns 1/sqrt(+- x).
- * 
- * The Legendre symbol of the result is the same as that of the
- * input.
- * 
- * If x=0, returns 0.
- */
-void
-field_isr (
-    struct field_t*       a,
-    const struct field_t* x
-);
-    
-/**
- * Batch inverts out[i] = 1/in[i]
- * 
- * If any input is zero, all the outputs will be zero.
- */     
-void
-field_simultaneous_invert (
-    struct p448_t *__restrict__ out,
-    const struct p448_t *in,
-    unsigned int n
-);
-
-/**
- * Returns 1/x.
- * 
- * If x=0, returns 0.
- */
-void
-field_inverse (
-    struct field_t*       a,
-    const struct field_t* x
-);
 
 /**
  * Add two points on a twisted Edwards curve, one in Extensible form
@@ -490,7 +454,7 @@ cond_negate_tw_niels (
     struct tw_niels_t *n,
     mask_t doNegate
 ) {
-    field_cond_swap(&n->a, &n->b, doNegate);
+    constant_time_cond_swap(&n->a, &n->b, sizeof(n->a), doNegate);
     field_cond_neg(&n->c, doNegate);
 }
 

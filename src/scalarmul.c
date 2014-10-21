@@ -11,6 +11,7 @@
 #include "intrinsics.h"
 #include "scalarmul.h"
 #include "barrett_field.h"
+#include "constant_time.h"
 
 mask_t
 montgomery_ladder (
@@ -29,15 +30,15 @@ montgomery_ladder (
         word_t w = scalar[j];
         for (i=n; i>=0; i--) {
             mask_t flip = -((w>>i)&1);
-            field_cond_swap(&mont.xa,&mont.xd,flip^pflip);
-            field_cond_swap(&mont.za,&mont.zd,flip^pflip);
+            constant_time_cond_swap(&mont.xa,&mont.xd,sizeof(mont.xd),flip^pflip);
+            constant_time_cond_swap(&mont.za,&mont.zd,sizeof(mont.xd),flip^pflip);
             montgomery_step(&mont);
             pflip = flip;
         }
         n = WORD_BITS-1;
     }
-    field_cond_swap(&mont.xa,&mont.xd,pflip);
-    field_cond_swap(&mont.za,&mont.zd,pflip);
+    constant_time_cond_swap(&mont.xa,&mont.xd,sizeof(mont.xd),pflip);
+    constant_time_cond_swap(&mont.za,&mont.zd,sizeof(mont.xd),pflip);
     
     assert(n_extra_doubles < INT_MAX);
     for (j=0; j<(int)n_extra_doubles; j++) {
@@ -47,6 +48,29 @@ montgomery_ladder (
     return serialize_montgomery(out, &mont, in);
 }
 
+static __inline__ void
+__attribute__((unused,always_inline))
+constant_time_lookup_tw_pniels (
+    struct tw_pniels_t *out,
+    const struct tw_pniels_t *in,
+    int nin,
+    int idx
+) {
+    constant_time_lookup(out,in,sizeof(*out),nin,idx);
+}
+
+static __inline__ void
+__attribute__((unused,always_inline))
+constant_time_lookup_tw_niels (
+    struct tw_niels_t *out,
+    const struct tw_niels_t *in,
+    int nin,
+    int idx
+) {
+    constant_time_lookup(out,in,sizeof(*out),nin,idx);
+}
+
+/*
 static __inline__ void
 constant_time_lookup_tw_pniels (
     struct tw_pniels_t *out,
@@ -90,6 +114,7 @@ constant_time_lookup_tw_niels (
         }
     }
 }
+*/
 
 static void
 convert_to_signed_window_form (

@@ -25,13 +25,6 @@ p448_set_ui (
     p448_t *out,
     uint64_t x
 ) __attribute__((unused,always_inline));
-           
-static __inline__ void
-p448_cond_swap (
-    p448_t *a,
-    p448_t *b,
-    mask_t do_swap
-) __attribute__((unused,always_inline));
 
 static __inline__ void
 p448_add (
@@ -117,13 +110,6 @@ p448_sqr (
     p448_t *__restrict__ out,
     const p448_t *a
 );
-         
-static __inline__ void
-p448_sqrn (
-    p448_t *__restrict__ y,
-    const p448_t *x,
-    int n
-) __attribute__((unused,always_inline));
 
 void
 p448_serialize (
@@ -135,24 +121,6 @@ mask_t
 p448_deserialize (
     p448_t *x,
     const uint8_t serial[56]
-);
-    
-static __inline__ void
-p448_mask(
-    struct p448_t *a,
-    const struct p448_t *b,
-    mask_t mask
-) __attribute__((unused,always_inline));
-
-/**
-* Returns 1/x.
-* 
-* If x=0, returns 0.
-*/
-void
-p448_inverse (
-   struct p448_t*       a,
-   const struct p448_t* x
 );
 
 static inline mask_t
@@ -174,24 +142,6 @@ p448_set_ui (
     }
     out->limb[0] = x & ((1<<28)-1);
     out->limb[2] = x>>28;
-}
-            
-void
-p448_cond_swap (
-    p448_t *a,
-    p448_t *b,
-    mask_t doswap
-) {
-    big_register_t *aa = (big_register_t*)a;
-    big_register_t *bb = (big_register_t*)b;
-    big_register_t m = br_set_to_mask(doswap);
-
-    unsigned int i;
-    for (i=0; i<sizeof(*a)/sizeof(*aa); i++) {
-        big_register_t x = m & (aa[i]^bb[i]);
-        aa[i] ^= x;
-        bb[i] ^= x;
-    }
 }
 
 void
@@ -313,28 +263,6 @@ p448_weak_reduce (
     aa[0] = (aa[0] & vmask) + vrev64_u32(tmp) + (tmp&vm2);
 }
 
-void
-p448_sqrn (
-    p448_t *__restrict__ y,
-    const p448_t *x,
-    int n
-) {
-    p448_t tmp;
-    assert(n>0);
-    if (n&1) {
-        p448_sqr(y,x);
-        n--;
-    } else {
-        p448_sqr(&tmp,x);
-        p448_sqr(y,&tmp);
-        n-=2;
-    }
-    for (; n; n-=2) {
-        p448_sqr(&tmp,y);
-        p448_sqr(y,&tmp);
-    }
-}
-
 mask_t
 p448_eq (
     const struct p448_t *a,
@@ -348,18 +276,6 @@ p448_eq (
     p448_sub(&ra, &ra, &rb);
     p448_bias(&ra, 2);
     return p448_is_zero(&ra);
-}
-
-void
-p448_mask (
-    struct p448_t *a,
-    const struct p448_t *b,
-    mask_t mask
-) {
-    unsigned int i;
-    for (i=0; i<sizeof(*a)/sizeof(a->limb[0]); i++) {
-        a->limb[i] = b->limb[i] & mask;
-    }
 }
 
 #ifdef __cplusplus
