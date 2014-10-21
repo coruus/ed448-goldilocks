@@ -10,6 +10,7 @@
 #define __FIELD_H__
 
 #include <string.h>
+#include "constant_time.h"
 
 #include "p448.h"
 #define FIELD_BITS           448
@@ -24,9 +25,13 @@
 #define field_neg            p448_neg
 #define field_set_ui         p448_set_ui
 #define field_bias           p448_bias
+#define field_cond_neg       p448_cond_neg
+#define field_inverse        p448_inverse
+#define field_eq             p448_eq
+#define field_isr            p448_isr
+#define field_simultaneous_invert p448_simultaneous_invert
 #define field_weak_reduce    p448_weak_reduce
 #define field_strong_reduce  p448_strong_reduce
-#define field_cond_neg       p448_cond_neg
 #define field_serialize      p448_serialize
 #define field_deserialize    p448_deserialize
 #define field_is_zero        p448_is_zero
@@ -55,6 +60,21 @@ field_copy (
 }
 
 /**
+ * Negate a in place if doNegate.
+ */
+static inline void
+__attribute__((unused,always_inline)) 
+field_cond_neg(
+    field_t *a,
+    mask_t doNegate
+) {
+	struct field_t negated;
+    field_neg(&negated, a);
+    field_bias(&negated, 2);
+	constant_time_select(a, &negated, a, sizeof(negated), doNegate);
+}
+
+/**
  * Returns 1/sqrt(+- x).
  * 
  * The Legendre symbol of the result is the same as that of the
@@ -75,8 +95,8 @@ field_isr (
  */     
 void
 field_simultaneous_invert (
-    struct p448_t *__restrict__ out,
-    const struct p448_t *in,
+    struct field_t *__restrict__ out,
+    const struct field_t *in,
     unsigned int n
 );
 

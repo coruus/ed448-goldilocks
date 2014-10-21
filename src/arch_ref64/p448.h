@@ -43,12 +43,6 @@ p448_neg (
     p448_t *out,
     const p448_t *a
 ) __attribute__((unused));
-            
-static __inline__ void
-p448_cond_neg (
-    p448_t *a,
-    mask_t doNegate
-) __attribute__((unused));
 
 static __inline__ void
 p448_addw (
@@ -127,12 +121,6 @@ p448_deserialize (
     const uint8_t serial[56]
 );
 
-static inline mask_t
-p448_eq (
-    const struct p448_t *a,
-    const struct p448_t *b
-) __attribute__((always_inline,unused));
-
 /* -------------- Inline functions begin here -------------- */
 
 void
@@ -185,23 +173,6 @@ p448_neg (
         out->limb[i] = ((i==4) ? co2 : co1) - a->limb[i];
     }
     p448_weak_reduce(out);
-}
-
-void
-p448_cond_neg(
-    struct p448_t *a,
-    mask_t doNegate
-) {
-    unsigned int i;
-    struct p448_t negated;
-    
-    p448_neg(&negated, a);
-    p448_bias(&negated, 2);
-    
-    for (i=0; i<8; i++) {
-        a->limb[i] = ( a->limb[i]      & ~doNegate )
-                   | ( negated.limb[i] &  doNegate );
-    }
 }
 
 void
@@ -265,18 +236,6 @@ p448_weak_reduce (
         a->limb[i] = (a->limb[i] & mask) + (a->limb[i-1]>>56);
     }
     a->limb[0] = (a->limb[0] & mask) + tmp;
-}
-
-mask_t
-p448_eq (
-    const struct p448_t *a,
-    const struct p448_t *b
-) {
-    struct p448_t ra, rb;
-    p448_copy(&ra, a);
-    p448_copy(&rb, b);
-    p448_sub(&ra, &ra, &rb);
-    return p448_is_zero(&ra);
 }
 
 #ifdef __cplusplus

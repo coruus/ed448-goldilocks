@@ -227,4 +227,64 @@ constant_time_mask (
     }
 }
 
+/**
+ * @brief Constant-time a = mask ? bTrue : bFalse.
+ *
+ * The input and output must be at least as aligned as elem_bytes.
+ *
+ * Note that the output is not __restrict__, but if it overlaps either
+ * input, it must be equal and not partially overlap.
+ */
+static __inline__ void
+__attribute__((unused,always_inline))
+constant_time_select (
+    void *a_,
+    const void *bTrue_,
+    const void *bFalse_,
+    word_t elem_bytes,
+    mask_t mask
+) {
+    unsigned char *a = (unsigned char *)a_;
+    const unsigned char *bTrue = (const unsigned char *)bTrue_;
+    const unsigned char *bFalse = (const unsigned char *)bFalse_;
+    
+    word_t k;
+    big_register_t br_mask = br_set_to_mask(mask);
+    for (k=0; k<=elem_bytes-sizeof(big_register_t); k+=sizeof(big_register_t)) {
+        if (elem_bytes % sizeof(big_register_t)) {
+            /* unaligned */
+            ((unaligned_br_t*)(&a[k]))->unaligned =
+		  ( br_mask & ((const unaligned_br_t*)(&bTrue [k]))->unaligned)
+		| (~br_mask & ((const unaligned_br_t*)(&bFalse[k]))->unaligned);
+        } else {
+            /* aligned */
+            *(big_register_t *)(a+k) =
+		  ( br_mask & *(const big_register_t*)(&bTrue [k]))
+		| (~br_mask & *(const big_register_t*)(&bFalse[k]));
+        }
+    }
+
+    if (elem_bytes % sizeof(big_register_t) >= sizeof(word_t)) {
+        for (; k<=elem_bytes-sizeof(word_t); k+=sizeof(word_t)) {
+            if (elem_bytes % sizeof(word_t)) {
+                /* unaligned */
+                ((unaligned_word_t*)(&a[k]))->unaligned =
+		    ( mask & ((const unaligned_word_t*)(&bTrue [k]))->unaligned)
+		  | (~mask & ((const unaligned_word_t*)(&bFalse[k]))->unaligned);
+            } else {
+                /* aligned */
+                *(word_t *)(a+k) =
+		    ( mask & *(const word_t*)(&bTrue [k]))
+		  | (~mask & *(const word_t*)(&bFalse[k]));
+            }
+        }
+    }
+    
+    if (elem_bytes % sizeof(word_t)) {
+        for (; k<elem_bytes; k+=1) {
+            a[k] = ( mask & bTrue[k]) | (~mask & bFalse[k]);
+        }
+    }
+}
+
 #endif /* __CONSTANT_TIME_H__ */
