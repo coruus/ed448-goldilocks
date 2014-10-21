@@ -9,8 +9,8 @@
 #ifndef __FIELD_H__
 #define __FIELD_H__
 
-#include <string.h>
 #include "constant_time.h"
+#include <string.h>
 
 #include "p448.h"
 #define FIELD_BITS           448

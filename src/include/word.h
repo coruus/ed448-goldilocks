@@ -5,10 +5,11 @@
 #ifndef __WORD_H__
 #define __WORD_H__
 
-#include "arch_config.h"
-
 /* for posix_memalign */
 #define _XOPEN_SOURCE 600
+
+#include "arch_config.h"
+
 
 #ifndef __APPLE__
 #ifndef _BSD_SOURCE
