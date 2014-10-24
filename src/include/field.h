@@ -10,7 +10,9 @@
 #ifndef __FIELD_H__
 #define __FIELD_H__
 
+#include "constant_time.h"
 #include "f_field.h"
+#include <string.h>
 
 /** @brief Bytes in a field element */
 #define FIELD_BYTES          (1+(FIELD_BITS-1)/8)
