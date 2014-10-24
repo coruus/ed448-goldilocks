@@ -86,5 +86,10 @@ extern const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS];
  */
 #define WNAF_PRECMP_BITS 5
 
+/**
+ * @brief crandom magic structure guard constant = "return 4", cf xkcd #221
+ */
+#define CRANDOM_MAGIC 0x72657475726e2034ull
+
 
 #endif /* __GOLDI_MAGIC_H__ */

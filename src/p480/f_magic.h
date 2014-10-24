@@ -27,9 +27,4 @@ static const int64_t EDWARDS_D = 53825;
 /** @brief The spacing the of combs for signed comb algo */
 #define COMB_S (USE_BIG_COMBS ? 16 : 24)
 
-/**
- * @brief crandom magic structure guard constant = "return 4", cf xkcd #221
- */
-#define CRANDOM_MAGIC 0x72657475726e2034ull
-
 #endif /* __GOLDI_F_MAGIC_H__ */

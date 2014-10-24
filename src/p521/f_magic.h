@@ -16,15 +16,15 @@
 /**
  * @brief The Edwards "d" term for this curve.
  */
-static const int64_t EDWARDS_D = -39081;
+static const int64_t EDWARDS_D = -376014;
 
 /** @brief The number of combs to use for signed comb algo */
-#define COMB_N (USE_BIG_COMBS ? 5  : 8)
+#define COMB_N (USE_BIG_COMBS ? 4  : 5)
 
 /** @brief The number of teeth of the combs for signed comb algo */
 #define COMB_T (USE_BIG_COMBS ? 5  : 4)
 
 /** @brief The spacing the of combs for signed comb algo */
-#define COMB_S (USE_BIG_COMBS ? 18 : 14)
+#define COMB_S (USE_BIG_COMBS ? 26 : 26)
 
 #endif /* __GOLDI_F_MAGIC_H__ */
