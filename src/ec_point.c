@@ -12,7 +12,8 @@
 #include "ec_point.h"
 #include "magic.h"
 
-#define is32 (GOLDI_BITS == 32)
+#define is32 (GOLDI_BITS == 32 || FIELD_BITS == 480)
+/* TODO XXX PERF FIXME: better detection of overflow conditions */
 
 /* I wanted to just use if (is32)
  * But clang's -Wunreachable-code flags it.
@@ -50,60 +51,6 @@ field_mulw_scc_wr (
     field_mulw_scc(out, a, scc);
     if (scc < 0)
         field_weak_reduce(out);
-}
-
-static __inline__ void
-field_sqrn (
-    field_t *__restrict__ y,
-    const field_t *x,
-    int n
-) {
-    field_t tmp;
-    assert(n>0);
-    if (n&1) {
-        field_sqr(y,x);
-        n--;
-    } else {
-        field_sqr(&tmp,x);
-        field_sqr(y,&tmp);
-        n-=2;
-    }
-    for (; n; n-=2) {
-        field_sqr(&tmp,y);
-        field_sqr(y,&tmp);
-    }
-}
-
-void 
-field_isr ( /* TODO: MAGIC */
-    struct field_t*       a,
-    const struct field_t* x
-) {
-    struct field_t L0, L1, L2;
-    field_sqr  (   &L1,     x );
-    field_mul  (   &L2,     x,   &L1 );
-    field_sqr  (   &L1,   &L2 );
-    field_mul  (   &L2,     x,   &L1 );
-    field_sqrn (   &L1,   &L2,     3 );
-    field_mul  (   &L0,   &L2,   &L1 );
-    field_sqrn (   &L1,   &L0,     3 );
-    field_mul  (   &L0,   &L2,   &L1 );
-    field_sqrn (   &L2,   &L0,     9 );
-    field_mul  (   &L1,   &L0,   &L2 );
-    field_sqr  (   &L0,   &L1 );
-    field_mul  (   &L2,     x,   &L0 );
-    field_sqrn (   &L0,   &L2,    18 );
-    field_mul  (   &L2,   &L1,   &L0 );
-    field_sqrn (   &L0,   &L2,    37 );
-    field_mul  (   &L1,   &L2,   &L0 );
-    field_sqrn (   &L0,   &L1,    37 );
-    field_mul  (   &L1,   &L2,   &L0 );
-    field_sqrn (   &L0,   &L1,   111 );
-    field_mul  (   &L2,   &L1,   &L0 );
-    field_sqr  (   &L0,   &L2 );
-    field_mul  (   &L1,     x,   &L0 );
-    field_sqrn (   &L0,   &L1,   223 );
-    field_mul  (     a,   &L2,   &L0 );
 }
 
 void
@@ -396,7 +343,7 @@ montgomery_step (
     field_sqr  ( &a->za, &a->zd );
     field_sqr  ( &a->xd,   &L0 );
     field_sqr  (   &L0,   &L1 );
-    field_mulw ( &a->zd, &a->xd, 1-EDWARDS_D );
+    field_mulw_scc ( &a->zd, &a->xd, 1-EDWARDS_D ); /* FIXME PERF MULW */
     field_sub  (   &L1, &a->xd,   &L0 );
     field_bias (   &L1,     2 );
     IF32( field_weak_reduce(   &L1 ) );
@@ -444,11 +391,9 @@ serialize_montgomery (
     field_mul  (   &L3,   &L1,   &L2 );
     field_copy (   &L2, &a->z0 );
     field_addw (   &L2,     1 );
-    field_sqr  (   &L1,   &L2 );
-    field_mulw (   &L2,   &L1, 1-EDWARDS_D );
-    field_neg  (   &L1,   &L2 );
+    field_sqr  (   &L0,   &L2 );
+    field_mulw_scc_wr (   &L1,   &L0, EDWARDS_D-1 );
     field_add  (   &L2, &a->z0, &a->z0 );
-    field_bias (   &L2,     1 );
     field_add  (   &L0,   &L2,   &L2 );
     field_add  (   &L2,   &L0,   &L1 );
     IF32( field_weak_reduce(   &L2 ) );
@@ -512,13 +457,9 @@ untwist_and_double_and_serialize (
     IF32( field_weak_reduce(     b ) );
     field_sqr  (   &L2, &a->z );
     field_sqr  (   &L1,   &L2 );
-    field_add  (   &L2,     b,     b );
-    field_mulw (     b,   &L2, 1-EDWARDS_D );
-    field_neg  (   &L2,     b );
-    field_bias (   &L2,     2 );
-    field_mulw (   &L0,   &L2, 1-EDWARDS_D );
-    field_neg  (     b,   &L0 );
-    field_bias (     b,     2 );
+    field_add  (   b,     b,     b );
+    field_mulw_scc (     &L2,   b, EDWARDS_D-1 );
+    field_mulw_scc (   b,   &L2, EDWARDS_D-1 );
     field_mul  (   &L0,   &L2,   &L1 );
     field_mul  (   &L2,     b,   &L0 );
     field_isr  (   &L0,   &L2 );
@@ -654,10 +595,8 @@ deserialize_affine (
     field_copy (   &L3,   &L1 );
     field_addw (   &L3,     1 );
     field_sqr  (   &L2,   &L3 );
-    field_mulw (   &L3,   &L2, 1-EDWARDS_D );
-    field_neg  ( &a->x,   &L3 );
-    field_add  (   &L3,   &L1,   &L1 );
-    field_bias (   &L3,     1 );
+    field_mulw_scc (   &a->x,   &L2, EDWARDS_D-1 ); /* PERF MULW */
+    field_add  (   &L3,   &L1,   &L1 ); /* FIXME: i adjusted the bias here, was it right? */
     field_add  ( &a->y,   &L3,   &L3 );
     field_add  (   &L3, &a->y, &a->x );
     IF32( field_weak_reduce(   &L3 ) );
@@ -694,11 +633,9 @@ deserialize_and_twist_approx (
     field_sqr  ( &a->z,    sz );
     field_copy ( &a->y, &a->z );
     field_addw ( &a->y,     1 );
-    field_sqr  ( &a->x, &a->y );
-    field_mulw ( &a->y, &a->x, 1-EDWARDS_D );
-    field_neg  ( &a->x, &a->y );
+    field_sqr  ( &L0, &a->y );
+    field_mulw_scc ( &a->x, &L0, EDWARDS_D-1 );
     field_add  ( &a->y, &a->z, &a->z );
-    field_bias ( &a->y,     1 );
     field_add  ( &a->u, &a->y, &a->y );
     field_add  ( &a->y, &a->u, &a->x );
     IF32( field_weak_reduce( &a->y ) );

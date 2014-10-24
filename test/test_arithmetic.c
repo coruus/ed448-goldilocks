@@ -22,6 +22,8 @@ static mask_t mpz_to_field (
 
 static mask_t field_assert_eq_gmp(
     const char *descr,
+    const struct field_t *a,
+    const struct field_t *b,
     const struct field_t *x,
     const mpz_t y,
     float lowBound,
@@ -40,7 +42,7 @@ static mask_t field_assert_eq_gmp(
     
     unsigned int i;
     for (i=0; i<sizeof(*x)/sizeof(x->limb[0]); i++) {
-        int radix_bits = sizeof(x->limb[0]) * 448 / sizeof(*x);
+        int radix_bits = sizeof(x->limb[0]) * FIELD_BITS / sizeof(*x);
         word_t yardstick = (i==sizeof(*x)/sizeof(x->limb[0])/2) ?
             (1ull<<radix_bits) - 2 : (1ull<<radix_bits) - 1; // FIELD_MAGIC
         if (x->limb[i] < yardstick * lowBound || x->limb[i] > yardstick * highBound) {
@@ -54,6 +56,8 @@ static mask_t field_assert_eq_gmp(
     if (memcmp(xser,yser,FIELD_BYTES)) {
         youfail();
         printf("    Failed arithmetic test %s\n", descr);
+        field_print("    a", a);
+        field_print("    b", b);
         field_print("    goldi", x);
         printf("    gmp   = 0x");
         int j;
@@ -82,28 +86,30 @@ static mask_t test_add_sub (
     
     field_add(&tt,&xx,&yy);
     mpz_add(t,x,y);
-    succ &= field_assert_eq_gmp("add",&tt,t,0,2.1);
+    succ &= field_assert_eq_gmp("add",&xx,&yy,&tt,t,0,2.1);
     
     field_sub(&tt,&xx,&yy);
     field_bias(&tt,2);
     mpz_sub(t,x,y);
-    succ &= field_assert_eq_gmp("sub",&tt,t,0,3.1);
+    succ &= field_assert_eq_gmp("sub",&xx,&yy,&tt,t,0,3.1);
     
     field_copy(&tt,&xx);
     field_addw(&tt,word);
     mpz_add_ui(t,x,word);
-    succ &= field_assert_eq_gmp("addw",&tt,t,0,2.1);
+    succ &= field_assert_eq_gmp("addw",&xx,&yy,&tt,t,0,2.1);
     
     field_copy(&tt,&xx);
     field_subw(&tt,word);
     field_bias(&tt,1);
     mpz_sub_ui(t,x,word);
-    succ &= field_assert_eq_gmp("subw",&tt,t,0,2.1);
-    
+    succ &= field_assert_eq_gmp("subw",&xx,&yy,&tt,t,0,2.1);
+
+    /*
     if (!succ) {
         field_print("    x", &xx);
         field_print("    y", &yy);
     }
+    */
     
     mpz_clear(t);
     
@@ -124,19 +130,19 @@ static mask_t test_mul_sqr (
     
     field_mul(&tt,&xx,&yy);
     mpz_mul(t,x,y);
-    succ &= field_assert_eq_gmp("mul",&tt,t,0,1.1);
+    succ &= field_assert_eq_gmp("mul",&xx,&yy,&tt,t,0,1.1);
     
     field_mulw(&tt,&xx,word);
     mpz_mul_ui(t,x,word);
-    succ &= field_assert_eq_gmp("mulw",&tt,t,0,1.1);
+    succ &= field_assert_eq_gmp("mulw",&xx,&yy,&tt,t,0,1.1);
     
     field_sqr(&tt,&xx);
     mpz_mul(t,x,x);
-    succ &= field_assert_eq_gmp("sqrx",&tt,t,0,1.1);
+    succ &= field_assert_eq_gmp("sqrx",&xx,&yy,&tt,t,0,1.1);
     
     field_sqr(&tt,&yy);
     mpz_mul(t,y,y);
-    succ &= field_assert_eq_gmp("sqy",&tt,t,0,1.1);
+    succ &= field_assert_eq_gmp("sqy",&xx,&yy,&tt,t,0,1.1);
     
     if (!succ) {
         field_print("    x", &xx);
@@ -144,6 +150,36 @@ static mask_t test_mul_sqr (
     }
     
     mpz_clear(t);
+    
+    return succ;
+}
+
+static mask_t test_isr (
+    const mpz_t x
+) {
+    struct field_t xx,yy,ss,tt;
+    mask_t succ = 0;
+    succ  = mpz_to_field(&xx,x);
+    
+    field_isr(&ss,&xx);
+    field_sqr(&tt,&ss);
+    field_mul(&yy,&xx,&tt);
+    
+    field_addw(&tt,1);
+    succ |= field_is_zero(&tt);
+    
+    field_subw(&tt,2);
+    field_bias(&tt,1);
+    succ |= field_is_zero(&tt);
+    
+    field_addw(&tt,1);
+    if (~succ) {
+        youfail();
+        printf("ISR failure.\n");
+        field_print("    x", &xx);
+        field_print("    s", &ss);
+        field_print("    t", &tt);
+    }
     
     return succ;
 }
@@ -168,8 +204,8 @@ int test_arithmetic (void) {
         if (j<256) {
             mpz_set_ui(x,0);
             mpz_set_ui(y,0);
-            mpz_setbit(x,(j%16)*28); // FIELD_MAGIC
-            mpz_setbit(y,(j/16)*28); // FIELD_MAGIC
+            mpz_setbit(x,(j%16)*28);
+            mpz_setbit(y,(j/16)*28);
         } else if (j&1) {
             mpz_rrandomb(x, state, FIELD_BITS);
             mpz_rrandomb(y, state, FIELD_BITS);
@@ -182,6 +218,9 @@ int test_arithmetic (void) {
         
         succ &= test_add_sub(x,y,word);
         succ &= test_mul_sqr(x,y,word);
+        
+        if (j < 1000)
+            succ &= test_isr(x);
         
         // TODO: test neg, cond_neg, set_ui, wrd, srd, inv, ...?
     }

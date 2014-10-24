@@ -39,10 +39,10 @@ const struct affine_t goldilocks_base_point = {
        0x4c63d96,0x4609845,0xf3932d9,0x1b4faff, 0x6147eaa,0xa2692ff,0x9cecfa9,0x297ea0e
     }},
 #else
-    {{ U58LE(0xf0de840aed939f), U58LE(0xc170033f4ba0c7),
-       U58LE(0xf3932d94c63d96), U58LE(0x9cecfa96147eaa),
-       U58LE(0x5f065c3c59d070), U58LE(0x3a6a26adf73324),
-       U58LE(0x1b4faff4609845), U58LE(0x297ea0ea2692ff)
+    {{ U56LE(0xf0de840aed939f), U56LE(0xc170033f4ba0c7),
+       U56LE(0xf3932d94c63d96), U56LE(0x9cecfa96147eaa),
+       U56LE(0x5f065c3c59d070), U56LE(0x3a6a26adf73324),
+       U56LE(0x1b4faff4609845), U56LE(0x297ea0ea2692ff)
     }},
 #endif
     {{ 19 }}
@@ -69,13 +69,13 @@ sqrt_d_minus_1 = {{
     0xbdeea38,0x748734a,0x5a189aa,0x49443b8,
     0x6f14c06,0x0b25b7a,0x51e65ca,0x12fec0c
 #else
-    U58LE(0xd2e21836749f46),
-    U58LE(0x888db42b4f0179),
-    U58LE(0x5a189aabdeea38),
-    U58LE(0x51e65ca6f14c06),
-    U58LE(0xa49f7b424d9770),
-    U58LE(0xdcac4628c5f656),
-    U58LE(0x49443b8748734a),
-    U58LE(0x12fec0c0b25b7a)
+    U56LE(0xd2e21836749f46),
+    U56LE(0x888db42b4f0179),
+    U56LE(0x5a189aabdeea38),
+    U56LE(0x51e65ca6f14c06),
+    U56LE(0xa49f7b424d9770),
+    U56LE(0xdcac4628c5f656),
+    U56LE(0x49443b8748734a),
+    U56LE(0x12fec0c0b25b7a)
 #endif
 }};

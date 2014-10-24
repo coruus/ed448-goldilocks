@@ -1,3 +1,44 @@
+October 23, 2014:
+    Pushing through changes for curve flexibility.  First up is
+    Ed480-Ridinghood, because it has the same number of words.  Next
+    is E-521.
+    
+    Experimental support for Ed480-Ridinghood.  To use, compile with
+        make ... FIELD=p480 -XCFLAGS=-DGOLDI_FIELD_BITS=480
+    
+    I still need to figure out what to do about the fact that the library
+    is called "goldilocks", but in will soon support curves that are not
+    ed448-goldilocks, at least experimentally.
+        
+    Currently the whole system's header "goldilocks.h" doesn't have
+    a simpler way to override field size, but it does work (as a hack)
+    with -DGOLDI_FIELD_BITS=...
+    
+    There is no support yet for coexistence of multiple fields in one
+    library.  The field routines will have unique names, but scalarmul*
+    won't, and the top-level goldilocks routines have fixed names.
+    
+    Current timings on Haswell:
+        Goldilocks: 178kcy keygen, 536kcy ecdh
+        Ridinghood: 193kcy keygen, 617kcy ecdh
+    
+    Note that Ridinghood ECDH does worse than 480/448.  This is at least
+    in part because I haven't calculated the overflow handling limits yet
+    in ec_point.h (this is a disadvantage of dropping the automated
+    tool for generating that file).  So I'm reducing much more often
+    than I need to.  (There's a really loud TODO in ec_point.h for that.)
+    
+    Also, I haven't tested the limits on these reductions in a while, so
+    it could be that there are actual (security-critical) bugs in this
+    area, at least for p448.  Now that there's field flexibility, it's
+    probably a good idea to make a field impl with extra words to check
+    this.
+    
+    Furthermore, field_mulw_scc will perform differently on these two
+    curves based on whether the curve constant is positive or negative.
+    I should probably go optimize the "hot" routines like montgomery_step
+    to have separate cases for positive and negative.
+
 September 29, 2014:
     Yesterday I put in some more architecture detection, but it should
     really be based on the arch directory, because what's in there really

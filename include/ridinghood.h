@@ -22,18 +22,14 @@
 #define GOLDI_IMPLEMENT_SIGNATURES 1
 #endif
 
-/** The size of the Goldilocks field, in bits. 
- * Ifdef'd so you can override when testing experimental Ed480-Ridinghood or E-521.
- */
-#ifndef GOLDI_FIELD_BITS
+/** The size of the Goldilocks field, in bits. */
 #define GOLDI_FIELD_BITS          448
-#endif
 
 /** The size of the Goldilocks scalars, in bits. */
-#define GOLDI_SCALAR_BITS         (GOLDI_FIELD_BITS-2)
+#define GOLDI_SCALAR_BITS         446
 
 /** The same size, in bytes. */
-#define GOLDI_FIELD_BYTES         ((GOLDI_FIELD_BITS+7)/8)
+#define GOLDI_FIELD_BYTES         (GOLDI_FIELD_BITS/8)
 
 /** The size of a Goldilocks public key, in bytes. */
 #define GOLDI_PUBLIC_KEY_BYTES    GOLDI_FIELD_BYTES

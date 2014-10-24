@@ -39,8 +39,14 @@ single_scalarmul_compatibility_test (
     if (!succ) {
         return 1;
     }
-    
-    struct { int n,t,s; } params[] = {{5,5,18},{3,5,30},{4,4,28},{1,2,224}}; // FIELD_MAGIC
+
+#if FIELD_BITS == 448
+    struct { int n,t,s; } params[] = {{5,5,18},{3,5,30},{4,4,28},{1,2,224}};
+#elif FIELD_BITS == 480
+    struct { int n,t,s; } params[] = {{5,6,16},{6,5,16},{4,5,24},{4,4,30},{1,2,240}};
+#else
+    struct { int n,t,s; } params[] = {{5,5,(SCALAR_BITS+24)/25},{1,2,(SCALAR_BITS+1)/2}};
+#endif
     const int nparams = sizeof(params)/sizeof(params[0]);
     struct fixed_base_table_t fbt;
     const int nsizes = 6;

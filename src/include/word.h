@@ -37,9 +37,12 @@ typedef int64_t sword_t;
 typedef __int128_t dsword_t;
 #define PRIxWORD PRIx64
 #define PRIxWORDfull "%016" PRIx64
-#define PRIxWORD58   "%014" PRIx64
+#define PRIxWORD56   "%014" PRIx64
+#define PRIxWORD60   "%015" PRIx60
 #define U64LE(x) x##ull
 #define U58LE(x) x##ull
+#define U56LE(x) x##ull
+#define U60LE(x) x##ull
 #define letohWORD letoh64
 #define GOLDI_BITS 64
 #else
@@ -51,9 +54,11 @@ typedef int32_t sword_t;
 typedef int64_t dsword_t;
 #define PRIxWORD PRIx32
 #define PRIxWORDfull "%08" PRIx32
-#define PRIxWORD58   "%07" PRIx32
+#define PRIxWORD56   "%07" PRIx32
 #define U64LE(x) (x##ull)&((1ull<<32)-1), (x##ull)>>32
-#define U58LE(x) (x##ull)&((1ull<<28)-1), (x##ull)>>28
+#define U58LE(x) (x##ull)&((1ull<<29)-1), (x##ull)>>29
+#define U56LE(x) (x##ull)&((1ull<<28)-1), (x##ull)>>28
+#define U60LE(x) (x##ull)&((1ull<<30)-1), (x##ull)>>30
 #define letohWORD letoh32
 #define GOLDI_BITS 32
 #endif

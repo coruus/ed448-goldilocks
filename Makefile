@@ -20,12 +20,13 @@ else
 ARCH ?= arch_arm_32
 endif
 
+FIELD ?= p448
 
 WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
 	 -Wmissing-declarations -Wunused-function -Wno-overlength-strings $(EXWARN)
 	 
 	 
-INCFLAGS = -Isrc/include -Iinclude -Isrc/$(ARCH)
+INCFLAGS = -Isrc/include -Iinclude -Isrc/$(FIELD) -Isrc/$(FIELD)/$(ARCH)
 LANGFLAGS = -std=c99 -fno-strict-aliasing
 GENFLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
 OFLAGS = -O3
@@ -63,7 +64,8 @@ ASFLAGS = $(ARCHFLAGS)
 HEADERS= Makefile $(shell find . -name "*.h") build/timestamp
 
 LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
-  build/p448.o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o build/arithmetic.o
+  build/$(FIELD).o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o \
+	build/f_arithmetic.o build/arithmetic.o
 
 TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o
@@ -113,7 +115,10 @@ build/%.s: src/%.c $(HEADERS)
 build/%.s: test/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<
 
-build/%.s: src/$(ARCH)/%.c $(HEADERS)
+build/%.s: src/$(FIELD)/$(ARCH)/%.c $(HEADERS)
+	$(CC) $(CFLAGS) -S -c -o $@ $<
+
+build/%.s: src/$(FIELD)/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<
 
 doc/timestamp:
@@ -131,7 +136,7 @@ $(BATNAME): include/* src/* src/*/* test/batarch.map
           targ="$@/crypto_$$prim/ed448goldilocks"; \
 	  (while read arch where; do \
 	    mkdir -p $$targ/`basename $$arch`; \
-	    cp include/*.h src/*.c src/include/*.h src/bat/$$prim.c src/$$where/*.c src/$$where/*.h $$targ/`basename $$arch`; \
+	    cp include/*.h src/*.c src/include/*.h src/bat/$$prim.c src/p448/$$where/*.c src/p448/$$where/*.h src/p448/*.c src/p448/*.h $$targ/`basename $$arch`; \
 	    cp src/bat/api_$$prim.h $$targ/`basename $$arch`/api.h; \
 	    perl -p -i -e 's/.*endif.*GOLDILOCKS_CONFIG_H/#define SUPERCOP_WONT_LET_ME_OPEN_FILES 1\n\n$$&/' $$targ/`basename $$arch`/config.h; \
 	    perl -p -i -e 's/SYSNAME/'`basename $(BATNAME)`_`basename $$arch`'/g' $$targ/`basename $$arch`/api.h;  \

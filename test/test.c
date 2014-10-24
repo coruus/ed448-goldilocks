@@ -84,13 +84,12 @@ void field_print (
     const char *descr,
     const struct field_t *a
 ) {
-    field_t b;
-    field_copy(&b, a);
-    field_strong_reduce(&b);
     int j;
+    unsigned char ser[FIELD_BYTES];
+    field_serialize(ser,a);
     printf("%s = 0x", descr);
-    for (j=FIELD_WORDS - 1; j>=0; j--) {
-        printf(PRIxWORD58, b.limb[LIMBPERM(j)]);
+    for (j=FIELD_BYTES - 1; j>=0; j--) {
+        printf("%02x", ser[j]);
     }
     printf("\n");
 }

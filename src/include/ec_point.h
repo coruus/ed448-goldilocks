@@ -543,8 +543,6 @@ copy_tw_pniels (
     field_copy ( &a->z, &ds->z );
 }
 
-
-
 #ifdef __cplusplus
 }; /* extern "C" */
 #endif

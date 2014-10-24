@@ -39,13 +39,12 @@ static void q448_randomize( struct crandom_state_t *crand, word_t sk[SCALAR_WORD
 }
 
 static void field_print( const char *descr, const struct field_t *a ) {
-    field_t b;
-    field_copy(&b, a);
-    field_strong_reduce(&b);
     int j;
+    unsigned char ser[FIELD_BYTES];
+    field_serialize(ser,a);
     printf("%s = 0x", descr);
-    for (j=sizeof(*a)/sizeof(a->limb[0])-1; j>=0; j--) {
-        printf(PRIxWORD58, b.limb[j]);
+    for (j=FIELD_BYTES - 1; j>=0; j--) {
+        printf("%02x", ser[j]);
     }
     printf("\n");
 }
@@ -58,7 +57,7 @@ field_print_full (
     int j;
     printf("%s = 0x", descr);
     for (j=15; j>=0; j--) {
-        printf("%02" PRIxWORD "_" PRIxWORD58 " ",
+        printf("%02" PRIxWORD "_" PRIxWORD56 " ",
             a->limb[j]>>28, a->limb[j]&((1<<28)-1));
     }
     printf("\n");

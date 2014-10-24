@@ -1,38 +1,46 @@
 /**
  * @file field.h
- * @brief Generic field header.
+ * @brief Field switch code.
  * @copyright
  *   Copyright (c) 2014 Cryptography Research, Inc.  \n
  *   Released under the MIT License.  See LICENSE.txt for license information.
  * @author Mike Hamburg
  */
-
 #ifndef __FIELD_H__
 #define __FIELD_H__
 
-#include "f_field.h"
+#include <string.h>
+#include "constant_time.h"
+
+#include "p448.h"
+#define FIELD_BITS           448
+#define field_t              p448_t
+#define field_mul            p448_mul
+#define field_sqr            p448_sqr
+#define field_add            p448_add
+#define field_sub            p448_sub
+#define field_mulw           p448_mulw
+#define field_addw           p448_addw
+#define field_subw           p448_subw
+#define field_neg            p448_neg
+#define field_set_ui         p448_set_ui
+#define field_bias           p448_bias
+#define field_cond_neg       p448_cond_neg
+#define field_inverse        p448_inverse
+#define field_eq             p448_eq
+#define field_isr            p448_isr
+#define field_simultaneous_invert p448_simultaneous_invert
+#define field_weak_reduce    p448_weak_reduce
+#define field_strong_reduce  p448_strong_reduce
+#define field_serialize      p448_serialize
+#define field_deserialize    p448_deserialize
+#define field_is_zero        p448_is_zero
 
 /** @brief Bytes in a field element */
 #define FIELD_BYTES          (1+(FIELD_BITS-1)/8)
 
 /** @brief Words in a field element */
 #define FIELD_WORDS          (1+(FIELD_BITS-1)/sizeof(word_t))
-
-/* TODO: standardize notation */
-/** @brief The number of words in the Goldilocks field. */
-#define GOLDI_FIELD_WORDS DIV_CEIL(FIELD_BITS,WORD_BITS)
-
-/** @brief The number of bits in the Goldilocks curve's cofactor (cofactor=4). */
-#define COFACTOR_BITS 2
-
-/** @brief The number of bits in a Goldilocks scalar. */
-#define SCALAR_BITS (FIELD_BITS - COFACTOR_BITS)
-
-/** @brief The number of bytes in a Goldilocks scalar. */
-#define SCALAR_BYTES (1+(SCALAR_BITS)/8)
-
-/** @brief The number of words in the Goldilocks field. */
-#define SCALAR_WORDS WORDS_FOR_BITS(SCALAR_BITS)
 
 /**
  * @brief For GMP tests: little-endian representation of the field modulus.
@@ -111,31 +119,5 @@ field_eq (
     const struct field_t *a,
     const struct field_t *b
 );
-    
-/**
- * Square x, n times.
- */
-static __inline__ void
-__attribute__((unused,always_inline))
-field_sqrn (
-    field_t *__restrict__ y,
-    const field_t *x,
-    int n
-) {
-    field_t tmp;
-    assert(n>0);
-    if (n&1) {
-        field_sqr(y,x);
-        n--;
-    } else {
-        field_sqr(&tmp,x);
-        field_sqr(y,&tmp);
-        n-=2;
-    }
-    for (; n; n-=2) {
-        field_sqr(&tmp,y);
-        field_sqr(y,&tmp);
-    }
-}
 
-#endif // __FIELD_H__
+#endif /* __FIELD_H__ */

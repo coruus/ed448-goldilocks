@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "ec_point.h"
+#include "magic.h"
 #include "field.h"
 #include "crandom.h"
 
@@ -255,6 +256,15 @@ int test_pointops (void) {
     
     struct crandom_state_t crand;
     crandom_init_from_buffer(&crand, "test_pointops random initializer");
+    
+    struct extensible_t ext_base;
+    if (!validate_affine(&goldilocks_base_point)) {
+        youfail();
+        printf("  Base point isn't on the curve.\n");
+        return -1;
+    }
+    convert_affine_to_extensible(&ext_base, &goldilocks_base_point);
+    if (!validate_ext(&ext_base, 2, "base")) return -1;
     
     int i, ret;
     for (i=0; i<1000; i++) {
