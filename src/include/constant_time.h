@@ -127,7 +127,9 @@ constant_time_cond_swap (
 /**
  * @brief Constant-time equivalent of memcpy(out, table + elem_bytes*idx, elem_bytes);
  *
- * The table must be at least as aligned as elem_bytes.  The output must be vector aligned.
+ * The table must be at least as aligned as elem_bytes.  The output must be word aligned,
+ * and if the input size is vector aligned it must also be vector aligned.
+ *
  * The table and output must not alias.
  */
 static __inline__ void
@@ -151,8 +153,9 @@ constant_time_lookup (
         big_register_t br_mask = br_is_zero(big_i);
         for (k=0; k<=elem_bytes-sizeof(big_register_t); k+=sizeof(big_register_t)) {
             if (elem_bytes % sizeof(big_register_t)) {
-                /* input unaligned, output aligned */
-                *(big_register_t *)(out+k) |= br_mask & ((const unaligned_br_t*)(&table[k+j*elem_bytes]))->unaligned;
+                /* unaligned */
+                ((unaligned_br_t *)(out+k))->unaligned
+			|= br_mask & ((const unaligned_br_t*)(&table[k+j*elem_bytes]))->unaligned;
             } else {
                 /* aligned */
                 *(big_register_t *)(out+k) |= br_mask & *(const big_register_t*)(&table[k+j*elem_bytes]);

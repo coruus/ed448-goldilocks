@@ -42,7 +42,7 @@ static mask_t field_assert_eq_gmp(
     
     unsigned int i;
     for (i=0; i<sizeof(*x)/sizeof(x->limb[0]); i++) {
-        int radix_bits = sizeof(x->limb[0]) * FIELD_BITS / sizeof(*x);
+        int radix_bits = 1 + (sizeof(x->limb[0]) * FIELD_BITS - 1) / sizeof(*x);
         word_t yardstick = (i==sizeof(*x)/sizeof(x->limb[0])/2) ?
             (1ull<<radix_bits) - 2 : (1ull<<radix_bits) - 1; // FIELD_MAGIC
         if (x->limb[i] < yardstick * lowBound || x->limb[i] > yardstick * highBound) {
@@ -182,6 +182,11 @@ static mask_t test_isr (
     }
     
     return succ;
+}
+
+void dbg_gmp_printf(const mpz_t x);
+void dbg_gmp_printf(const mpz_t x) {
+    gmp_printf("DEBUG: 0x%Zx\n", x);
 }
 
 int test_arithmetic (void) {

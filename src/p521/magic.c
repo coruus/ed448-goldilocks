@@ -18,13 +18,13 @@ const uint8_t FIELD_MODULUS[FIELD_BYTES] = {
 
 const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS] = {
     U64LE(0xbf15dbca0ae7f294),
-    U60LE(0x04273ba96570e0ba),
-    U60LE(0xc94750a1813ac0fb),
-    U60LE(0xea4939b8b9037a08),
-    U60LE(0x0000000000000002),
-    U60LE(0x0000000000000000),
-    U60LE(0x0000000000000000),
-    U60LE(0x0000000000000000),
+    U64LE(0x04273ba96570e0ba),
+    U64LE(0xc94750a1813ac0fb),
+    U64LE(0xea4939b8b9037a08),
+    U64LE(0x0000000000000002),
+    U64LE(0x0000000000000000),
+    U64LE(0x0000000000000000),
+    U64LE(0x0000000000000000),
     0x80,
         
     U64LE(0x7e2bb79415cfe529),
@@ -40,6 +40,17 @@ const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS] = {
 
 const struct affine_t goldilocks_base_point = {
     {{
+#ifdef USE_P521_3x3_TRANSPOSE
+        U58LE(0x02a940a2f19ba6c),
+        U58LE(0x3331c90d2c6ba52),
+        U58LE(0x2878a3bfd9f42fc),
+        U58LE(0x03ec4cd920e2a8c),
+        U58LE(0x0c6203913f6ecc5),
+        U58LE(0x06277e432c8a5ac),
+        U58LE(0x1d568fc99c6059d),
+        U58LE(0x1b2063b22fcf270),
+        U58LE(0x0752cb45c48648b)
+#else
         U58LE(0x02a940a2f19ba6c),
         U58LE(0x03ec4cd920e2a8c),
         U58LE(0x1d568fc99c6059d),
@@ -49,6 +60,7 @@ const struct affine_t goldilocks_base_point = {
         U58LE(0x2878a3bfd9f42fc),
         U58LE(0x06277e432c8a5ac),
         U58LE(0x0752cb45c48648b)
+#endif
     }},
     {{ 12 }}
 };
@@ -69,6 +81,17 @@ const struct barrett_prime_t curve_prime_order = {
 
 const struct field_t
 sqrt_d_minus_1 = {{
+#ifdef USE_P521_3x3_TRANSPOSE
+    U58LE(0x1e2be72c1c81990),
+    U58LE(0x207dfc238a33e46),
+    U58LE(0x2264cfb418c4c30),
+    U58LE(0x1135002ad596c69),
+    U58LE(0x0e30107cd79d1f6),
+    U58LE(0x0524b9e715937f5),
+    U58LE(0x2ab3a257a22666d),
+    U58LE(0x2d80cc2936a1824),
+    U58LE(0x0a9ea3ac10d6aed)
+#else
     U58LE(0x1e2be72c1c81990),
     U58LE(0x1135002ad596c69),
     U58LE(0x2ab3a257a22666d),
@@ -78,4 +101,5 @@ sqrt_d_minus_1 = {{
     U58LE(0x2264cfb418c4c30),
     U58LE(0x0524b9e715937f5),
     U58LE(0x0a9ea3ac10d6aed)
+#endif
 }};

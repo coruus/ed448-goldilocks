@@ -535,11 +535,11 @@ int main(int argc, char **argv) {
             printf("%02x", hsk.opaque[i]);
         }
         printf("\nss1 = ");
-        for (i=0; i<FIELD_BYTES; i++) {
+        for (i=0; i<64; i++) {
             printf("%02x", ss1[i]);
         }
         printf("\nss2 = ");
-        for (i=0; i<FIELD_BYTES; i++) {
+        for (i=0; i<64; i++) {
             printf("%02x", ss2[i]);
         }
         printf("\n");

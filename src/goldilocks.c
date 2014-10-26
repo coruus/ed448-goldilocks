@@ -34,6 +34,27 @@
 
 #define GOLDI_DIVERSIFY_BYTES 8
 
+
+#if FIELD_BYTES <= SHA512_OUTPUT_BYTES
+#define FIELD_HASH_BYTES SHA512_OUTPUT_BYTES
+#define field_hash_final sha512_final
+#else
+#define FIELD_HASH_BYTES (SHA512_OUTPUT_BYTES * ((FIELD_BYTES-1)/SHA512_OUTPUT_BYTES + 1))
+static inline void field_hash_final (
+    struct sha512_ctx_t *ctx,
+    unsigned char out[FIELD_HASH_BYTES]
+) {
+    /* SHA PRNG I guess? I really should have used SHAKE */
+    int i;
+    for (i=0; i<= (FIELD_BYTES-1) / SHA512_OUTPUT_BYTES; i++) {
+        if (i)
+            sha512_update(ctx, &out[(i-1)*SHA512_OUTPUT_BYTES], SHA512_OUTPUT_BYTES);
+        sha512_final(ctx, &out[i*SHA512_OUTPUT_BYTES]);
+    }
+}
+#endif
+
+
 /* These are just unique identifiers */
 static const char *G_INITING = "initializing";
 static const char *G_INITED = "initialized";
@@ -135,7 +156,7 @@ goldilocks_derive_private_key (
     
     memcpy(&privkey->opaque[2*GOLDI_FIELD_BYTES], proto, GOLDI_SYMKEY_BYTES);
     
-    unsigned char skb[SHA512_OUTPUT_BYTES];
+    unsigned char skb[FIELD_HASH_BYTES];
     word_t sk[GOLDI_FIELD_WORDS];
     assert(sizeof(skb) >= sizeof(sk));
     
@@ -146,9 +167,9 @@ goldilocks_derive_private_key (
     sha512_init(&ctx);
     sha512_update(&ctx, (const unsigned char *)"derivepk", GOLDI_DIVERSIFY_BYTES);
     sha512_update(&ctx, proto, GOLDI_SYMKEY_BYTES);
-    sha512_final(&ctx, (unsigned char *)skb);
+    field_hash_final(&ctx, (unsigned char *)skb);
 
-    barrett_deserialize_and_reduce(sk, skb, SHA512_OUTPUT_BYTES, &curve_prime_order);
+    barrett_deserialize_and_reduce(sk, skb, sizeof(skb), &curve_prime_order);
     barrett_serialize(privkey->opaque, sk, GOLDI_FIELD_BYTES);
 
     scalarmul_fixed_base(&exta, sk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
@@ -316,13 +337,13 @@ goldilocks_derive_challenge(
     uint64_t message_len
 ) {
     /* challenge = H(pk, [nonceG], message). */
-    unsigned char sha_out[SHA512_OUTPUT_BYTES];
+    unsigned char sha_out[FIELD_HASH_BYTES];
     struct sha512_ctx_t ctx;
     sha512_init(&ctx);
     sha512_update(&ctx, pubkey, GOLDI_FIELD_BYTES);
     sha512_update(&ctx, gnonce, GOLDI_FIELD_BYTES);
     sha512_update(&ctx, message, message_len);
-    sha512_final(&ctx, sha_out);
+    field_hash_final(&ctx, sha_out);
     barrett_deserialize_and_reduce(challenge, sha_out, sizeof(sha_out), &curve_prime_order);
 }
 
@@ -346,7 +367,7 @@ goldilocks_sign (
     }
         
     /* Derive a nonce.  TODO: use HMAC. FUTURE: factor. */
-    unsigned char sha_out[SHA512_OUTPUT_BYTES];
+    unsigned char sha_out[FIELD_HASH_BYTES];
     word_t tk[GOLDI_FIELD_WORDS];
     struct sha512_ctx_t ctx;
     sha512_init(&ctx);
@@ -354,8 +375,8 @@ goldilocks_sign (
     sha512_update(&ctx, &privkey->opaque[2*GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
     sha512_update(&ctx, message, message_len);
     sha512_update(&ctx, &privkey->opaque[2*GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
-    sha512_final(&ctx, sha_out);
-    barrett_deserialize_and_reduce(tk, sha_out, SHA512_OUTPUT_BYTES, &curve_prime_order);
+    field_hash_final(&ctx, sha_out);
+    barrett_deserialize_and_reduce(tk, sha_out, sizeof(sha_out), &curve_prime_order);
     
     /* 4[nonce]G */
     uint8_t signature_tmp[GOLDI_FIELD_BYTES];

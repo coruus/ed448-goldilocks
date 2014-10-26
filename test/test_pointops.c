@@ -270,6 +270,11 @@ int test_pointops (void) {
     for (i=0; i<1000; i++) {
         uint8_t ser[FIELD_BYTES];
         crandom_generate(&crand, ser, sizeof(ser));
+
+
+        #if (FIELD_BITS % 8)
+            ser[FIELD_BYTES-1] &= (1<<(FIELD_BITS%8)) - 1;
+	#endif
         
         /* TODO: we need a field generate, which can return random or pathological. */
         mask_t succ = field_deserialize(&serf, ser);

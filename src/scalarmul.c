@@ -163,7 +163,9 @@ scalarmul (
     copy_tw_extensible(&tabulator, working);
     double_tw_extensible(&tabulator);
 
-    struct tw_pniels_t pn, multiples[NTABLE];
+    struct tw_pniels_t
+	pn VECTOR_ALIGNED,
+	multiples[NTABLE] VECTOR_ALIGNED;
     convert_tw_extensible_to_tw_pniels(&pn, &tabulator);
     convert_tw_extensible_to_tw_pniels(&multiples[0], working);
 
@@ -225,7 +227,9 @@ scalarmul_vlook (
     copy_tw_extensible(&tabulator, working);
     double_tw_extensible(&tabulator);
 
-    struct tw_pniels_t pn, multiples[NTABLE];
+    struct tw_pniels_t
+	pn VECTOR_ALIGNED,
+	multiples[NTABLE] VECTOR_ALIGNED;
     convert_tw_extensible_to_tw_pniels(&pn, &tabulator);
     convert_tw_extensible_to_tw_pniels(&multiples[0], working);
 

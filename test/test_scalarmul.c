@@ -283,6 +283,19 @@ single_scalarmul_commutativity_test (
     }
 }
 
+static void crandom_generate_f(struct crandom_state_t *crand, uint8_t *scalar, int n) {
+    crandom_generate(crand, scalar, n);
+    int i;
+    for (i = FIELD_BYTES; i<n; i++) {
+        scalar[i] = 0;
+    }
+#if (FIELD_BITS % 8)
+    if (n >= FIELD_BYTES) {
+        scalar[FIELD_BYTES-1] &= (1<<(FIELD_BITS%8)) - 1;
+    }
+#endif
+}
+
 int test_scalarmul_commutativity (void) {
     int i,j,k,got;
     
@@ -296,7 +309,7 @@ int test_scalarmul_commutativity (void) {
             for (k=0; k<128 && !got; k++) {
                 uint8_t ser[FIELD_BYTES];
                 word_t scalar1[SCALAR_WORDS], scalar2[SCALAR_WORDS];
-                crandom_generate(&crand, ser, sizeof(ser));
+                crandom_generate_f(&crand, ser, sizeof(ser));
                 crandom_generate(&crand, (uint8_t *)scalar1, sizeof(scalar1));
                 crandom_generate(&crand, (uint8_t *)scalar2, sizeof(scalar2));
             
@@ -338,7 +351,7 @@ int test_linear_combo (void) {
                 crandom_generate(&crand, (uint8_t *)scalar2, sizeof(scalar2));
             
                 field_t base1;
-                crandom_generate(&crand, ser, sizeof(ser));
+                crandom_generate_f(&crand, ser, sizeof(ser));
                 mask_t succ = field_deserialize(&base1, ser);
                 if (!succ) continue;
                 
@@ -377,7 +390,7 @@ int test_scalarmul_compatibility (void) {
             for (k=0; k<128 && !got; k++) {
                 uint8_t ser[FIELD_BYTES];
                 word_t scalar[SCALAR_WORDS];
-                crandom_generate(&crand, ser, sizeof(ser));
+                crandom_generate_f(&crand, ser, sizeof(ser));
                 crandom_generate(&crand, (uint8_t *)scalar, sizeof(scalar));
             
                 field_t base;

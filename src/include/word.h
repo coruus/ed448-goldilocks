@@ -102,6 +102,7 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
 #endif
 
 #if __AVX2__
+    #define VECTOR_ALIGNED __attribute__((aligned(32)))
     typedef uint32x8_t big_register_t;
     typedef uint64x4_t uint64xn_t;
     typedef uint32x8_t uint32xn_t;
@@ -113,6 +114,7 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
         return ret;
     }
 #elif __SSE2__
+    #define VECTOR_ALIGNED __attribute__((aligned(16)))
     typedef uint32x4_t big_register_t;
     typedef uint64x2_t uint64xn_t;
     typedef uint32x4_t uint32xn_t;
@@ -124,6 +126,7 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
         return ret;
     }
 #elif __ARM_NEON__
+    #define VECTOR_ALIGNED __attribute__((aligned(16)))
     typedef uint32x4_t big_register_t;
     typedef uint64x2_t uint64xn_t;
     typedef uint32x4_t uint32xn_t;
@@ -132,6 +135,7 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
         return vdupq_n_u32(x);
     }
 #elif _WIN64 || __amd64__ || __X86_64__ || __aarch64__
+    #define VECTOR_ALIGNED __attribute__((aligned(8)))
     typedef uint64_t big_register_t, uint64xn_t;
 
     typedef uint32_t uint32xn_t;
@@ -140,6 +144,7 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
         return (big_register_t)x;
     }
 #else
+    #define VECTOR_ALIGNED __attribute__((aligned(4)))
     typedef uint64_t uint64xn_t;
     typedef uint32_t uint32xn_t;
     typedef uint32_t big_register_t;
