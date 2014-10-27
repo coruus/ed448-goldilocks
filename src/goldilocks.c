@@ -243,6 +243,8 @@ goldilocks_shared_secret_core (
     const struct goldilocks_public_key_t *your_pubkey,
     const struct goldilocks_precomputed_public_key_t *pre
 ) {
+    uint8_t gxy[GOLDI_FIELD_BYTES];
+    
     /* This function doesn't actually need anything in goldilocks_global,
      * so it doesn't check init.
      */
@@ -277,7 +279,7 @@ goldilocks_shared_secret_core (
 #endif
     
     
-    field_serialize(shared,&pk);
+    field_serialize(gxy,&pk);
     
     /* obliterate records of our failure by adjusting with obliteration key */
     struct sha512_ctx_t ctx;
@@ -305,7 +307,7 @@ goldilocks_shared_secret_core (
 #endif
        
     /* stir in the shared key and finish */
-    sha512_update(&ctx, shared, GOLDI_FIELD_BYTES);
+    sha512_update(&ctx, gxy, GOLDI_FIELD_BYTES);
     sha512_final(&ctx, shared);
     
     return (GOLDI_ECORRUPT & ~msucc)

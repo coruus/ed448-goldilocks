@@ -44,12 +44,15 @@ const struct affine_t goldilocks_base_point = {
         U58LE(0x02a940a2f19ba6c),
         U58LE(0x3331c90d2c6ba52),
         U58LE(0x2878a3bfd9f42fc),
+	0,
         U58LE(0x03ec4cd920e2a8c),
         U58LE(0x0c6203913f6ecc5),
         U58LE(0x06277e432c8a5ac),
+	0,
         U58LE(0x1d568fc99c6059d),
         U58LE(0x1b2063b22fcf270),
-        U58LE(0x0752cb45c48648b)
+        U58LE(0x0752cb45c48648b),
+	0
 #else
         U58LE(0x02a940a2f19ba6c),
         U58LE(0x03ec4cd920e2a8c),
@@ -85,12 +88,15 @@ sqrt_d_minus_1 = {{
     U58LE(0x1e2be72c1c81990),
     U58LE(0x207dfc238a33e46),
     U58LE(0x2264cfb418c4c30),
+    0,
     U58LE(0x1135002ad596c69),
     U58LE(0x0e30107cd79d1f6),
     U58LE(0x0524b9e715937f5),
+    0,
     U58LE(0x2ab3a257a22666d),
     U58LE(0x2d80cc2936a1824),
-    U58LE(0x0a9ea3ac10d6aed)
+    U58LE(0x0a9ea3ac10d6aed),
+    0
 #else
     U58LE(0x1e2be72c1c81990),
     U58LE(0x1135002ad596c69),

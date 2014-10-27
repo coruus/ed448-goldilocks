@@ -20,6 +20,11 @@ static mask_t mpz_to_field (
     return succ;
 }
 
+static inline int BRANCH_ON_CONSTANT(int x) {
+    __asm__ ("" : "+r"(x));
+    return x;
+}
+
 static mask_t field_assert_eq_gmp(
     const char *descr,
     const struct field_t *a,
@@ -43,8 +48,15 @@ static mask_t field_assert_eq_gmp(
     unsigned int i;
     for (i=0; i<sizeof(*x)/sizeof(x->limb[0]); i++) {
         int radix_bits = 1 + (sizeof(x->limb[0]) * FIELD_BITS - 1) / sizeof(*x);
-        word_t yardstick = (i==sizeof(*x)/sizeof(x->limb[0])/2) ?
-            (1ull<<radix_bits) - 2 : (1ull<<radix_bits) - 1; // FIELD_MAGIC
+        word_t yardstick;
+
+        if (BRANCH_ON_CONSTANT(FIELD_BITS == 521 && sizeof(*x)==12*8)) {
+            yardstick = (1ull<<58) - 1;
+        } else {
+            yardstick = (i==sizeof(*x)/sizeof(x->limb[0])/2) ?
+                (1ull<<radix_bits) - 2 : (1ull<<radix_bits) - 1; // FIELD_MAGIC
+        }
+
         if (x->limb[i] < yardstick * lowBound || x->limb[i] > yardstick * highBound) {
             youfail();
             printf("    Limb %d -> " PRIxWORDfull " is out of bounds (%0.2f, %0.2f) for test %s (yardstick = " PRIxWORDfull ")\n",

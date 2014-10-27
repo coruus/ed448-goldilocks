@@ -154,6 +154,14 @@ typedef word_t vecmask_t __attribute__((vector_size(32)));
         return (big_register_t)x;
     }
 #endif
+
+typedef struct {
+    uint64xn_t unaligned;
+} __attribute__((packed)) unaligned_uint64xn_t;
+
+typedef struct {
+    uint32xn_t unaligned;
+} __attribute__((packed)) unaligned_uint32xn_t;
     
 /**
  * Return -1 if x==0, and 0 otherwise.

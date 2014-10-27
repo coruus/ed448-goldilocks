@@ -9,13 +9,14 @@
 #include <string.h>
 
 #include "word.h"
+#include "constant_time.h"
 
-#define LIMBPERM(x) (((x)%3)*3 + (x)/3)
+#define LIMBPERM(x) (((x)%3)*4 + (x)/3)
 #define USE_P521_3x3_TRANSPOSE
 
 typedef struct p521_t {
-  uint64_t limb[9];
-} p521_t;
+  uint64_t limb[12];
+} __attribute__((aligned(32))) p521_t;
 
 #ifdef __cplusplus
 extern "C" {
@@ -85,12 +86,6 @@ p521_bias (
     p521_t *inout,
     int amount
 ) __attribute__((unused));
-
-static __inline__ void
-p521_really_bias (
-    p521_t *inout,
-    int amount
-) __attribute__((unused));
          
 void
 p521_mul (
@@ -126,6 +121,19 @@ p521_deserialize (
 
 /* -------------- Inline functions begin here -------------- */
 
+typedef uint64x4_t uint64x3_t; /* fit it in a vector register */
+
+static const uint64x3_t mask58 = { (1ull<<58) - 1, (1ull<<58) - 1, (1ull<<58) - 1, 0 };
+
+/* Currently requires CLANG.  Sorry. */
+static inline uint64x3_t
+__attribute__((unused))
+timesW (
+  uint64x3_t u
+) {
+  return u.zxyw + u.zwww;
+}
+
 void
 p521_set_ui (
     p521_t *out,
@@ -133,7 +141,7 @@ p521_set_ui (
 ) {
     int i;
     out->limb[0] = x;
-    for (i=1; i<9; i++) {
+    for (i=1; i<12; i++) {
       out->limb[i] = 0;
     }
 }
@@ -145,10 +153,9 @@ p521_add (
     const p521_t *b
 ) {
     unsigned int i;
-    for (i=0; i<9; i++) {
-        out->limb[i] = a->limb[i] + b->limb[i];
+    for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
+        ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] + ((const uint64xn_t*)b)[i];
     }
-    p521_weak_reduce(out);
 }
 
 void
@@ -158,11 +165,9 @@ p521_sub (
     const p521_t *b
 ) {
     unsigned int i;
-    uint64_t co1 = ((1ull<<58)-1)*4, co2 = ((1ull<<57)-1)*4;
-    for (i=0; i<9; i++) {
-        out->limb[i] = a->limb[i] - b->limb[i] + ((i==8) ? co2 : co1);
+    for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
+        ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] - ((const uint64xn_t*)b)[i];
     }
-    p521_weak_reduce(out);
 }
 
 void
@@ -171,11 +176,9 @@ p521_neg (
     const p521_t *a
 ) {
     unsigned int i;
-    uint64_t co1 = ((1ull<<58)-1)*4, co2 = ((1ull<<57)-1)*4;
-    for (i=0; i<9; i++) {
-        out->limb[i] = ((i==8) ? co2 : co1) - a->limb[i];
+    for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
+        ((uint64xn_t*)out)[i] = -((const uint64xn_t*)a)[i];
     }
-    p521_weak_reduce(out);
 }
 
 void
@@ -183,9 +186,7 @@ p521_addw (
     p521_t *a,
     uint64_t x
 ) {
-  a->limb[0] += x;
-  a->limb[LIMBPERM(1)] += a->limb[0]>>58;
-  a->limb[0] &= (1ull<<58)-1;
+    a->limb[0] += x;
 }
              
 void
@@ -193,9 +194,7 @@ p521_subw (
     p521_t *a,
     uint64_t x
 ) {
-  a->limb[0] -= x;
-  p521_really_bias(a, 1);
-  p521_weak_reduce(a);
+    a->limb[0] -= x;
 }
 
 void
@@ -207,37 +206,41 @@ p521_copy (
 }
 
 void
-p521_really_bias (
-    p521_t *a,
-    int amt
-) {
-    uint64_t co1 = ((1ull<<58)-1)*2*amt, co2 = ((1ull<<57)-1)*2*amt;
-    int i;
-    for (i=0; i<9; i++) {
-        a->limb[i] += (i==8) ? co2 : co1;
-    }
-}
-
-void
 p521_bias (
     p521_t *a,
     int amt
 ) {
-    (void) a;
-    (void) amt;
+    uint64_t co0 = ((1ull<<58)-2)*amt, co1 = ((1ull<<58)-1)*amt;
+    uint64x4_t vlo = { co0, co1, co1, 0 }, vhi = { co1, co1, co1, 0 };
+    ((uint64x4_t*)a)[0] += vlo;
+    ((uint64x4_t*)a)[1] += vhi;
+    ((uint64x4_t*)a)[2] += vhi;
 }
 
 void
 p521_weak_reduce (
     p521_t *a
 ) {
-    uint64_t mask = (1ull<<58) - 1;
-    uint64_t tmp = a->limb[8] >> 57;
+#if 0
     int i;
-    for (i=8; i>0; i--) {
-        a->limb[LIMBPERM(i)] = (a->limb[LIMBPERM(i)] & ((i==8) ? mask>>1 : mask)) + (a->limb[LIMBPERM(i-1)]>>58);
+    assert(a->limb[3] == 0 && a->limb[7] == 0 && a->limb[11] == 0);
+    for (i=0; i<12; i++) {
+        assert(a->limb[i] < 3ull<<61);
     }
-    a->limb[0] = (a->limb[0] & mask) + tmp;
+#endif
+    
+    uint64x3_t
+        ot0 = ((uint64x4_t*)a)[0],
+        ot1 = ((uint64x4_t*)a)[1],
+        ot2 = ((uint64x4_t*)a)[2];
+    
+    uint64x3_t out0 = (ot0 & mask58) + timesW(ot2>>58);
+    uint64x3_t out1 = (ot1 & mask58) + (ot0>>58);
+    uint64x3_t out2 = (ot2 & mask58) + (ot1>>58);
+
+    ((uint64x4_t*)a)[0] = out0;
+    ((uint64x4_t*)a)[1] = out1;
+    ((uint64x4_t*)a)[2] = out2;
 }
 
 #ifdef __cplusplus

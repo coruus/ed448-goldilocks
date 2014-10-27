@@ -12,7 +12,7 @@
 #include "ec_point.h"
 #include "magic.h"
 
-#define is32 (GOLDI_BITS == 32 || FIELD_BITS == 480)
+#define is32 (GOLDI_BITS == 32 || FIELD_BITS != 448)
 /* TODO XXX PERF FIXME: better detection of overflow conditions */
 
 /* I wanted to just use if (is32)

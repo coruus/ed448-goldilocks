@@ -1,3 +1,47 @@
+October 27, 2014:
+    Added more support for >512-bit primes.  Changed shared secret
+    to not overflow the buffer in this case.  Changed hashing to
+    SHA512-PRNG; this doesn't change the behavior in the case that
+    only one block is required.
+
+    E-521 appears to be working.  Needs more testing, and maybe some
+    careful analysis since the carry-handling bounds are awfully tight
+    under the current analysis (the "< 5<<57" that it #if0 asserts is
+    not actually tight enough under the current analysis; need
+    it to be < (1+epsilon) << 59).
+    
+    So you actually do need to reduce often, at least in the x86_64_r12
+    version.
+    
+    p521/arch_ref64: simple and relatively slow impl.  Like
+    p448/arch_ref64, this arch reduces after every add or sub.
+    
+    p521/arch_x86_64_r12: aggressive, fast implementation.  This impl
+    stores 521 bits not in 9 limbs, but 12!  Limbs 3,7,11 are 0, and
+    are there only for vector alignment.  (TODO: remove those limbs
+    from precomputed tables, so that we don't have to look them up!).
+    The carry handling on this build is very tight, and probably could
+    stand more analysis.  This is why I have the careful balancing of
+    "hexad" and "nonad" multiplies in its Chung-Hasan mul routine.
+    
+    The 'r12 build is a work in progress, and currently only works on
+    clang (because it rearranges vectors in the timesW function).
+    
+    Timings for the fast, aggressive arch on Haswell:
+        mul:    146cy
+        sqr:    111cy
+        invert: 62kcy
+        
+        keygen: 270kcy
+        ecdh:   803kcy
+        sign:   283kcy
+        verif:  907kcy
+        
+    Same rules as other Goldi benchmarks.  Turbo off, HT off,
+    timing-channel protected (no dataflow from secrets to branches,
+    memory lookups or known vt instructions), compressed points.
+    
+
 October 23, 2014:
     Pushing through changes for curve flexibility.  First up is
     Ed480-Ridinghood, because it has the same number of words.  Next

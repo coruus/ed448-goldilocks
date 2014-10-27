@@ -106,6 +106,10 @@ int main(int argc, char **argv) {
     word_t sk[SCALAR_WORDS],tk[SCALAR_WORDS];
     q448_randomize(&crand, sk);
     
+    memset(&a,0,sizeof(a));
+    memset(&b,0,sizeof(b));
+    memset(&c,0,sizeof(c));
+    memset(&d,0,sizeof(d));
     when = now();
     for (i=0; i<nbase*5000; i++) {
         field_mul(&c, &b, &a);
@@ -206,6 +210,7 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("decompress:  %5.1fµs\n", when * 1e6 / i);
     
+    convert_affine_to_extensible(&exta, &affine);
     when = now();
     for (i=0; i<nbase; i++) {
         serialize_extensible(&a, &exta);
@@ -262,6 +267,8 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("barrett mac: %5.1fns\n", when * 1e9 / i);
     
+    memset(&ext,0,sizeof(ext));
+    memset(&niels,0,sizeof(niels)); /* avoid assertions in p521 even though this isn't a valid ext or niels */
     when = now();
     for (i=0; i<nbase*100; i++) {
         add_tw_niels_to_tw_extensible(&ext, &niels);
@@ -269,6 +276,7 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("exti+niels:  %5.1fns\n", when * 1e9 / i);
     
+    convert_tw_extensible_to_tw_pniels(&pniels, &ext);
     when = now();
     for (i=0; i<nbase*100; i++) {
         add_tw_pniels_to_tw_extensible(&ext, &pniels);
@@ -297,6 +305,7 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("a->i isog:   %5.1fns\n", when * 1e9 / i);
     
+    memset(&mb,0,sizeof(mb));
     when = now();
     for (i=0; i<nbase*100; i++) {
         montgomery_step(&mb);
