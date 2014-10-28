@@ -24,6 +24,9 @@ October 27, 2014:
     stand more analysis.  This is why I have the careful balancing of
     "hexad" and "nonad" multiplies in its Chung-Hasan mul routine.
     
+    (TODO: reconsider whether this is even worthwhile on machines
+    without AVX2.)
+    
     The 'r12 build is a work in progress, and currently only works on
     clang (because it rearranges vectors in the timesW function).
     

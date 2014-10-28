@@ -50,12 +50,11 @@ static mask_t field_assert_eq_gmp(
         int radix_bits = 1 + (sizeof(x->limb[0]) * FIELD_BITS - 1) / sizeof(*x);
         word_t yardstick;
 
-        if (BRANCH_ON_CONSTANT(FIELD_BITS == 521 && sizeof(*x)==12*8)) {
-            yardstick = (1ull<<58) - 1;
-        } else {
-            yardstick = (i==sizeof(*x)/sizeof(x->limb[0])/2) ?
-                (1ull<<radix_bits) - 2 : (1ull<<radix_bits) - 1; // FIELD_MAGIC
+        if (BRANCH_ON_CONSTANT(FIELD_BITS == 521) && BRANCH_ON_CONSTANT(sizeof(*x)==12*8)) {
+            radix_bits = 58;
         }
+        
+        yardstick = (1ull<<radix_bits) - 1;
 
         if (x->limb[i] < yardstick * lowBound || x->limb[i] > yardstick * highBound) {
             youfail();
