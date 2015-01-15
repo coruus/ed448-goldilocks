@@ -140,4 +140,21 @@ field_sqrn (
     }
 }
 
+static __inline__ mask_t
+__attribute__((unused,always_inline))
+field_low_bit (const field_t *f) {
+    struct field_t red;
+    field_copy(&red,f);
+    field_strong_reduce(&red);
+    return -(1&red.limb[0]);
+}
+
+static __inline__ mask_t
+__attribute__((unused,always_inline))
+field_make_nonzero (field_t *f) {
+    mask_t z = field_is_zero(f);
+    field_addw( f, -z );
+    return z;
+}
+
 #endif // __FIELD_H__

@@ -443,6 +443,86 @@ serialize_extensible (
 }
 
 void
+decaf_make_even (
+    struct field_t *a
+) {
+    field_cond_neg ( a, field_low_bit(a) );
+    field_strong_reduce ( a );
+}
+
+void
+decaf_serialize_extensible (
+    struct field_t*            b,
+    const struct extensible_t* a
+) {
+    /* FIXME: IF32...? */
+    struct field_t L0, L1, L2, L3;
+    field_mulw_scc ( &L2, &a->y, EDWARDS_D );
+    field_mul  ( &L3, &L2, &a->t );
+    field_mul  ( &L2, &L3, &a->u );
+    field_mul  ( &L0, &a->x, &a->z );
+    field_sub  ( &L3, &L2, &L0 );
+    field_add  ( &L0, &a->y, &a->z );
+    field_sub  ( &L1, &a->y, &a->z );
+    field_bias ( &L1, 2 );
+    field_mul  ( &L2, &L1, &L0 );
+    field_isr  ( &L2, &L2 );
+    field_sqr  ( &L1, &L2 );
+    field_mul  ( &L0, &L1, &L3 );
+    field_mul  ( &L1, &L2, &sqrt_d_minus_1 );
+    field_add  ( &L3, &L1, &L1 );
+    field_neg  ( &L3, &L3 );
+    field_bias ( &L3, 2 );
+    field_mul  ( &L3, &L0, &a->z );
+    field_cond_neg ( &L1, field_low_bit(&L3) );
+    field_mul  ( &L2, &L1, &a->y );
+    field_add  ( b, &L2, &L3 );
+    decaf_make_even ( b );
+}
+
+mask_t
+decaf_deserialize_affine (
+    struct affine_t       *a,
+    const struct field_t  *s,
+    mask_t allow_identity
+) {
+    struct field_t L0, L1, L2, L3, L4, L5;
+    mask_t succ, zero;
+    zero = field_is_zero(s);
+    succ = allow_identity | ~zero;
+    succ &= ~field_low_bit(s);
+    field_sqr  ( &L0, s );
+    field_copy ( &L1, &L1 );
+    field_addw ( &L1, 1 );
+    field_make_nonzero ( &L1 );
+    field_sqr ( &L2, &L1 );
+    field_mulw_scc_wr ( &L3, &L0, -4*EDWARDS_D );
+    field_add ( &L3, &L3, &L2 );
+    field_mul ( &L4, &L3, &L2 );
+    field_mul ( &L2, &L4, &L0 );
+    field_isr ( &L4, &L2 );
+    field_sqr ( &L5, &L4 );
+    field_mul ( &L4, &L5, &L2 );
+    field_addw( &L4, 1 );
+    succ &= ~field_is_zero( &L4 );
+    field_mul ( &L2, &L3, &L1 );
+    field_mul ( &L3, &L2, &L4 );
+    field_cond_neg ( &L4, field_low_bit(&L3) );
+    field_mul ( &L3, &L4, s );
+    field_sqr ( &L4, &L3 );
+    field_mul ( &L0, &L1, &L4 );
+    field_add ( &L0, &L0, &L0 );
+    field_mul ( &a->x, &L0, s );
+    field_mul ( &L2, &L1, &L3 );
+    field_neg ( &L1, &L1 );
+    field_bias ( &L1, 2 );
+    field_addw ( &L1, 2 );
+    field_mul ( &a->y, &L1, &L2 );
+    field_addw ( &a->y, -zero );
+    return succ;
+}
+
+void
 untwist_and_double_and_serialize (
     struct field_t*                b,
     const struct tw_extensible_t* a
