@@ -457,26 +457,30 @@ decaf_serialize_extensible (
 ) {
     /* FIXME: IF32...? */
     struct field_t L0, L1, L2, L3;
-    field_mulw_scc ( &L2, &a->y, EDWARDS_D );
-    field_mul  ( &L3, &L2, &a->t );
-    field_mul  ( &L2, &L3, &a->u );
-    field_mul  ( &L0, &a->x, &a->z );
-    field_sub  ( &L3, &L2, &L0 );
-    field_add  ( &L0, &a->y, &a->z );
+    field_mulw_scc ( &L2, &a->y, EDWARDS_D ); // L2 = d*y
+    field_mul  ( &L3, &L2, &a->t ); // L3 = d*y*t_
+    field_mul  ( &L2, &L3, &a->u ); // L2 = d*y*t
+    field_mul  ( &L0, &a->x, &a->z ); // L0 = x*z
+    field_sub  ( &L3, &L2, &L0 ); 
+    field_bias ( &L3, 2 ); 
+    IF32( field_weak_reduce( &L3 ) ); // L3 = d*y*t - x*z
+    field_add  ( &L0, &a->y, &a->z ); // L0 = y+z
     field_sub  ( &L1, &a->y, &a->z );
     field_bias ( &L1, 2 );
-    field_mul  ( &L2, &L1, &L0 );
-    field_isr  ( &L2, &L2 );
-    field_sqr  ( &L1, &L2 );
-    field_mul  ( &L0, &L1, &L3 );
-    field_mul  ( &L1, &L2, &sqrt_d_minus_1 );
-    field_add  ( &L3, &L1, &L1 );
-    field_neg  ( &L3, &L3 );
+    IF32( field_weak_reduce( &L1 ) ); // L1 = y-z
+    field_mul  ( &L2, &L1, &L0 );     // L2 = y^2-z^2
+    field_isr  ( &L2, &L2 );          // L2 = 1/sqrt(y^2-z^2)
+    field_sqr  ( &L1, &L2 );          // L1 = 1/(y^2-z^2)
+    field_mul  ( &L0, &L1, &L3 );     // L0 = (d*y*t - z*x)/(y^2-z^2) = 1/x
+    field_mul  ( &L1, &L2, &sqrt_d_minus_1 ); // L1 = sy
+    field_add  ( &L3, &L1, &L1 );     // L3 = 2*sy
+    field_neg  ( &L3, &L3 );          
     field_bias ( &L3, 2 );
-    field_mul  ( &L3, &L0, &a->z );
-    field_cond_neg ( &L1, field_low_bit(&L3) );
-    field_mul  ( &L2, &L1, &a->y );
-    field_add  ( b, &L2, &L3 );
+    IF32( field_weak_reduce( &L3 ) ); // L3 = -2*sy     
+    field_mul  ( &L2, &L3, &a->z );   // L2 = -2*sy*z
+    field_cond_neg ( &L1, field_low_bit(&L2) ); // cond-neg sy
+    field_mul  ( &L2, &L1, &a->y ); // L2 = 2*sy*y
+    field_add  ( b, &L0, &L2 );
     decaf_make_even ( b );
 }
 
@@ -492,7 +496,7 @@ decaf_deserialize_affine (
     succ = allow_identity | ~zero;
     succ &= ~field_low_bit(s);
     field_sqr  ( &L0, s );
-    field_copy ( &L1, &L1 );
+    field_copy ( &L1, &L0 );
     field_addw ( &L1, 1 );
     field_make_nonzero ( &L1 );
     field_sqr ( &L2, &L1 );
@@ -502,19 +506,19 @@ decaf_deserialize_affine (
     field_mul ( &L2, &L4, &L0 );
     field_isr ( &L4, &L2 );
     field_sqr ( &L5, &L4 );
-    field_mul ( &L4, &L5, &L2 );
-    field_addw( &L4, 1 );
-    succ &= ~field_is_zero( &L4 );
+    field_mul ( &L0, &L5, &L2 );
+    field_addw( &L0, 1 );
+    succ &= ~field_is_zero( &L0 );
     field_mul ( &L2, &L3, &L1 );
     field_mul ( &L3, &L2, &L4 );
     field_cond_neg ( &L4, field_low_bit(&L3) );
     field_mul ( &L3, &L4, s );
     field_sqr ( &L4, &L3 );
-    field_mul ( &L0, &L1, &L4 );
+    field_mul ( &L0, &L2, &L4 );
     field_add ( &L0, &L0, &L0 );
     field_mul ( &a->x, &L0, s );
     field_mul ( &L2, &L1, &L3 );
-    field_neg ( &L1, &L1 );
+    field_neg ( &L1, &L1 );      
     field_bias ( &L1, 2 );
     field_addw ( &L1, 2 );
     field_mul ( &a->y, &L1, &L2 );

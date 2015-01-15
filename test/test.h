@@ -45,4 +45,6 @@ int test_goldilocks (void);
 
 int test_pointops (void);
 
+int test_decaf (void);
+
 #endif // __GOLDILOCKS_TEST_H__

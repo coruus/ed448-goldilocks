@@ -379,6 +379,21 @@ deserialize_and_twist_approx (
     struct tw_extensible_t* a,
     const struct field_t*    sdm1,
     const struct field_t*    sz
+)
+__attribute__((warn_unused_result));
+
+mask_t
+decaf_deserialize_affine (
+    struct affine_t       *a,
+    const struct field_t  *s,
+    mask_t allow_identity
+)
+__attribute__((warn_unused_result));
+    
+void
+decaf_serialize_extensible (
+    struct field_t*            b,
+    const struct extensible_t* a
 );
 
 void

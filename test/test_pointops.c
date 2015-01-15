@@ -250,6 +250,74 @@ single_twisting_test (
     return succ ? 0 : -1;
 }
 
+int test_decaf (void) {
+    struct affine_t base;
+    struct field_t serf;
+    
+    struct crandom_state_t crand;
+    crandom_init_from_buffer(&crand, "my test_decaf random initializer");
+    
+    int i, hits = 0, fails = 0;
+    for (i=0; i<1000; i++) {
+        uint8_t ser[FIELD_BYTES];
+        crandom_generate(&crand, ser, sizeof(ser));
+        #if (FIELD_BITS % 8)
+            ser[FIELD_BYTES-1] &= (1<<(FIELD_BITS%8)) - 1;
+        #endif
+        ser[0] &= ~1;
+
+        mask_t succ = field_deserialize(&serf, ser);
+        if (!succ) {
+            youfail();
+            printf("   Unlikely: fail at field_deserialize\n");
+            return -1;
+        }
+        
+        succ &= decaf_deserialize_affine(&base, &serf, 0);
+        if (!succ) continue;
+        
+        hits++;
+        struct field_t serf2;
+        struct extensible_t ext;
+        convert_affine_to_extensible(&ext, &base);
+        decaf_serialize_extensible(&serf2, &ext);
+        
+        if (~validate_affine(&base)) {
+            youfail();
+            printf("Invalid decaf deser:\n");
+            field_print("    s", &serf);
+            field_print("    x", &base.x);
+            field_print("    y", &base.y);
+            fails ++;
+        } else if (~field_eq(&serf, &serf2)) {
+            youfail();
+            printf("Fail round-trip through decaf ser:\n");
+            field_print("    s", &serf);
+            field_print("    x", &base.x);
+            field_print("    y", &base.y);
+            printf("    deser is %s\n", validate_affine(&base) ? "valid" : "invalid");
+            field_print("    S", &serf2);
+            fails ++;
+        } else if (~is_even_pt(&ext)) {
+            youfail();
+            printf("Decaf deser isn't even:\n");
+            field_print("    s", &serf);
+            field_print("    x", &base.x);
+            field_print("    y", &base.y);
+            fails ++;
+        }
+    }
+    if (hits < 350) {
+        youfail();
+        printf("   Unlikely: only %d successes in decaf_deser\n", hits);
+        return -1;
+    } else if (fails) {
+        return -1;
+    } else {
+        return 0;
+    }
+}
+
 int test_pointops (void) {
     struct affine_t base, pbase;
     struct field_t serf;

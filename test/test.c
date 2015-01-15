@@ -118,6 +118,9 @@ int main(int argc, char **argv) {
 
     begin_test("EC point operations");
     test_pointops();
+
+    begin_test("Decaf point encoding");
+    test_decaf();
     
     begin_test("Scalarmul compatibility");
     test_scalarmul_compatibility();
