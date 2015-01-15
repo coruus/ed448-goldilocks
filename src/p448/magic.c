@@ -79,3 +79,22 @@ sqrt_d_minus_1 = {{
     U56LE(0x12fec0c0b25b7a)
 #endif
 }};
+
+const struct field_t
+sqrt_minus_d = {{
+#ifdef USE_NEON_PERM
+    0x5572736,0x4a2d780,0x42ef0f4,0xb8d54b6,
+    0x0ce5296,0x1a7b8a5,0x7bf6aa2,0x6aa0a1f,
+    0xed26033,0xd722fa2,0xf4fd6ed,0x683bf68,
+    0xa839a66,0xbeb24f7,0x968c14b,0x22d962f
+#else
+    U56LE(0x42ef0f45572736),
+    U56LE(0x7bf6aa20ce5296),
+    U56LE(0xf4fd6eded26033),
+    U56LE(0x968c14ba839a66),
+    U56LE(0xb8d54b64a2d780),
+    U56LE(0x6aa0a1f1a7b8a5),
+    U56LE(0x683bf68d722fa2),
+    U56LE(0x22d962fbeb24f7)
+#endif
+}};
