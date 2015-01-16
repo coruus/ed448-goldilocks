@@ -252,6 +252,7 @@ single_twisting_test (
 
 int test_decaf (void) {
     struct affine_t base;
+    struct tw_affine_t tw_base;
     struct field_t serf;
     
     struct crandom_state_t crand;
@@ -306,6 +307,50 @@ int test_decaf (void) {
             field_print("    y", &base.y);
             fails ++;
         }
+        
+        succ = decaf_deserialize_tw_affine(&tw_base, &serf, 0);
+        struct tw_extensible_t tw_ext, tw_ext2;
+        convert_tw_affine_to_tw_extensible(&tw_ext, &tw_base);
+        decaf_serialize_tw_extensible(&serf2, &tw_ext);
+        
+        twist_even(&tw_ext2, &ext);
+
+        if (~validate_tw_extensible(&tw_ext)) {
+            youfail();
+            printf("Invalid decaf tw deser:\n");
+            field_print("    s", &serf);
+            field_print("    x", &tw_base.x);
+            field_print("    y", &tw_base.y);
+            fails ++;
+        } else if (~field_eq(&serf, &serf2)) {
+            youfail();
+            printf("Fail round-trip through decaf ser:\n");
+            field_print("    s", &serf);
+            field_print("    x", &tw_base.x);
+            field_print("    y", &tw_base.y);
+            printf("    tw deser is %s\n", validate_tw_extensible(&tw_ext) ? "valid" : "invalid");
+            field_print("    S", &serf2);
+            fails ++;
+        } else if (~is_even_tw(&tw_ext)) {
+            youfail();
+            printf("Decaf tw deser isn't even:\n");
+            field_print("    s", &serf);
+            field_print("    x", &tw_base.x);
+            field_print("    y", &tw_base.y);
+            fails ++;
+        } else if (~decaf_eq_tw_extensible(&tw_ext,&tw_ext2)) {
+            youfail();
+            printf("Decaf tw doesn't equal ext:\n");
+            field_print("    s", &serf);
+            field_print("    x1", &base.x);
+            field_print("    y1", &base.y);
+            field_print("    x2", &tw_base.x);
+            field_print("    y2", &tw_base.y);
+            field_print("    X2", &tw_ext2.x);
+            field_print("    Y2", &tw_ext2.y);
+            fails ++;
+        }
+        
     }
     if (hits < 350) {
         youfail();

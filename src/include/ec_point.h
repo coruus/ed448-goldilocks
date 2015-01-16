@@ -396,6 +396,21 @@ decaf_serialize_extensible (
     const struct extensible_t* a
 );
 
+
+mask_t
+decaf_deserialize_tw_affine (
+    struct tw_affine_t       *a,
+    const struct field_t  *s,
+    mask_t allow_identity
+)
+__attribute__((warn_unused_result));
+
+void
+decaf_serialize_tw_extensible (
+    struct field_t*            b,
+    const struct tw_extensible_t* a
+);
+
 void
 set_identity_extensible (
     struct extensible_t* a
@@ -439,6 +454,20 @@ mask_t
 validate_affine (
     const struct affine_t* a
 );
+
+mask_t
+decaf_eq_tw_extensible (
+    const struct tw_extensible_t* a,
+    const struct tw_extensible_t* b
+)
+__attribute__((warn_unused_result));
+
+mask_t
+decaf_eq_extensible (
+    const struct extensible_t* a,
+    const struct extensible_t* b
+)
+__attribute__((warn_unused_result));
 
 /**
  * Check the invariants for struct tw_extensible_t.

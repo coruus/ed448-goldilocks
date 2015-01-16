@@ -484,6 +484,40 @@ decaf_serialize_extensible (
     decaf_make_even ( b );
 }
 
+void
+decaf_serialize_tw_extensible (
+    struct field_t*            b,
+    const struct tw_extensible_t* a
+) {
+    /* FIXME: IF32...? */
+    struct field_t L0, L1, L2, L3;
+    field_mulw_scc ( &L2, &a->y, 1-EDWARDS_D ); // L2 = (1-d)*y
+    field_mul  ( &L3, &L2, &a->t ); // L3 = (1-d)*y*t_
+    field_mul  ( &L2, &L3, &a->u ); // L2 = (1-d)*y*t
+    field_mul  ( &L0, &a->x, &a->z ); // L0 = x*z
+    field_sub  ( &L3, &L2, &L0 ); 
+    field_bias ( &L3, 2 ); 
+    IF32( field_weak_reduce( &L3 ) ); // L3 = d*y*t - x*z
+    field_add  ( &L0, &a->z, &a->y ); // L0 = y+z
+    field_sub  ( &L1, &a->z, &a->y );
+    field_bias ( &L1, 2 );
+    IF32( field_weak_reduce( &L1 ) ); // L1 = z-y
+    field_mul  ( &L2, &L1, &L0 );     // L2 = z^2-y^2
+    field_isr  ( &L2, &L2 );          // L2 = 1/sqrt(z^2-y^2)
+    field_sqr  ( &L1, &L2 );          // L1 = 1/(z^2-y^2)
+    field_mul  ( &L0, &L1, &L3 );     // L0 = ((1-d)*y*t - z*x)/(y^2-z^2) = 1/x
+    field_mul  ( &L1, &L2, &sqrt_minus_d ); // L1 = sy
+    field_add  ( &L3, &L1, &L1 );     // L3 = 2*sy
+    field_neg  ( &L3, &L3 );          
+    field_bias ( &L3, 2 );
+    IF32( field_weak_reduce( &L3 ) ); // L3 = -2*sy     
+    field_mul  ( &L2, &L3, &a->z );   // L2 = -2*sy*z
+    field_cond_neg ( &L1, field_low_bit(&L2) ); // cond-neg sy
+    field_mul  ( &L2, &L1, &a->y ); // L2 = 2*sy*y
+    field_add  ( b, &L0, &L2 );
+    decaf_make_even ( b );
+}
+
 mask_t
 decaf_deserialize_affine (
     struct affine_t       *a,
@@ -521,6 +555,52 @@ decaf_deserialize_affine (
     field_neg ( &L1, &L1 );      
     field_bias ( &L1, 2 );
     field_addw ( &L1, 2 );
+    IF32( field_weak_reduce( &L1 ) );
+    field_mul ( &a->y, &L1, &L2 );
+    field_addw ( &a->y, -zero );
+    return succ;
+}
+
+mask_t
+decaf_deserialize_tw_affine (
+    struct tw_affine_t    *a,
+    const struct field_t  *s,
+    mask_t allow_identity
+) {
+    struct field_t L0, L1, L2, L3, L4, L5;
+    mask_t succ, zero;
+    zero = field_is_zero(s);
+    succ = allow_identity | ~zero;
+    succ &= ~field_low_bit(s);
+    field_sqr  ( &L0, s );
+    field_neg  ( &L1, &L0 );
+    field_bias ( &L1, 2 );
+    field_addw ( &L1, 1 );
+    IF32( field_weak_reduce( &L1 ) );
+    field_make_nonzero ( &L1 );
+    field_sqr ( &L2, &L1 );
+    field_mulw_scc_wr ( &L3, &L0, 4-4*EDWARDS_D );
+    field_add ( &L3, &L3, &L2 );
+    field_mul ( &L4, &L3, &L2 );
+    field_mul ( &L2, &L4, &L0 );
+    field_isr ( &L4, &L2 );
+    field_sqr ( &L5, &L4 );
+    field_mul ( &L0, &L5, &L2 );
+    field_addw( &L0, 1 );
+    succ &= ~field_is_zero( &L0 );
+    field_mul ( &L2, &L3, &L1 );
+    field_mul ( &L3, &L2, &L4 );
+    field_cond_neg ( &L4, field_low_bit(&L3) );
+    field_mul ( &L3, &L4, s );
+    field_sqr ( &L4, &L3 );
+    field_mul ( &L0, &L2, &L4 );
+    field_add ( &L0, &L0, &L0 );
+    field_mul ( &a->x, &L0, s );
+    field_mul ( &L2, &L1, &L3 );
+    field_neg ( &L1, &L1 );      
+    field_bias ( &L1, 2 );
+    field_addw ( &L1, 2 );
+    IF32( field_weak_reduce( &L1 ) );
     field_mul ( &a->y, &L1, &L2 );
     field_addw ( &a->y, -zero );
     return succ;
@@ -787,6 +867,32 @@ set_identity_affine (
 ) {
     field_set_ui( &a->x,     0 );
     field_set_ui( &a->y,     1 );
+}
+
+mask_t
+decaf_eq_extensible (
+    const struct extensible_t* a,
+    const struct extensible_t* b
+) {
+    struct field_t L0, L1, L2;
+    field_mul  (   &L2, &b->y, &a->x );
+    field_mul  (   &L1, &a->y, &b->x );
+    field_sub  (   &L0,   &L2,   &L1 );
+    field_bias (   &L0,     2 );
+    return field_is_zero ( &L0 );
+}
+
+mask_t
+decaf_eq_tw_extensible (
+    const struct tw_extensible_t* a,
+    const struct tw_extensible_t* b
+) {
+    struct field_t L0, L1, L2;
+    field_mul  (   &L2, &b->y, &a->x );
+    field_mul  (   &L1, &a->y, &b->x );
+    field_sub  (   &L0,   &L2,   &L1 );
+    field_bias (   &L0,     2 );
+    return field_is_zero ( &L0 );
 }
 
 mask_t
