@@ -53,27 +53,42 @@ field_mulw_scc_wr (
         field_weak_reduce(out);
 }
 
+static __inline__ void
+field_subx (
+    struct field_t *d,
+    const struct field_t *a,
+    const struct field_t *b
+) {
+    field_sub ( d, a, b );
+    field_bias( d, 2 );
+    IF32( field_weak_reduce ( d ) );
+}
+
+static __inline__ void
+field_negx (
+    struct field_t *d,
+    const struct field_t *a
+) {
+    field_neg ( d, a );
+    field_bias( d, 2 );
+    IF32( field_weak_reduce ( d ) );
+}
+
 void
 add_tw_niels_to_tw_extensible (
     struct tw_extensible_t*  d,
     const struct tw_niels_t* e
 ) {
     struct field_t L0, L1;
-    field_sub  (   &L1, &d->y, &d->x );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
+    field_subx (   &L1, &d->y, &d->x );
     field_mul  (   &L0, &e->a,   &L1 );
     field_add  (   &L1, &d->x, &d->y );
     field_mul  ( &d->y, &e->b,   &L1 );
     field_mul  (   &L1, &d->u, &d->t );
     field_mul  ( &d->x, &e->c,   &L1 );
     field_add  ( &d->u,   &L0, &d->y );
-    field_sub  ( &d->t, &d->y,   &L0 );
-    field_bias ( &d->t,     2 );
-    IF32( field_weak_reduce( &d->t ) );
-    field_sub  ( &d->y, &d->z, &d->x );
-    field_bias ( &d->y,     2 );
-    IF32( field_weak_reduce( &d->y ) );
+    field_subx ( &d->t, &d->y,   &L0 );
+    field_subx ( &d->y, &d->z, &d->x );
     field_add  (   &L0, &d->x, &d->z );
     field_mul  ( &d->z,   &L0, &d->y );
     field_mul  ( &d->x, &d->y, &d->t );
@@ -86,22 +101,16 @@ sub_tw_niels_from_tw_extensible (
     const struct tw_niels_t* e
 ) {
     struct field_t L0, L1;
-    field_sub  (   &L1, &d->y, &d->x );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
+    field_subx (   &L1, &d->y, &d->x );
     field_mul  (   &L0, &e->b,   &L1 );
     field_add  (   &L1, &d->x, &d->y );
     field_mul  ( &d->y, &e->a,   &L1 );
     field_mul  (   &L1, &d->u, &d->t );
     field_mul  ( &d->x, &e->c,   &L1 );
     field_add  ( &d->u,   &L0, &d->y );
-    field_sub  ( &d->t, &d->y,   &L0 );
-    field_bias ( &d->t,     2 );
-    IF32( field_weak_reduce( &d->t ) );
+    field_subx ( &d->t, &d->y,   &L0 );
     field_add  ( &d->y, &d->x, &d->z );
-    field_sub  (   &L0, &d->z, &d->x );
-    field_bias (   &L0,     2 );
-    IF32( field_weak_reduce(   &L0 ) );
+    field_subx (   &L0, &d->z, &d->x );
     field_mul  ( &d->z,   &L0, &d->y );
     field_mul  ( &d->x, &d->y, &d->t );
     field_mul  ( &d->y,   &L0, &d->u );
@@ -142,9 +151,7 @@ double_tw_extensible (
     field_sub  ( &a->t,   &L1, &a->u );
     field_bias ( &a->t,     3 );
     IF32( field_weak_reduce( &a->t ) );
-    field_sub  (   &L1,   &L0,   &L2 );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
+    field_subx (   &L1,   &L0,   &L2 );
     field_sqr  ( &a->x, &a->z );
     field_bias ( &a->x,     2-is32 /*is32 ? 1 : 2*/ );
     field_add  ( &a->z, &a->x, &a->x );
@@ -168,9 +175,7 @@ double_extensible (
     field_sub  ( &a->t, &a->u,   &L1 );
     field_bias ( &a->t,     3 );
     IF32( field_weak_reduce( &a->t ) );
-    field_sub  ( &a->u,   &L0,   &L2 );
-    field_bias ( &a->u,     2 );
-    IF32( field_weak_reduce( &a->u ) );
+    field_subx ( &a->u,   &L0,   &L2 );
     field_sqr  ( &a->x, &a->z );
     field_bias ( &a->x,     2 );
     field_add  ( &a->z, &a->x, &a->x );
@@ -195,9 +200,7 @@ twist_and_double (
     field_sub  ( &b->t,   &L0, &b->u );
     field_bias ( &b->t,     3 );
     IF32( field_weak_reduce( &b->t ) );
-    field_sub  (   &L0, &b->z, &b->x );
-    field_bias (   &L0,     2 );
-    IF32( field_weak_reduce(   &L0 ) );
+    field_subx (   &L0, &b->z, &b->x );
     field_sqr  ( &b->x, &a->z );
     field_bias ( &b->x,     2 );
     field_add  ( &b->z, &b->x, &b->x );
@@ -222,9 +225,7 @@ untwist_and_double (
     field_sub  ( &b->t, &b->u,   &L0 );
     field_bias ( &b->t,     3 );
     IF32( field_weak_reduce( &b->t ) );
-    field_sub  ( &b->u, &b->z, &b->x );
-    field_bias ( &b->u,     2 );
-    IF32( field_weak_reduce( &b->u ) );
+    field_subx ( &b->u, &b->z, &b->x );
     field_sqr  ( &b->x, &a->z );
     field_bias ( &b->x,     2-is32 /*is32 ? 1 : 2*/ );
     field_add  ( &b->z, &b->x, &b->x );
@@ -296,9 +297,7 @@ convert_tw_pniels_to_tw_extensible (
     const struct tw_pniels_t* d
 ) {
     field_add  ( &e->u, &d->n.b, &d->n.a );
-    field_sub  ( &e->t, &d->n.b, &d->n.a );
-    field_bias ( &e->t,     2 );
-    IF32( field_weak_reduce( &e->t ) );
+    field_subx ( &e->t, &d->n.b, &d->n.a );
     field_mul  ( &e->x, &d->z, &e->t );
     field_mul  ( &e->y, &d->z, &e->u );
     field_sqr  ( &e->z, &d->z );
@@ -325,28 +324,20 @@ montgomery_step (
 ) {
     struct field_t L0, L1;
     field_add  (   &L0, &a->zd, &a->xd );
-    field_sub  (   &L1, &a->xd, &a->zd );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
-    field_sub  ( &a->zd, &a->xa, &a->za );
-    field_bias ( &a->zd,     2 );
-    IF32( field_weak_reduce( &a->zd ) );
+    field_subx (   &L1, &a->xd, &a->zd );
+    field_subx ( &a->zd, &a->xa, &a->za );
     field_mul  ( &a->xd,   &L0, &a->zd );
     field_add  ( &a->zd, &a->za, &a->xa );
     field_mul  ( &a->za,   &L1, &a->zd );
     field_add  ( &a->xa, &a->za, &a->xd );
     field_sqr  ( &a->zd, &a->xa );
     field_mul  ( &a->xa, &a->z0, &a->zd );
-    field_sub  ( &a->zd, &a->xd, &a->za );
-    field_bias ( &a->zd,     2 );
-    IF32( field_weak_reduce( &a->zd ) );
+    field_subx ( &a->zd, &a->xd, &a->za );
     field_sqr  ( &a->za, &a->zd );
     field_sqr  ( &a->xd,   &L0 );
     field_sqr  (   &L0,   &L1 );
     field_mulw_scc ( &a->zd, &a->xd, 1-EDWARDS_D ); /* FIXME PERF MULW */
-    field_sub  (   &L1, &a->xd,   &L0 );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
+    field_subx (   &L1, &a->xd,   &L0 );
     field_mul  ( &a->xd,   &L0, &a->zd );
     field_sub  (   &L0, &a->zd,   &L1 );
     field_bias (   &L0,     4 - 2*is32 /*is32 ? 2 : 4*/ );
@@ -375,19 +366,13 @@ serialize_montgomery (
     mask_t L4, L5, L6;
     struct field_t L0, L1, L2, L3;
     field_mul  (   &L3, &a->z0, &a->zd );
-    field_sub  (   &L1,   &L3, &a->xd );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
+    field_subx (   &L1,   &L3, &a->xd );
     field_mul  (   &L3, &a->za,   &L1 );
     field_mul  (   &L2, &a->z0, &a->xd );
-    field_sub  (   &L1,   &L2, &a->zd );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
+    field_subx (   &L1,   &L2, &a->zd );
     field_mul  (   &L0, &a->xa,   &L1 );
     field_add  (   &L2,   &L0,   &L3 );
-    field_sub  (   &L1,   &L3,   &L0 );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
+    field_subx (   &L1,   &L3,   &L0 );
     field_mul  (   &L3,   &L1,   &L2 );
     field_copy (   &L2, &a->z0 );
     field_addw (   &L2,     1 );
@@ -427,9 +412,7 @@ serialize_extensible (
     const struct extensible_t* a
 ) {
     struct field_t L0, L1, L2;
-    field_sub  (   &L0, &a->y, &a->z );
-    field_bias (   &L0,     2 );
-    IF32( field_weak_reduce(   &L0 ) );
+    field_subx (   &L0, &a->y, &a->z );
     field_add  (     b, &a->z, &a->y );
     field_mul  (   &L1, &a->z, &a->x );
     field_mul  (   &L2,   &L0,   &L1 );
@@ -477,16 +460,10 @@ twist_even (
     mask_t L0, L1;
     field_sqr  ( &b->y, &a->z );
     field_sqr  ( &b->z, &a->x );
-    field_sub  ( &b->u, &b->y, &b->z );
-    field_bias ( &b->u,     2 );
-    IF32( field_weak_reduce( &b->u ) );
-    field_sub  ( &b->z, &a->z, &a->x );
-    field_bias ( &b->z,     2 );
-    IF32( field_weak_reduce( &b->z ) );
+    field_subx ( &b->u, &b->y, &b->z );
+    field_subx ( &b->z, &a->z, &a->x );
     field_mul  ( &b->y, &b->z, &a->y );
-    field_sub  ( &b->z, &a->z, &a->y );
-    field_bias ( &b->z,     2 );
-    IF32( field_weak_reduce( &b->z ) );
+    field_subx ( &b->z, &a->z, &a->y );
     field_mul  ( &b->x, &b->z, &b->y );
     field_mul  ( &b->t, &b->x, &b->u );
     field_mul  ( &b->y, &b->x, &b->t );
@@ -519,13 +496,9 @@ test_only_twist (
     field_add  ( &b->y, &b->z, &b->z );
     field_add  ( &b->u, &b->y, &b->y );
     IF32( field_weak_reduce( &b->u ) );
-    field_sub  ( &b->y, &a->z, &a->x );
-    field_bias ( &b->y,     2 );
-    IF32( field_weak_reduce( &b->y ) );
+    field_subx ( &b->y, &a->z, &a->x );
     field_mul  ( &b->x, &b->y, &a->y );
-    field_sub  ( &b->z, &a->z, &a->y );
-    field_bias ( &b->z,     2 );
-    IF32( field_weak_reduce( &b->z ) );
+    field_subx ( &b->z, &a->z, &a->y );
     field_mul  ( &b->t, &b->z, &b->x );
     field_mul  (   &L1, &b->t, &b->u );
     field_mul  ( &b->x, &b->t,   &L1 );
@@ -535,14 +508,10 @@ test_only_twist (
     field_mul  ( &b->t, &b->x,   &L1 );
     field_add  (   &L1, &a->y, &a->x );
     IF32( field_weak_reduce(   &L1 ) );
-    field_sub  (   &L0, &a->x, &a->y );
-    field_bias (   &L0,     2 );
-    IF32( field_weak_reduce(   &L0 ) );
+    field_subx (   &L0, &a->x, &a->y );
     field_mul  ( &b->x, &b->t,   &L0 );
     field_add  (   &L0, &b->x,   &L1 );
-    field_sub  ( &b->t,   &L1, &b->x );
-    field_bias ( &b->t,     2 );
-    IF32( field_weak_reduce( &b->t ) );
+    field_subx ( &b->t,   &L1, &b->x );
     field_mul  ( &b->x,   &L0, &b->u );
        L2 = field_is_zero( &b->y );
        L3 = -   L2;
@@ -567,9 +536,7 @@ is_even_pt (
     struct field_t L0, L1, L2;
     field_sqr  (   &L2, &a->z );
     field_sqr  (   &L1, &a->x );
-    field_sub  (   &L0,   &L2,   &L1 );
-    field_bias (   &L0,     2 );
-    field_weak_reduce(   &L0 );
+    field_subx (   &L0,   &L2,   &L1 );
     return field_is_square (   &L0 );
 }
 
@@ -602,9 +569,7 @@ deserialize_affine (
     IF32( field_weak_reduce(   &L3 ) );
     field_copy ( &a->y,   &L1 );
     field_subw ( &a->y,     1 );
-    field_neg  ( &a->x, &a->y );
-    field_bias ( &a->x,     2 );
-    IF32( field_weak_reduce( &a->x ) );
+    field_negx ( &a->x, &a->y );
     field_mul  ( &a->y, &a->x,   &L3 );
     field_sqr  (   &L2, &a->x );
     field_mul  (   &L0,   &L2, &a->y );
@@ -641,9 +606,7 @@ deserialize_and_twist_approx (
     IF32( field_weak_reduce( &a->y ) );
     field_sqr  ( &a->x, &a->z );
     field_subw ( &a->x,     1 );
-    field_neg  ( &a->u, &a->x );
-    field_bias ( &a->u,     2 );
-    IF32( field_weak_reduce( &a->u ) );
+    field_negx ( &a->u, &a->x );
     field_mul  ( &a->x,  sdm1, &a->u );
     field_mul  (   &L0, &a->x, &a->y );
     field_mul  ( &a->t,   &L0, &a->y );
@@ -659,9 +622,7 @@ deserialize_and_twist_approx (
     field_mul  (   &L0, &a->u, &a->x );
     field_copy ( &a->x, &a->z );
     field_subw ( &a->x,     1 );
-    field_neg  (   &L1, &a->x );
-    field_bias (   &L1,     2 );
-    IF32( field_weak_reduce(   &L1 ) );
+    field_negx (   &L1, &a->x );
     field_mul  ( &a->x,   &L1,   &L0 );
     field_mul  (   &L0, &a->u, &a->y );
     field_addw ( &a->z,     1 );
@@ -772,9 +733,7 @@ elligator_2s_inject (
     field_sqr  (   &L3, &a->x );
     field_copy ( &a->y,   &L3 );
     field_subw ( &a->y,     1 );
-    field_neg  (   &L4, &a->y );
-    field_bias (   &L4,     2 );
-    IF32( field_weak_reduce(   &L4 ) );
+    field_negx (   &L4, &a->y );
     field_sqr  (   &L2,   &L4 );
     field_mulw (   &L7,   &L2, (EDWARDS_D-1)*(EDWARDS_D-1) );
     field_mulw (   &L8,   &L3, 4*(EDWARDS_D+1)*(EDWARDS_D+1) );
