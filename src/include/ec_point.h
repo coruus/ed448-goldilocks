@@ -39,6 +39,13 @@ struct montgomery_t {
 };
 
 /**
+ * Montgomery buffer, augmented version.
+ */
+struct montgomery_aux_t {
+    struct field_t s0, xd, zd, xa, za, xs, zs;
+};
+
+/**
  * Extensible coordinates for Edwards curves, suitable for
  * accumulators.
  * 
@@ -268,6 +275,11 @@ convert_tw_niels_to_tw_extensible (
 void
 montgomery_step (
     struct montgomery_t* a
+);
+
+void
+montgomery_aux_step (
+    struct montgomery_aux_t* a
 );
 
 void

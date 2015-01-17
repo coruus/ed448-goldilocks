@@ -319,6 +319,30 @@ convert_tw_niels_to_tw_extensible (
 }
 
 void
+montgomery_aux_step (
+    struct montgomery_aux_t* a
+) {
+    field_add  ( &a->xs, &a->xa, &a->za );
+    field_subx ( &a->zs, &a->xa, &a->za );
+    field_add  ( &a->xa, &a->xd, &a->zd );
+    field_subx ( &a->za, &a->xd, &a->zd );
+    field_mul  ( &a->xd, &a->xa, &a->zs );
+    field_mul  ( &a->zd, &a->xs, &a->za );
+    field_add  ( &a->xs, &a->xd, &a->zd );
+    field_subx ( &a->zd, &a->zd, &a->xd );
+    field_mul  ( &a->zs, &a->zd, &a->s0 );
+    field_sqr  ( &a->zd, &a->xa ); // zd = AA
+    field_sqr  ( &a->xa, &a->za ); // xa = BB
+    field_subx ( &a->za, &a->zd, &a->xa ); // za = E
+    field_mul  ( &a->xd, &a->xa, &a->zd ); // xd final
+    field_mulw_scc_wr ( &a->zd, &a->xa, 1-EDWARDS_D );
+    field_add  ( &a->xa, &a->za, &a->zd ); // BB + (1-d)*E
+    field_mul  ( &a->zd, &a->xa, &a->za ); // zd final
+    field_sqr  ( &a->xa, &a->xs );
+    field_sqr  ( &a->za, &a->zs );
+}
+
+void
 montgomery_step (
     struct montgomery_t* a
 ) {
@@ -438,7 +462,6 @@ decaf_serialize_extensible (
     struct field_t*            b,
     const struct extensible_t* a
 ) {
-    /* FIXME: IF32...? */
     struct field_t L0, L1, L2, L3;
     field_mulw_scc ( &L2, &a->y, EDWARDS_D ); // L2 = d*y
     field_mul  ( &L3, &L2, &a->t ); // L3 = d*y*t_
@@ -466,7 +489,6 @@ decaf_serialize_tw_extensible (
     struct field_t*            b,
     const struct tw_extensible_t* a
 ) {
-    /* FIXME: IF32...? */
     struct field_t L0, L1, L2, L3;
     field_mulw_scc ( &L2, &a->y, 1-EDWARDS_D ); // L2 = (1-d)*y
     field_mul  ( &L3, &L2, &a->t ); // L3 = (1-d)*y*t_

@@ -86,6 +86,7 @@ int main(int argc, char **argv) {
     struct tw_pniels_t pniels;
     struct affine_t affine;
     struct montgomery_t mb;
+    struct montgomery_aux_t mba;
     struct field_t a,b,c,d;
     
     
@@ -312,6 +313,14 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("monty step:  %5.1fns\n", when * 1e9 / i);
+    
+    memset(&mba,0,sizeof(mba));
+    when = now();
+    for (i=0; i<nbase*100; i++) {
+        montgomery_aux_step(&mba);
+    }
+    when = now() - when;
+    printf("monty aux:   %5.1fns\n", when * 1e9 / i);
 	
     when = now();
     for (i=0; i<nbase/10; i++) {
