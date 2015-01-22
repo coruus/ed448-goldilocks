@@ -7,7 +7,7 @@
 mpz_t mp_field;
 
 static mask_t mpz_to_field (
-    struct field_t *out,
+    field_a_t out,
     const mpz_t in
 ) {
     uint8_t ser[FIELD_BYTES];
@@ -27,9 +27,9 @@ static inline int BRANCH_ON_CONSTANT(int x) {
 
 static mask_t field_assert_eq_gmp(
     const char *descr,
-    const struct field_t *a,
-    const struct field_t *b,
-    const struct field_t *x,
+    const field_a_t a,
+    const field_a_t b,
+    const field_a_t x,
     const mpz_t y,
     float lowBound,
     float highBound
@@ -88,32 +88,32 @@ static mask_t test_add_sub_RAW (
     const mpz_t y,
     word_t word
 ) {
-    struct field_t xx,yy,tt;
+    field_a_t xx,yy,tt;
     mpz_t t;
     mask_t succ = MASK_SUCCESS;
-    succ  = mpz_to_field(&xx,x);
-    succ &= mpz_to_field(&yy,y);
+    succ  = mpz_to_field(xx,x);
+    succ &= mpz_to_field(yy,y);
     mpz_init(t);
     
-    field_add_RAW(&tt,&xx,&yy);
+    field_add_RAW(tt,xx,yy);
     mpz_add(t,x,y);
-    succ &= field_assert_eq_gmp("add",&xx,&yy,&tt,t,0,2.1);
+    succ &= field_assert_eq_gmp("add",xx,yy,tt,t,0,2.1);
     
-    field_sub_RAW(&tt,&xx,&yy);
-    field_bias(&tt,2);
+    field_sub_RAW(tt,xx,yy);
+    field_bias(tt,2);
     mpz_sub(t,x,y);
-    succ &= field_assert_eq_gmp("sub",&xx,&yy,&tt,t,0,3.1);
+    succ &= field_assert_eq_gmp("sub",xx,yy,tt,t,0,3.1);
     
-    field_copy(&tt,&xx);
-    field_addw(&tt,word);
+    field_copy(tt,xx);
+    field_addw(tt,word);
     mpz_add_ui(t,x,word);
-    succ &= field_assert_eq_gmp("addw",&xx,&yy,&tt,t,0,2.1);
+    succ &= field_assert_eq_gmp("addw",xx,yy,tt,t,0,2.1);
     
-    field_copy(&tt,&xx);
-    field_subw(&tt,word);
-    field_bias(&tt,1);
+    field_copy(tt,xx);
+    field_subw(tt,word);
+    field_bias(tt,1);
     mpz_sub_ui(t,x,word);
-    succ &= field_assert_eq_gmp("subw",&xx,&yy,&tt,t,0,2.1);
+    succ &= field_assert_eq_gmp("subw",xx,yy,tt,t,0,2.1);
 
     /*
     if (!succ) {
@@ -132,32 +132,32 @@ static mask_t test_mul_sqr (
     const mpz_t y,
     word_t word
 ) {
-    struct field_t xx,yy,tt;
+    field_a_t xx,yy,tt;
     mpz_t t;
     mask_t succ = MASK_SUCCESS;
-    succ  = mpz_to_field(&xx,x);
-    succ &= mpz_to_field(&yy,y);
+    succ  = mpz_to_field(xx,x);
+    succ &= mpz_to_field(yy,y);
     mpz_init(t);
     
-    field_mul(&tt,&xx,&yy);
+    field_mul(tt,xx,yy);
     mpz_mul(t,x,y);
-    succ &= field_assert_eq_gmp("mul",&xx,&yy,&tt,t,0,1.1);
+    succ &= field_assert_eq_gmp("mul",xx,yy,tt,t,0,1.1);
     
-    field_mulw(&tt,&xx,word);
+    field_mulw(tt,xx,word);
     mpz_mul_ui(t,x,word);
-    succ &= field_assert_eq_gmp("mulw",&xx,&yy,&tt,t,0,1.1);
+    succ &= field_assert_eq_gmp("mulw",xx,yy,tt,t,0,1.1);
     
-    field_sqr(&tt,&xx);
+    field_sqr(tt,xx);
     mpz_mul(t,x,x);
-    succ &= field_assert_eq_gmp("sqrx",&xx,&yy,&tt,t,0,1.1);
+    succ &= field_assert_eq_gmp("sqrx",xx,yy,tt,t,0,1.1);
     
-    field_sqr(&tt,&yy);
+    field_sqr(tt,yy);
     mpz_mul(t,y,y);
-    succ &= field_assert_eq_gmp("sqy",&xx,&yy,&tt,t,0,1.1);
+    succ &= field_assert_eq_gmp("sqy",xx,yy,tt,t,0,1.1);
     
     if (!succ) {
-        field_print("    x", &xx);
-        field_print("    y", &yy);
+        field_print("    x", xx);
+        field_print("    y", yy);
     }
     
     mpz_clear(t);
@@ -168,28 +168,28 @@ static mask_t test_mul_sqr (
 static mask_t test_isr (
     const mpz_t x
 ) {
-    struct field_t xx,yy,ss,tt;
+    field_a_t xx,yy,ss,tt;
     mask_t succ = 0;
-    succ  = mpz_to_field(&xx,x);
+    succ  = mpz_to_field(xx,x);
     
-    field_isr(&ss,&xx);
-    field_sqr(&tt,&ss);
-    field_mul(&yy,&xx,&tt);
+    field_isr(ss,xx);
+    field_sqr(tt,ss);
+    field_mul(yy,xx,tt);
     
-    field_addw(&tt,1);
-    succ |= field_is_zero(&tt);
+    field_addw(tt,1);
+    succ |= field_is_zero(tt);
     
-    field_subw(&tt,2);
-    field_bias(&tt,1);
-    succ |= field_is_zero(&tt);
+    field_subw(tt,2);
+    field_bias(tt,1);
+    succ |= field_is_zero(tt);
     
-    field_addw(&tt,1);
+    field_addw(tt,1);
     if (~succ) {
         youfail();
         printf("ISR failure.\n");
-        field_print("    x", &xx);
-        field_print("    s", &ss);
-        field_print("    t", &tt);
+        field_print("    x", xx);
+        field_print("    s", ss);
+        field_print("    t", tt);
     }
     
     return succ;
@@ -214,7 +214,7 @@ int test_arithmetic (void) {
     
     mask_t succ = MASK_SUCCESS;
     
-    int radix_bits = sizeof(word_t) * FIELD_BITS / sizeof(field_t);
+    int radix_bits = sizeof(word_t) * FIELD_BITS / sizeof(field_a_t);
     
     for (j=0; j<ntests; j++) {
         if (j<256) {

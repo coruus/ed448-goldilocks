@@ -12,15 +12,15 @@ static void
 failprint_ext (
     const struct extensible_t *a
 ) {
-    struct field_t zi, scaled;
-    field_print("    x", &a->x);
-    field_print("    y", &a->y);
-    field_print("    z", &a->z);
-    field_inverse(&zi, &a->z);
-    field_mul(&scaled, &zi, &a->x);
-    field_print("    X", &scaled);
-    field_mul(&scaled, &zi, &a->y);
-    field_print("    Y", &scaled);
+    field_a_t zi, scaled;
+    field_print("    x", a->x);
+    field_print("    y", a->y);
+    field_print("    z", a->z);
+    field_inverse(zi, a->z);
+    field_mul(scaled, zi, a->x);
+    field_print("    X", scaled);
+    field_mul(scaled, zi, a->y);
+    field_print("    Y", scaled);
     printf("\n");
 }
 
@@ -165,10 +165,10 @@ add_double_test (
     
     if (~succ) {
         printf("    Bases were:\n");
-        field_print("    x1", &base1->x);
-        field_print("    y1", &base1->y);
-        field_print("    x2", &base2->x);
-        field_print("    y2", &base2->y);
+        field_print("    x1", base1->x);
+        field_print("    y1", base1->y);
+        field_print("    x2", base2->x);
+        field_print("    y2", base2->y);
     }
     
     return succ ? 0 : -1;
@@ -211,18 +211,18 @@ single_twisting_test (
         succ = 0;
     } /* FUTURE: quadness */
     
-    field_t sera,serb;
-    untwist_and_double_and_serialize(&sera,&text);
+    field_a_t sera,serb;
+    untwist_and_double_and_serialize(sera,&text);
     copy_extensible(&tmpext,&exb);
     double_extensible(&tmpext);
-    serialize_extensible(&serb,&tmpext);
+    serialize_extensible(serb,&tmpext);
     
     /* check that their (doubled; FUTURE?) serializations are equal */
-    if (~field_eq(&sera,&serb)) {
+    if (~field_eq(sera,serb)) {
         youfail();
         printf("    Different serialization from twist + double ()\n");
-        field_print("    t", &sera);
-        field_print("    b", &serb);
+        field_print("    t", sera);
+        field_print("    b", serb);
         succ = 0;
     }
     
@@ -242,8 +242,8 @@ single_twisting_test (
     
     if (~succ) {
         printf("    Base was:\n");
-        field_print("    x", &base->x);
-        field_print("    y", &base->y);
+        field_print("    x", base->x);
+        field_print("    y", base->y);
     }
     
     
@@ -252,7 +252,7 @@ single_twisting_test (
 
 int test_pointops (void) {
     struct affine_t base, pbase;
-    struct field_t serf;
+    field_a_t serf;
     
     struct crandom_state_t crand;
     crandom_init_from_buffer(&crand, "test_pointops random initializer");
@@ -277,7 +277,7 @@ int test_pointops (void) {
         #endif
         
         /* TODO: we need a field generate, which can return random or pathological. */
-        mask_t succ = field_deserialize(&serf, ser);
+        mask_t succ = field_deserialize(serf, ser);
         if (!succ) {
             youfail();
             printf("   Unlikely: fail at field_deserialize\n");
@@ -287,7 +287,7 @@ int test_pointops (void) {
         if (i) {
             copy_affine(&pbase, &base);
         }
-        elligator_2s_inject(&base, &serf);
+        elligator_2s_inject(&base, serf);
         
         if (i) {
             ret = add_double_test(&base, &pbase);

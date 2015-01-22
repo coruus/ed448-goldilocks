@@ -35,17 +35,17 @@ const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS] = {
 
 const struct affine_t goldilocks_base_point = {
 #ifdef USE_NEON_PERM
-    {{ 0xaed939f,0xc59d070,0xf0de840,0x5f065c3, 0xf4ba0c7,0xdf73324,0xc170033,0x3a6a26a,
+    {{{ 0xaed939f,0xc59d070,0xf0de840,0x5f065c3, 0xf4ba0c7,0xdf73324,0xc170033,0x3a6a26a,
        0x4c63d96,0x4609845,0xf3932d9,0x1b4faff, 0x6147eaa,0xa2692ff,0x9cecfa9,0x297ea0e
-    }},
+    }}},
 #else
-    {{ U56LE(0xf0de840aed939f), U56LE(0xc170033f4ba0c7),
+    {{{ U56LE(0xf0de840aed939f), U56LE(0xc170033f4ba0c7),
        U56LE(0xf3932d94c63d96), U56LE(0x9cecfa96147eaa),
        U56LE(0x5f065c3c59d070), U56LE(0x3a6a26adf73324),
        U56LE(0x1b4faff4609845), U56LE(0x297ea0ea2692ff)
-    }},
+    }}},
 #endif
-    {{ 19 }}
+    {{{ 19 }}}
 };
 
 static const word_t curve_prime_order_lo[(224+WORD_BITS-1)/WORD_BITS] = {
@@ -61,8 +61,8 @@ const struct barrett_prime_t curve_prime_order = {
     curve_prime_order_lo
 };
 
-const struct field_t
-sqrt_d_minus_1 = {{
+const field_a_t
+sqrt_d_minus_1 = {{{
 #ifdef USE_NEON_PERM
     0x6749f46,0x24d9770,0xd2e2183,0xa49f7b4,
     0xb4f0179,0x8c5f656,0x888db42,0xdcac462,
@@ -78,4 +78,4 @@ sqrt_d_minus_1 = {{
     U56LE(0x49443b8748734a),
     U56LE(0x12fec0c0b25b7a)
 #endif
-}};
+}}};

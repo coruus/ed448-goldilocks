@@ -162,7 +162,7 @@ goldilocks_derive_private_key (
     
     struct sha512_ctx_t ctx;
     struct tw_extensible_t exta;
-    struct field_t pk;
+    field_a_t pk;
     
     sha512_init(&ctx);
     sha512_update(&ctx, (const unsigned char *)"derivepk", GOLDI_DIVERSIFY_BYTES);
@@ -173,9 +173,9 @@ goldilocks_derive_private_key (
     barrett_serialize(privkey->opaque, sk, GOLDI_FIELD_BYTES);
 
     scalarmul_fixed_base(&exta, sk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
-    untwist_and_double_and_serialize(&pk, &exta);
+    untwist_and_double_and_serialize(pk, &exta);
     
-    field_serialize(&privkey->opaque[GOLDI_FIELD_BYTES], &pk);
+    field_serialize(&privkey->opaque[GOLDI_FIELD_BYTES], pk);
     
     return GOLDI_EOK;
 }
@@ -225,11 +225,11 @@ goldilocks_private_to_public (
     struct goldilocks_public_key_t *pubkey,
     const struct goldilocks_private_key_t *privkey
 ) {
-    struct field_t pk;
-    mask_t msucc = field_deserialize(&pk,&privkey->opaque[GOLDI_FIELD_BYTES]);
+    field_a_t pk;
+    mask_t msucc = field_deserialize(pk,&privkey->opaque[GOLDI_FIELD_BYTES]);
     
     if (msucc) {
-        field_serialize(pubkey->opaque, &pk);
+        field_serialize(pubkey->opaque, pk);
         return GOLDI_EOK;
     } else {
         return GOLDI_ECORRUPT;
@@ -252,15 +252,15 @@ goldilocks_shared_secret_core (
     assert(GOLDI_SHARED_SECRET_BYTES == SHA512_OUTPUT_BYTES);
     
     word_t sk[GOLDI_FIELD_WORDS];
-    struct field_t pk;
+    field_a_t pk;
     
-    mask_t succ = field_deserialize(&pk,your_pubkey->opaque), msucc = -1;
+    mask_t succ = field_deserialize(pk,your_pubkey->opaque), msucc = -1;
     
 #ifdef EXPERIMENT_ECDH_STIR_IN_PUBKEYS
-    struct field_t sum, prod;
-    msucc &= field_deserialize(&sum,&my_privkey->opaque[GOLDI_FIELD_BYTES]);
-    field_mul(&prod,&pk,&sum);
-    field_add(&sum,&pk,&sum);
+    field_a_t sum, prod;
+    msucc &= field_deserialize(sum,&my_privkey->opaque[GOLDI_FIELD_BYTES]);
+    field_mul(prod,pk,sum);
+    field_add(sum,pk,sum);
 #endif
     
     msucc &= barrett_deserialize(sk,my_privkey->opaque,&curve_prime_order);
@@ -269,17 +269,17 @@ goldilocks_shared_secret_core (
     if (pre) {
         struct tw_extensible_t tw;
         succ &= scalarmul_fixed_base(&tw, sk, GOLDI_SCALAR_BITS, &pre->table);
-        untwist_and_double_and_serialize(&pk, &tw);
+        untwist_and_double_and_serialize(pk, &tw);
     } else {
-        succ &= montgomery_ladder(&pk,&pk,sk,GOLDI_SCALAR_BITS,1);
+        succ &= montgomery_ladder(pk,pk,sk,GOLDI_SCALAR_BITS,1);
     }
 #else
     (void)pre;
-    succ &= montgomery_ladder(&pk,&pk,sk,GOLDI_SCALAR_BITS,1);
+    succ &= montgomery_ladder(pk,pk,sk,GOLDI_SCALAR_BITS,1);
 #endif
     
     
-    field_serialize(gxy,&pk);
+    field_serialize(gxy,pk);
     
     /* obliterate records of our failure by adjusting with obliteration key */
     struct sha512_ctx_t ctx;
@@ -300,9 +300,9 @@ goldilocks_shared_secret_core (
 #ifdef EXPERIMENT_ECDH_STIR_IN_PUBKEYS
     /* stir in the sum and product of the pubkeys. */
     uint8_t a_pk[GOLDI_FIELD_BYTES];
-    field_serialize(a_pk, &sum);
+    field_serialize(a_pk, sum);
     sha512_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
-    field_serialize(a_pk, &prod);
+    field_serialize(a_pk, prod);
     sha512_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
 #endif
        
@@ -383,11 +383,11 @@ goldilocks_sign (
     /* 4[nonce]G */
     uint8_t signature_tmp[GOLDI_FIELD_BYTES];
     struct tw_extensible_t exta;
-    struct field_t gsk;
+    field_a_t gsk;
     scalarmul_fixed_base(&exta, tk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
     double_tw_extensible(&exta);
-    untwist_and_double_and_serialize(&gsk, &exta);
-    field_serialize(signature_tmp, &gsk);
+    untwist_and_double_and_serialize(gsk, &exta);
+    field_serialize(signature_tmp, gsk);
     
     word_t challenge[GOLDI_FIELD_WORDS];
     goldilocks_derive_challenge (
@@ -437,10 +437,10 @@ goldilocks_verify (
         return GOLDI_EUNINIT;
     }
     
-    struct field_t pk;
+    field_a_t pk;
     word_t s[GOLDI_FIELD_WORDS];
     
-    mask_t succ = field_deserialize(&pk,pubkey->opaque);
+    mask_t succ = field_deserialize(pk,pubkey->opaque);
     if (!succ) return GOLDI_EINVAL;
     
     succ = barrett_deserialize(s, &signature[GOLDI_FIELD_BYTES], &curve_prime_order);
@@ -449,14 +449,14 @@ goldilocks_verify (
     word_t challenge[GOLDI_FIELD_WORDS];
     goldilocks_derive_challenge(challenge, pubkey->opaque, signature, message, message_len);
     
-    struct field_t eph;
+    field_a_t eph;
     struct tw_extensible_t pk_text;
     
     /* deserialize [nonce]G */
-    succ = field_deserialize(&eph, signature);
+    succ = field_deserialize(eph, signature);
     if (!succ) return GOLDI_EINVAL;
     
-    succ = deserialize_and_twist_approx(&pk_text, &sqrt_d_minus_1, &pk);
+    succ = deserialize_and_twist_approx(&pk_text, pk);
     if (!succ) return GOLDI_EINVAL;
     
     linear_combo_var_fixed_vt( &pk_text,
@@ -464,9 +464,9 @@ goldilocks_verify (
         s, GOLDI_SCALAR_BITS,
         goldilocks_global.wnafs, WNAF_PRECMP_BITS );
     
-    untwist_and_double_and_serialize( &pk, &pk_text );
+    untwist_and_double_and_serialize( pk, &pk_text );
 
-    succ = field_eq(&eph, &pk);
+    succ = field_eq(eph, pk);
     return succ ? 0 : GOLDI_EINVAL;
 }
 #endif
@@ -485,14 +485,14 @@ goldilocks_precompute_public_key (
     
     struct tw_extensible_t pk_text;
     
-    struct field_t pk;
-    mask_t succ = field_deserialize(&pk, pub->opaque);
+    field_a_t pk;
+    mask_t succ = field_deserialize(pk, pub->opaque);
     if (!succ) {
         free(precom);
         return NULL;
     }
     
-    succ = deserialize_and_twist_approx(&pk_text, &sqrt_d_minus_1, &pk);
+    succ = deserialize_and_twist_approx(&pk_text, pk);
     if (!succ) {
         free(precom);
         return NULL;
@@ -538,11 +538,11 @@ goldilocks_verify_precomputed (
     word_t challenge[GOLDI_FIELD_WORDS];
     goldilocks_derive_challenge(challenge, pubkey->pub.opaque, signature, message, message_len);
     
-    struct field_t eph, pk;
+    field_a_t eph, pk;
     struct tw_extensible_t pk_text;
     
     /* deserialize [nonce]G */
-    succ = field_deserialize(&eph, signature);
+    succ = field_deserialize(eph, signature);
     if (!succ) return GOLDI_EINVAL;
         
     succ = linear_combo_combs_vt (
@@ -552,9 +552,9 @@ goldilocks_verify_precomputed (
     );
     if (!succ) return GOLDI_EINVAL;
     
-    untwist_and_double_and_serialize( &pk, &pk_text );
+    untwist_and_double_and_serialize( pk, &pk_text );
 
-    succ = field_eq(&eph, &pk);
+    succ = field_eq(eph, pk);
     return succ ? 0 : GOLDI_EINVAL;
 }
 

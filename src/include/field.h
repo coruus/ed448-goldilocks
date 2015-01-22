@@ -14,6 +14,9 @@
 #include "f_field.h"
 #include <string.h>
 
+typedef struct field_t field_a_t[1];
+#define field_a_restrict_t struct field_t *__restrict__
+
 #define is32 (GOLDI_BITS == 32 || FIELD_BITS != 448)
 #if (is32)
 #define IF32(s) (s)
@@ -54,8 +57,8 @@ extern const uint8_t FIELD_MODULUS[FIELD_BYTES];
 static inline void
 __attribute__((unused,always_inline))        
 field_copy (
-    struct field_t *__restrict__ a,
-    const struct field_t *__restrict__ b
+    field_a_restrict_t a,
+    const field_a_restrict_t b
 ) {
     memcpy(a,b,sizeof(*a));
 }
@@ -70,8 +73,8 @@ field_copy (
  */
 void
 field_isr (
-    struct field_t*       a,
-    const struct field_t* x
+    field_a_t       a,
+    const field_a_t x
 );
     
 /**
@@ -81,8 +84,8 @@ field_isr (
  */     
 void
 field_simultaneous_invert (
-    struct field_t *__restrict__ out,
-    const struct field_t *in,
+    field_a_t *__restrict__ out,
+    const field_a_t *in,
     unsigned int n
 );
 
@@ -93,8 +96,8 @@ field_simultaneous_invert (
  */
 void
 field_inverse (
-    struct field_t*       a,
-    const struct field_t* x
+    field_a_t       a,
+    const field_a_t x
 );
 
 /**
@@ -102,8 +105,8 @@ field_inverse (
  */
 mask_t
 field_eq (
-    const struct field_t *a,
-    const struct field_t *b
+    const field_a_t a,
+    const field_a_t b
 );
     
 /**
@@ -112,31 +115,31 @@ field_eq (
 static __inline__ void
 __attribute__((unused,always_inline))
 field_sqrn (
-    field_t *__restrict__ y,
-    const field_t *x,
+    field_a_restrict_t y,
+    const field_a_t x,
     int n
 ) {
-    field_t tmp;
+    field_a_t tmp;
     assert(n>0);
     if (n&1) {
         field_sqr(y,x);
         n--;
     } else {
-        field_sqr(&tmp,x);
-        field_sqr(y,&tmp);
+        field_sqr(tmp,x);
+        field_sqr(y,tmp);
         n-=2;
     }
     for (; n; n-=2) {
-        field_sqr(&tmp,y);
-        field_sqr(y,&tmp);
+        field_sqr(tmp,y);
+        field_sqr(y,tmp);
     }
 }
 
 /* Multiply by signed curve constant */
 static __inline__ void
 field_mulw_scc (
-    struct field_t* __restrict__ out,
-    const struct field_t *a,
+    field_a_restrict_t out,
+    const field_a_t a,
     int64_t scc
 ) {
     if (scc >= 0) {
@@ -151,8 +154,8 @@ field_mulw_scc (
 /* Multiply by signed curve constant and weak reduce if biased */
 static __inline__ void
 field_mulw_scc_wr (
-    struct field_t* __restrict__ out,
-    const struct field_t *a,
+    field_a_restrict_t out,
+    const field_a_t a,
     int64_t scc
 ) {
     field_mulw_scc(out, a, scc);
@@ -162,9 +165,9 @@ field_mulw_scc_wr (
 
 static __inline__ void
 field_subx_RAW (
-    struct field_t *d,
-    const struct field_t *a,
-    const struct field_t *b
+    field_a_t d,
+    const field_a_t a,
+    const field_a_t b
 ) {
     field_sub_RAW ( d, a, b );
     field_bias( d, 2 );
@@ -173,9 +176,9 @@ field_subx_RAW (
 
 static __inline__ void
 field_sub (
-    struct field_t *d,
-    const struct field_t *a,
-    const struct field_t *b
+    field_a_t d,
+    const field_a_t a,
+    const field_a_t b
 ) {
     field_sub_RAW ( d, a, b );
     field_bias( d, 2 );
@@ -184,9 +187,9 @@ field_sub (
 
 static __inline__ void
 field_add (
-    struct field_t *d,
-    const struct field_t *a,
-    const struct field_t *b
+    field_a_t d,
+    const field_a_t a,
+    const field_a_t b
 ) {
     field_add_RAW ( d, a, b );
     field_weak_reduce ( d );
@@ -194,7 +197,7 @@ field_add (
 
 static __inline__ void
 field_subw (
-    struct field_t *d,
+    field_a_t d,
     word_t c
 ) {
     field_subw_RAW ( d, c );
@@ -203,9 +206,9 @@ field_subw (
 }
 
 static __inline__ void
-field_negx (
-    struct field_t *d,
-    const struct field_t *a
+field_neg (
+    field_a_t d,
+    const field_a_t a
 ) {
     field_neg_RAW ( d, a );
     field_bias( d, 2 );
@@ -218,12 +221,12 @@ field_negx (
 static inline void
 __attribute__((unused,always_inline)) 
 field_cond_neg (
-    field_t *a,
+    field_a_t a,
     mask_t doNegate
 ) {
-	struct field_t negated;
-    field_negx(&negated, a);
-	constant_time_select(a, &negated, a, sizeof(negated), doNegate);
+	field_a_t negated;
+    field_neg(negated, a);
+	constant_time_select(a, negated, a, sizeof(negated), doNegate);
 }
 
 /** Require the warning annotation on raw routines */

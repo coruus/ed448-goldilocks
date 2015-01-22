@@ -82,7 +82,7 @@ hexprint (
 
 void field_print (
     const char *descr,
-    const struct field_t *a
+    const field_a_t a
 ) {
     int j;
     unsigned char ser[FIELD_BYTES];

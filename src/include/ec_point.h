@@ -21,21 +21,21 @@ extern "C" {
  * Affine point on an Edwards curve.
  */
 struct affine_t {
-    struct field_t x, y;
+    field_a_t x, y;
 };
 
 /**
  * Affine point on a twisted Edwards curve.
  */
 struct tw_affine_t {
-    struct field_t x, y;
+    field_a_t x, y;
 };
 
 /**
  * Montgomery buffer.
  */
 struct montgomery_t {
-    struct field_t z0, xd, zd, xa, za;
+    field_a_t z0, xd, zd, xa, za;
 };
 
 /**
@@ -57,7 +57,7 @@ struct montgomery_t {
  * instead.
  */
 struct extensible_t {
-    struct field_t x, y, z, t, u;
+    field_a_t x, y, z, t, u;
 };
 
 /**
@@ -65,7 +65,7 @@ struct extensible_t {
  * suitable for accumulators.
  */
 struct tw_extensible_t {
-    struct field_t x, y, z, t, u;
+    field_a_t x, y, z, t, u;
 };
 
 /**
@@ -74,7 +74,7 @@ struct tw_extensible_t {
  * Good for mixed readdition; suitable for fixed tables.
  */
 struct tw_niels_t {
-    struct field_t a, b, c;
+    field_a_t a, b, c;
 };
 
 /**
@@ -84,7 +84,7 @@ struct tw_niels_t {
  */
 struct tw_pniels_t {
     struct tw_niels_t n;
-    struct field_t z;
+    field_a_t z;
 };
 
 
@@ -273,14 +273,14 @@ montgomery_step (
 void
 deserialize_montgomery (
     struct montgomery_t* a,
-    const struct field_t* sbz
+    const field_a_t sbz
 );
 
 mask_t
 serialize_montgomery (
-    struct field_t*             b,
+    field_a_t             b,
     const struct montgomery_t* a,
-    const struct field_t*       sbz
+    const field_a_t       sbz
 );
 
 /**
@@ -296,7 +296,7 @@ serialize_montgomery (
  */
 void
 serialize_extensible (
-    struct field_t*             b,
+    field_a_t             b,
     const struct extensible_t* a
 );
 
@@ -305,7 +305,7 @@ serialize_extensible (
  */
 void
 untwist_and_double_and_serialize (
-    struct field_t*                b,
+    field_a_t                b,
     const struct tw_extensible_t* a
 );
 
@@ -345,7 +345,7 @@ test_only_twist (
 
 mask_t
 field_is_square (
-    const struct field_t* x
+    const field_a_t x
 );
 
 mask_t
@@ -364,7 +364,7 @@ is_even_tw (
 mask_t
 deserialize_affine (
     struct affine_t*     a,
-    const struct field_t* sz
+    const field_a_t sz
 );
 
 /**
@@ -377,8 +377,7 @@ deserialize_affine (
 mask_t
 deserialize_and_twist_approx (
     struct tw_extensible_t* a,
-    const struct field_t*    sdm1,
-    const struct field_t*    sz
+    const field_a_t    sz
 );
 
 void
@@ -417,7 +416,7 @@ eq_tw_extensible (
 void
 elligator_2s_inject (
     struct affine_t*     a,
-    const struct field_t* r
+    const field_a_t r
 );
 
 mask_t
@@ -454,8 +453,8 @@ cond_negate_tw_niels (
     struct tw_niels_t *n,
     mask_t doNegate
 ) {
-    constant_time_cond_swap(&n->a, &n->b, sizeof(n->a), doNegate);
-    field_cond_neg(&n->c, doNegate);
+    constant_time_cond_swap(n->a, n->b, sizeof(n->a), doNegate);
+    field_cond_neg(n->c, doNegate);
 }
 
 /**
@@ -475,8 +474,8 @@ copy_affine (
     struct affine_t*       a,
     const struct affine_t* ds
 ) {
-    field_copy ( &a->x, &ds->x );
-    field_copy ( &a->y, &ds->y );
+    field_copy ( a->x, ds->x );
+    field_copy ( a->y, ds->y );
 }
 
 void
@@ -484,8 +483,8 @@ copy_tw_affine (
     struct tw_affine_t*       a,
     const struct tw_affine_t* ds
 ) {
-    field_copy ( &a->x, &ds->x );
-    field_copy ( &a->y, &ds->y );
+    field_copy ( a->x, ds->x );
+    field_copy ( a->y, ds->y );
 }
 
 void
@@ -493,11 +492,11 @@ copy_montgomery (
     struct montgomery_t*       a,
     const struct montgomery_t* ds
 ) {
-    field_copy ( &a->z0, &ds->z0 );
-    field_copy ( &a->xd, &ds->xd );
-    field_copy ( &a->zd, &ds->zd );
-    field_copy ( &a->xa, &ds->xa );
-    field_copy ( &a->za, &ds->za );
+    field_copy ( a->z0, ds->z0 );
+    field_copy ( a->xd, ds->xd );
+    field_copy ( a->zd, ds->zd );
+    field_copy ( a->xa, ds->xa );
+    field_copy ( a->za, ds->za );
 }
 
 void
@@ -505,11 +504,11 @@ copy_extensible (
     struct extensible_t*       a,
     const struct extensible_t* ds
 ) {
-    field_copy ( &a->x, &ds->x );
-    field_copy ( &a->y, &ds->y );
-    field_copy ( &a->z, &ds->z );
-    field_copy ( &a->t, &ds->t );
-    field_copy ( &a->u, &ds->u );
+    field_copy ( a->x, ds->x );
+    field_copy ( a->y, ds->y );
+    field_copy ( a->z, ds->z );
+    field_copy ( a->t, ds->t );
+    field_copy ( a->u, ds->u );
 }
 
 void
@@ -517,11 +516,11 @@ copy_tw_extensible (
     struct tw_extensible_t*       a,
     const struct tw_extensible_t* ds
 ) {
-    field_copy ( &a->x, &ds->x );
-    field_copy ( &a->y, &ds->y );
-    field_copy ( &a->z, &ds->z );
-    field_copy ( &a->t, &ds->t );
-    field_copy ( &a->u, &ds->u );
+    field_copy ( a->x, ds->x );
+    field_copy ( a->y, ds->y );
+    field_copy ( a->z, ds->z );
+    field_copy ( a->t, ds->t );
+    field_copy ( a->u, ds->u );
 }
 
 void
@@ -529,9 +528,9 @@ copy_tw_niels (
     struct tw_niels_t*       a,
     const struct tw_niels_t* ds
 ) {
-    field_copy ( &a->a, &ds->a );
-    field_copy ( &a->b, &ds->b );
-    field_copy ( &a->c, &ds->c );
+    field_copy ( a->a, ds->a );
+    field_copy ( a->b, ds->b );
+    field_copy ( a->c, ds->c );
 }
 
 void
@@ -540,7 +539,7 @@ copy_tw_pniels (
     const struct tw_pniels_t* ds
 ) {
     copy_tw_niels( &a->n, &ds->n );
-    field_copy ( &a->z, &ds->z );
+    field_copy ( a->z, ds->z );
 }
 
 #ifdef __cplusplus
