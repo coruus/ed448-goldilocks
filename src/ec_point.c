@@ -319,27 +319,39 @@ convert_tw_niels_to_tw_extensible (
 }
 
 void
+deserialize_montgomery_decaf (
+    struct montgomery_aux_t* a,
+    const struct field_t *s
+) {
+    field_copy   ( &a->s0, s );
+    field_copy   ( &a->xa, s );
+    field_set_ui ( &a->za, 1 );
+    field_set_ui ( &a->xd, 1 );
+    field_set_ui ( &a->zd, 0 );
+}
+
+void
 montgomery_aux_step (
     struct montgomery_aux_t* a
 ) {
-    field_add  ( &a->xs, &a->xa, &a->za );
-    field_subx ( &a->zs, &a->xa, &a->za );
-    field_add  ( &a->xa, &a->xd, &a->zd );
-    field_subx ( &a->za, &a->xd, &a->zd );
-    field_mul  ( &a->xd, &a->xa, &a->zs );
-    field_mul  ( &a->zd, &a->xs, &a->za );
-    field_add  ( &a->xs, &a->xd, &a->zd );
-    field_subx ( &a->zd, &a->zd, &a->xd );
-    field_mul  ( &a->zs, &a->zd, &a->s0 );
-    field_sqr  ( &a->zd, &a->xa ); // zd = AA
-    field_sqr  ( &a->xa, &a->za ); // xa = BB
+    field_add  ( &a->xs, &a->xa, &a->za ); // xs = C
+    field_subx ( &a->zs, &a->xa, &a->za ); // zs = D
+    field_add  ( &a->xa, &a->xd, &a->zd ); // xa = A
+    field_subx ( &a->za, &a->xd, &a->zd ); // za = B
+    field_mul  ( &a->xd, &a->xa, &a->zs ); // xd = DA
+    field_mul  ( &a->zd, &a->xs, &a->za ); // zd = CB
+    field_add  ( &a->xs, &a->xd, &a->zd ); // xs = DA+CB
+    field_subx ( &a->zd, &a->xd, &a->zd ); // zd = DA-CB
+    field_mul  ( &a->zs, &a->zd, &a->s0 ); // zs = (DA-CB)*s0
+    field_sqr  ( &a->zd, &a->xa );         // zd = AA
+    field_sqr  ( &a->xa, &a->za );         // xa = BB
     field_subx ( &a->za, &a->zd, &a->xa ); // za = E
     field_mul  ( &a->xd, &a->xa, &a->zd ); // xd final
-    field_mulw_scc_wr ( &a->zd, &a->xa, 1-EDWARDS_D );
+    field_mulw_scc_wr ( &a->zd, &a->xa, 1-EDWARDS_D ); // zd = (1-d)*E
     field_add  ( &a->xa, &a->za, &a->zd ); // BB + (1-d)*E
     field_mul  ( &a->zd, &a->xa, &a->za ); // zd final
-    field_sqr  ( &a->xa, &a->xs );
-    field_sqr  ( &a->za, &a->zs );
+    field_sqr  ( &a->xa, &a->xs );         // (DA+CB)^2
+    field_sqr  ( &a->za, &a->zs );         // (DA-CB)^2*s0^2
 }
 
 void

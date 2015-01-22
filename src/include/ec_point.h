@@ -294,6 +294,12 @@ serialize_montgomery (
     const struct montgomery_t* a,
     const struct field_t*       sbz
 );
+    
+void
+deserialize_montgomery_decaf (
+    struct montgomery_aux_t* a,
+    const struct field_t *s
+);
 
 /**
  * Serialize a point on an Edwards curve.
