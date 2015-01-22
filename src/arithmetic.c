@@ -21,7 +21,7 @@ field_eq (
     field_copy(&rb, b);
     field_weak_reduce(&ra);
     field_weak_reduce(&rb);
-    field_sub(&ra, &ra, &rb);
+    field_sub_RAW(&ra, &ra, &rb);
     field_bias(&ra, 2);
     return field_is_zero(&ra);
 }
@@ -47,8 +47,7 @@ field_is_square (
     field_isr  (   &L0,     x );
     field_sqr  (   &L1,   &L0 );
     field_mul  (   &L0,     x,   &L1 );
-    field_subw (   &L0,     1 );
-    field_bias (   &L0,     1 );
+    field_subw(   &L0,     1 );
        L3 = field_is_zero(   &L0 );
        L2 = field_is_zero(     x );
     return    L3 |    L2;

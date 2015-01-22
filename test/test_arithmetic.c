@@ -83,7 +83,7 @@ static mask_t field_assert_eq_gmp(
     return MASK_SUCCESS;
 }
 
-static mask_t test_add_sub (
+static mask_t test_add_sub_RAW (
     const mpz_t x,
     const mpz_t y,
     word_t word
@@ -95,11 +95,11 @@ static mask_t test_add_sub (
     succ &= mpz_to_field(&yy,y);
     mpz_init(t);
     
-    field_add(&tt,&xx,&yy);
+    field_add_RAW(&tt,&xx,&yy);
     mpz_add(t,x,y);
     succ &= field_assert_eq_gmp("add",&xx,&yy,&tt,t,0,2.1);
     
-    field_sub(&tt,&xx,&yy);
+    field_sub_RAW(&tt,&xx,&yy);
     field_bias(&tt,2);
     mpz_sub(t,x,y);
     succ &= field_assert_eq_gmp("sub",&xx,&yy,&tt,t,0,3.1);
@@ -232,13 +232,13 @@ int test_arithmetic (void) {
         
         word_t word = gmp_urandomm_ui (state, 1ull<<radix_bits);
         
-        succ &= test_add_sub(x,y,word);
+        succ &= test_add_sub_RAW(x,y,word);
         succ &= test_mul_sqr(x,y,word);
         
         if (j < 1000)
             succ &= test_isr(x);
         
-        // TODO: test neg, cond_neg, set_ui, wrd, srd, inv, ...?
+        // TODO: test neg, cond_neg_RAW, set_ui, wrd, srd, inv, ...?
     }
     
     mpz_clear(x);

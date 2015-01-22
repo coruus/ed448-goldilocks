@@ -24,21 +24,21 @@ p480_set_ui (
 ) __attribute__((unused,always_inline));
 
 static __inline__ void
-p480_add (
+p480_add_RAW (
     p480_t *out,
     const p480_t *a,
     const p480_t *b
 ) __attribute__((unused,always_inline));
              
 static __inline__ void
-p480_sub (
+p480_sub_RAW (
     p480_t *out,
     const p480_t *a,
     const p480_t *b
 ) __attribute__((unused,always_inline));
              
 static __inline__ void
-p480_neg (
+p480_neg_RAW (
     p480_t *out,
     const p480_t *a
 ) __attribute__((unused,always_inline));
@@ -129,7 +129,7 @@ p480_set_ui (
 }
 
 void
-p480_add (
+p480_add_RAW (
     p480_t *out,
     const p480_t *a,
     const p480_t *b
@@ -147,7 +147,7 @@ p480_add (
 }
 
 void
-p480_sub (
+p480_sub_RAW (
     p480_t *out,
     const p480_t *a,
     const p480_t *b
@@ -165,7 +165,7 @@ p480_sub (
 }
 
 void
-p480_neg (
+p480_neg_RAW (
     struct p480_t *out,
     const p480_t *a
 ) {

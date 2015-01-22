@@ -177,7 +177,6 @@ int main(int argc, char **argv) {
         field_mul(&c,&b,&a);
         field_sqr(&b,&c);
         field_subw(&b,1);
-        field_bias(&b,1);
         if (!field_is_zero(&b)) {
             printf("ISR validation failure!\n");
             field_print("a", &a);
@@ -232,7 +231,6 @@ int main(int argc, char **argv) {
             convert_affine_to_extensible(&exta,&affine);
             serialize_extensible(&b, &exta);
             field_sub(&c,&b,&a);
-            field_bias(&c,2);
             if (!field_is_zero(&c)) {
                 printf("Reserialize validation failure!\n");
                 field_print("a", &a);
@@ -635,7 +633,6 @@ int main(int argc, char **argv) {
         ignore_result(montgomery_ladder(&b,&a,&z,WORD_BITS,0));
         
         field_sub(&d,&b,&c);
-        field_bias(&d,2);
 		if (!field_is_zero(&d)) {
             printf("Odd ladder validation failure %d!\n", ++failures);
             field_print("a", &a);
@@ -661,7 +658,6 @@ int main(int argc, char **argv) {
         untwist_and_double_and_serialize(&c, &ext);
         
         field_sub(&d,&b,&c);
-        field_bias(&d,2);
         
         if (good && !field_is_zero(&d)){
             printf("Iso+serial validation failure %d!\n", ++failures);
@@ -717,7 +713,6 @@ int main(int argc, char **argv) {
         serialize_extensible(&c, &exta);
         
         field_sub(&d,&b,&c);
-        field_bias(&d,2);
         
         if (!field_is_zero(&d)){
             printf("PreWNAF combo validation failure %d!\n", ++failures);

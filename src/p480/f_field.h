@@ -9,23 +9,22 @@
 #ifndef __F_FIELD_H__
 #define __F_FIELD_H__ 1
 
-#include <string.h>
 #include "constant_time.h"
+#include <string.h>
 
 #include "p480.h"
 #define FIELD_BITS           480
 #define field_t              p480_t
 #define field_mul            p480_mul
 #define field_sqr            p480_sqr
-#define field_add            p480_add
-#define field_sub            p480_sub
+#define field_add_RAW        p480_add_RAW
+#define field_sub_RAW        p480_sub_RAW
 #define field_mulw           p480_mulw
 #define field_addw           p480_addw
-#define field_subw           p480_subw
-#define field_neg            p480_neg
+#define field_subw_RAW       p480_subw
+#define field_neg_RAW        p480_neg_RAW
 #define field_set_ui         p480_set_ui
 #define field_bias           p480_bias
-#define field_cond_neg       p480_cond_neg
 #define field_inverse        p480_inverse
 #define field_eq             p480_eq
 #define field_isr            p480_isr

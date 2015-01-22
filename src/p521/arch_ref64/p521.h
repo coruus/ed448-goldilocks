@@ -25,21 +25,21 @@ p521_set_ui (
 ) __attribute__((unused));
 
 static __inline__ void
-p521_add (
+p521_add_RAW (
     p521_t *out,
     const p521_t *a,
     const p521_t *b
 ) __attribute__((unused));
              
 static __inline__ void
-p521_sub (
+p521_sub_RAW (
     p521_t *out,
     const p521_t *a,
     const p521_t *b
 ) __attribute__((unused));
              
 static __inline__ void
-p521_neg (
+p521_neg_RAW (
     p521_t *out,
     const p521_t *a
 ) __attribute__((unused));
@@ -136,7 +136,7 @@ p521_set_ui (
 }
 
 void
-p521_add (
+p521_add_RAW (
     p521_t *out,
     const p521_t *a,
     const p521_t *b
@@ -149,7 +149,7 @@ p521_add (
 }
 
 void
-p521_sub (
+p521_sub_RAW (
     p521_t *out,
     const p521_t *a,
     const p521_t *b
@@ -163,7 +163,7 @@ p521_sub (
 }
 
 void
-p521_neg (
+p521_neg_RAW (
     struct p521_t *out,
     const p521_t *a
 ) {
