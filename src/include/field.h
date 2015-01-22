@@ -14,6 +14,13 @@
 #include "f_field.h"
 #include <string.h>
 
+#define is32 (GOLDI_BITS == 32 || FIELD_BITS != 448)
+#if (is32)
+#define IF32(s) (s)
+#else
+#define IF32(s)
+#endif
+
 /** @brief Bytes in a field element */
 #define FIELD_BYTES          (1+(FIELD_BITS-1)/8)
 
@@ -51,21 +58,6 @@ field_copy (
     const struct field_t *__restrict__ b
 ) {
     memcpy(a,b,sizeof(*a));
-}
-
-/**
- * Negate a in place if doNegate.
- */
-static inline void
-__attribute__((unused,always_inline)) 
-field_cond_neg(
-    field_t *a,
-    mask_t doNegate
-) {
-	struct field_t negated;
-    field_neg(&negated, a);
-    field_bias(&negated, 2);
-	constant_time_select(a, &negated, a, sizeof(negated), doNegate);
 }
 
 /**
@@ -142,7 +134,7 @@ field_sqrn (
 
 static __inline__ mask_t
 __attribute__((unused,always_inline))
-field_low_bit (const field_t *f) {
+field_low_bit (const struct field_t *f) {
     struct field_t red;
     field_copy(&red,f);
     field_strong_reduce(&red);
@@ -151,10 +143,111 @@ field_low_bit (const field_t *f) {
 
 static __inline__ mask_t
 __attribute__((unused,always_inline))
-field_make_nonzero (field_t *f) {
+field_make_nonzero (struct field_t *f) {
     mask_t z = field_is_zero(f);
     field_addw( f, -z );
     return z;
 }
+
+/* Multiply by signed curve constant */
+static __inline__ void
+field_mulw_scc (
+    struct field_t* __restrict__ out,
+    const struct field_t *a,
+    int64_t scc
+) {
+    if (scc >= 0) {
+        field_mulw(out, a, scc);
+    } else {
+        field_mulw(out, a, -scc);
+        field_neg_RAW(out,out);
+        field_bias(out,2);
+    }
+}
+
+/* Multiply by signed curve constant and weak reduce if biased */
+static __inline__ void
+field_mulw_scc_wr (
+    struct field_t* __restrict__ out,
+    const struct field_t *a,
+    int64_t scc
+) {
+    field_mulw_scc(out, a, scc);
+    if (scc < 0)
+        field_weak_reduce(out);
+}
+
+static __inline__ void
+field_subx_RAW (
+    struct field_t *d,
+    const struct field_t *a,
+    const struct field_t *b
+) {
+    field_sub_RAW ( d, a, b );
+    field_bias( d, 2 );
+    IF32( field_weak_reduce ( d ) );
+}
+
+static __inline__ void
+field_sub (
+    struct field_t *d,
+    const struct field_t *a,
+    const struct field_t *b
+) {
+    field_sub_RAW ( d, a, b );
+    field_bias( d, 2 );
+    field_weak_reduce ( d );
+}
+
+static __inline__ void
+field_add (
+    struct field_t *d,
+    const struct field_t *a,
+    const struct field_t *b
+) {
+    field_add_RAW ( d, a, b );
+    field_weak_reduce ( d );
+}
+
+static __inline__ void
+field_subw (
+    struct field_t *d,
+    word_t c
+) {
+    field_subw_RAW ( d, c );
+    field_bias( d, 1 );
+    field_weak_reduce ( d );
+}
+
+static __inline__ void
+field_negx (
+    struct field_t *d,
+    const struct field_t *a
+) {
+    field_neg_RAW ( d, a );
+    field_bias( d, 2 );
+    field_weak_reduce ( d );
+}
+
+/**
+ * Negate a in place if doNegate.
+ */
+static inline void
+__attribute__((unused,always_inline)) 
+field_cond_neg (
+    field_t *a,
+    mask_t doNegate
+) {
+	struct field_t negated;
+    field_negx(&negated, a);
+	constant_time_select(a, &negated, a, sizeof(negated), doNegate);
+}
+
+/** Require the warning annotation on raw routines */
+#define ANALYZE_THIS_ROUTINE_CAREFULLY const int ANNOTATE___ANALYZE_THIS_ROUTINE_CAREFULLY = 0;
+#define MUST_BE_CAREFUL (void) ANNOTATE___ANALYZE_THIS_ROUTINE_CAREFULLY
+#define field_add_nr(a,b,c) { MUST_BE_CAREFUL; field_add_RAW(a,b,c); }
+#define field_sub_nr(a,b,c) { MUST_BE_CAREFUL; field_sub_RAW(a,b,c); }
+#define field_subx_nr(a,b,c) { MUST_BE_CAREFUL; field_subx_RAW(a,b,c); }
 
 #endif // __FIELD_H__

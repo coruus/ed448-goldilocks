@@ -24,21 +24,21 @@ p448_set_ui (
 ) __attribute__((unused,always_inline));
 
 static __inline__ void
-p448_add (
+p448_add_RAW (
     p448_t *out,
     const p448_t *a,
     const p448_t *b
 ) __attribute__((unused,always_inline));
              
 static __inline__ void
-p448_sub (
+p448_sub_RAW (
     p448_t *out,
     const p448_t *a,
     const p448_t *b
 ) __attribute__((unused,always_inline));
              
 static __inline__ void
-p448_neg (
+p448_neg_RAW (
     p448_t *out,
     const p448_t *a
 ) __attribute__((unused,always_inline));
@@ -130,7 +130,7 @@ p448_set_ui (
 }
 
 void
-p448_add (
+p448_add_RAW (
     p448_t *out,
     const p448_t *a,
     const p448_t *b
@@ -148,7 +148,7 @@ p448_add (
 }
 
 void
-p448_sub (
+p448_sub_RAW (
     p448_t *out,
     const p448_t *a,
     const p448_t *b
@@ -166,7 +166,7 @@ p448_sub (
 }
 
 void
-p448_neg (
+p448_neg_RAW (
     p448_t *out,
     const p448_t *a
 ) {
