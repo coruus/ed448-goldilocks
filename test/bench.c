@@ -29,7 +29,7 @@ static double now(void) {
   return tv.tv_sec + tv.tv_usec/1000000.0;
 }
 
-static void field_randomize( struct crandom_state_t *crand, struct field_t *a ) {
+static void field_randomize( struct crandom_state_t *crand, field_a_t a ) {
     crandom_generate(crand, (unsigned char *)a, sizeof(*a));
     field_strong_reduce(a);
 }
@@ -38,7 +38,7 @@ static void q448_randomize( struct crandom_state_t *crand, word_t sk[SCALAR_WORD
     crandom_generate(crand, (unsigned char *)sk, SCALAR_BYTES);
 }
 
-static void field_print( const char *descr, const struct field_t *a ) {
+static void field_print( const char *descr, const field_a_t a ) {
     int j;
     unsigned char ser[FIELD_BYTES];
     field_serialize(ser,a);
@@ -52,7 +52,7 @@ static void field_print( const char *descr, const struct field_t *a ) {
 static void __attribute__((unused))
 field_print_full (
     const char *descr,
-    const struct field_t *a
+    const field_a_t a
 ) {
     int j;
     printf("%s = 0x", descr);
@@ -87,8 +87,7 @@ int main(int argc, char **argv) {
     struct affine_t affine;
     struct montgomery_t mb;
     struct montgomery_aux_t mba;
-    struct field_t a,b,c,d;
-    
+    field_a_t a,b,c,d;
     
     double when;
     int i;
@@ -107,42 +106,42 @@ int main(int argc, char **argv) {
     word_t sk[SCALAR_WORDS],tk[SCALAR_WORDS];
     q448_randomize(&crand, sk);
     
-    memset(&a,0,sizeof(a));
-    memset(&b,0,sizeof(b));
-    memset(&c,0,sizeof(c));
-    memset(&d,0,sizeof(d));
+    memset(a,0,sizeof(a));
+    memset(b,0,sizeof(b));
+    memset(c,0,sizeof(c));
+    memset(d,0,sizeof(d));
     when = now();
     for (i=0; i<nbase*5000; i++) {
-        field_mul(&c, &b, &a);
+        field_mul(c, b, a);
     }
     when = now() - when;
     printf("mul:         %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*5000; i++) {
-        field_sqr(&c, &a);
+        field_sqr(c, a);
     }
     when = now() - when;
     printf("sqr:         %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*5000; i++) {
-        field_mulw(&c, &b, 1234562);
+        field_mulw(c, b, 1234562);
     }
     when = now() - when;
     printf("mulw:        %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase*500; i++) {
-        field_mul(&c, &b, &a);
-        field_mul(&a, &b, &c);
+        field_mul(c, b, a);
+        field_mul(a, b, c);
     }
     when = now() - when;
     printf("mul dep:     %5.1fns\n", when * 1e9 / i / 2);
     
     when = now();
     for (i=0; i<nbase*10; i++) {
-        field_randomize(&crand, &a);
+        field_randomize(&crand, a);
     }
     when = now() - when;
     printf("rand448:     %5.1fns\n", when * 1e9 / i);
@@ -166,46 +165,46 @@ int main(int argc, char **argv) {
     
     when = now();
     for (i=0; i<nbase; i++) {
-        field_isr(&c, &a);
+        field_isr(c, a);
     }
     when = now() - when;
     printf("isr auto:    %5.1fµs\n", when * 1e6 / i);
     
     for (i=0; i<100; i++) {
-        field_randomize(&crand, &a);
-        field_isr(&d,&a);
-        field_sqr(&b,&d);
-        field_mul(&c,&b,&a);
-        field_sqr(&b,&c);
-        field_subw(&b,1);
-        if (!field_is_zero(&b)) {
+        field_randomize(&crand, a);
+        field_isr(d,a);
+        field_sqr(b,d);
+        field_mul(c,b,a);
+        field_sqr(b,c);
+        field_subw(b,1);
+        if (!field_is_zero(b)) {
             printf("ISR validation failure!\n");
-            field_print("a", &a);
-            field_print("s", &d);
+            field_print("a", a);
+            field_print("s", d);
         }
     }
     
     when = now();
     for (i=0; i<nbase; i++) {
-        elligator_2s_inject(&affine, &a);
+        elligator_2s_inject(&affine, a);
     }
     when = now() - when;
     printf("elligator:   %5.1fµs\n", when * 1e6 / i);
     
     for (i=0; i<100; i++) {
-        field_randomize(&crand, &a);
-        elligator_2s_inject(&affine, &a);
+        field_randomize(&crand, a);
+        elligator_2s_inject(&affine, a);
         if (!validate_affine(&affine)) {
             printf("Elligator validation failure!\n");
-            field_print("a", &a);
-            field_print("x", &affine.x);
-            field_print("y", &affine.y);
+            field_print("a", a);
+            field_print("x", affine.x);
+            field_print("y", affine.y);
         }
     }
     
     when = now();
     for (i=0; i<nbase; i++) {
-        deserialize_affine(&affine, &a);
+        deserialize_affine(&affine, a);
     }
     when = now() - when;
     printf("decompress:  %5.1fµs\n", when * 1e6 / i);
@@ -213,34 +212,34 @@ int main(int argc, char **argv) {
     convert_affine_to_extensible(&exta, &affine);
     when = now();
     for (i=0; i<nbase; i++) {
-        serialize_extensible(&a, &exta);
+        serialize_extensible(a, &exta);
     }
     when = now() - when;
     printf("compress:    %5.1fµs\n", when * 1e6 / i);
     
     int goods = 0;
     for (i=0; i<100; i++) {
-        field_randomize(&crand, &a);
-        mask_t good = deserialize_affine(&affine, &a);
+        field_randomize(&crand, a);
+        mask_t good = deserialize_affine(&affine, a);
         if (good & !validate_affine(&affine)) {
             printf("Deserialize validation failure!\n");
-            field_print("a", &a);
-            field_print("x", &affine.x);
-            field_print("y", &affine.y);
+            field_print("a", a);
+            field_print("x", affine.x);
+            field_print("y", affine.y);
         } else if (good) {
             goods++;
             convert_affine_to_extensible(&exta,&affine);
-            serialize_extensible(&b, &exta);
-            field_sub(&c,&b,&a);
-            if (!field_is_zero(&c)) {
+            serialize_extensible(b, &exta);
+            field_sub(c,b,a);
+            if (!field_is_zero(c)) {
                 printf("Reserialize validation failure!\n");
-                field_print("a", &a);
-                field_print("x", &affine.x);
-                field_print("y", &affine.y);
-                deserialize_affine(&affine, &b);
-                field_print("b", &b);
-                field_print("x", &affine.x);
-                field_print("y", &affine.y);
+                field_print("a", a);
+                field_print("x", affine.x);
+                field_print("y", affine.y);
+                deserialize_affine(&affine, b);
+                field_print("b", b);
+                field_print("x", affine.x);
+                field_print("y", affine.y);
                 printf("\n");
             }
         }
@@ -322,7 +321,7 @@ int main(int argc, char **argv) {
 	
     when = now();
     for (i=0; i<nbase/10; i++) {
-        ignore_result(montgomery_ladder(&a,&b,sk,FIELD_BITS,0));
+        ignore_result(montgomery_ladder(a,b,sk,FIELD_BITS,0));
     }
     when = now() - when;
     printf("full ladder: %5.1fµs\n", when * 1e6 / i);
@@ -344,7 +343,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         scalarmul(&ext,sk);
-        untwist_and_double_and_serialize(&a,&ext);
+        untwist_and_double_and_serialize(a,&ext);
     }
     when = now() - when;
     printf("edwards smc: %5.1fµs\n", when * 1e6 / i);
@@ -414,12 +413,12 @@ int main(int argc, char **argv) {
     
     when = now();
     for (i=0; i<nbase/10; i++) {
-        deserialize_affine(&affine, &a);
+        deserialize_affine(&affine, a);
         convert_affine_to_extensible(&exta,&affine);
         twist_and_double(&ext,&exta);
         scalarmul(&ext,sk);
         untwist_and_double(&exta,&ext);
-        serialize_extensible(&b, &exta);
+        serialize_extensible(b, &exta);
     }
     when = now() - when;
     printf("edwards sm:  %5.1fµs\n", when * 1e6 / i);
@@ -427,8 +426,8 @@ int main(int argc, char **argv) {
     struct fixed_base_table_t t_5_5_18, t_3_5_30, t_8_4_14, t_5_3_30, t_15_3_10;
 
     while (1) {
-        field_randomize(&crand, &a);
-        if (deserialize_affine(&affine, &a)) break;
+        field_randomize(&crand, a);
+        if (deserialize_affine(&affine, a)) break;
     }
     convert_affine_to_extensible(&exta,&affine);
     twist_and_double(&ext,&exta);
@@ -625,9 +624,9 @@ int main(int argc, char **argv) {
     
     failures=0; successes = 0;
     for (i=0; i<nbase/10; i++) {
-        field_randomize(&crand, &a);
+        field_randomize(&crand, a);
 		word_t two = 2;
-        mask_t good = montgomery_ladder(&b,&a,&two,2,0);
+        mask_t good = montgomery_ladder(b,a,&two,2,0);
 		if (!good) continue;
 		
 		word_t x,y;
@@ -637,17 +636,17 @@ int main(int argc, char **argv) {
         y = (hword_t)y;
         word_t z=x*y;
         
-    	ignore_result(montgomery_ladder(&b,&a,&x,WORD_BITS,0));
-        ignore_result(montgomery_ladder(&c,&b,&y,WORD_BITS,0));
-        ignore_result(montgomery_ladder(&b,&a,&z,WORD_BITS,0));
+    	ignore_result(montgomery_ladder(b,a,&x,WORD_BITS,0));
+        ignore_result(montgomery_ladder(c,b,&y,WORD_BITS,0));
+        ignore_result(montgomery_ladder(b,a,&z,WORD_BITS,0));
         
-        field_sub(&d,&b,&c);
-		if (!field_is_zero(&d)) {
+        field_sub(d,b,c);
+		if (!field_is_zero(d)) {
             printf("Odd ladder validation failure %d!\n", ++failures);
-            field_print("a", &a);
+            field_print("a", a);
             printf("x=%"PRIxWORD", y=%"PRIxWORD", z=%"PRIxWORD"\n", x,y,z);
-            field_print("c", &c);
-            field_print("b", &b);
+            field_print("c", c);
+            field_print("b", b);
 			printf("\n");
 		}
 	}
@@ -656,23 +655,23 @@ int main(int argc, char **argv) {
     for (i=0; i<nbase/10; i++) {
         mask_t good;
         do {
-            field_randomize(&crand, &a);
-            good = deserialize_affine(&affine, &a);
+            field_randomize(&crand, a);
+            good = deserialize_affine(&affine, a);
         } while (!good);
         
         convert_affine_to_extensible(&exta,&affine);
         twist_and_double(&ext,&exta);
         untwist_and_double(&exta,&ext);
-        serialize_extensible(&b, &exta);
-        untwist_and_double_and_serialize(&c, &ext);
+        serialize_extensible(b, &exta);
+        untwist_and_double_and_serialize(c, &ext);
         
-        field_sub(&d,&b,&c);
+        field_sub(d,b,c);
         
-        if (good && !field_is_zero(&d)){
+        if (good && !field_is_zero(d)){
             printf("Iso+serial validation failure %d!\n", ++failures);
-            field_print("a", &a);
-            field_print("b", &b);
-            field_print("c", &c);
+            field_print("a", a);
+            field_print("b", b);
+            field_print("c", c);
             printf("\n");
         } else if (good) {
             successes ++;
@@ -684,23 +683,23 @@ int main(int argc, char **argv) {
     
     successes = failures = 0;
     for (i=0; i<nbase/10; i++) {
-        struct field_t aa;
+        field_a_t aa;
         struct tw_extensible_t exu,exv,exw;
         
         mask_t good;
         do {
-            field_randomize(&crand, &a);
-            good = deserialize_affine(&affine, &a);
+            field_randomize(&crand, a);
+            good = deserialize_affine(&affine, a);
             convert_affine_to_extensible(&exta,&affine);
             twist_and_double(&ext,&exta);
         } while (!good);
         do {
-            field_randomize(&crand, &aa);
-            good = deserialize_affine(&affine, &aa);
+            field_randomize(&crand, aa);
+            good = deserialize_affine(&affine, aa);
             convert_affine_to_extensible(&exta,&affine);
             twist_and_double(&exu,&exta);
         } while (!good);
-        field_randomize(&crand, &aa);
+        field_randomize(&crand, aa);
         
         q448_randomize(&crand, sk);
 		if (i==0 || i==2) memset(&sk, 0, sizeof(sk));
@@ -714,23 +713,23 @@ int main(int argc, char **argv) {
         convert_tw_extensible_to_tw_pniels(&pniels, &exw);
         add_tw_pniels_to_tw_extensible(&exv,&pniels);
         untwist_and_double(&exta,&exv);
-        serialize_extensible(&b, &exta);
+        serialize_extensible(b, &exta);
 
         ignore_result(precompute_fixed_base_wnaf(wnaft,&exu,5));
         linear_combo_var_fixed_vt(&ext,sk,FIELD_BITS,tk,FIELD_BITS,wnaft,5);
         untwist_and_double(&exta,&exv);
-        serialize_extensible(&c, &exta);
+        serialize_extensible(c, &exta);
         
-        field_sub(&d,&b,&c);
+        field_sub(d,b,c);
         
-        if (!field_is_zero(&d)){
+        if (!field_is_zero(d)){
             printf("PreWNAF combo validation failure %d!\n", ++failures);
-            field_print("a", &a);
-            field_print("A", &aa);
+            field_print("a", a);
+            field_print("A", aa);
             q448_print("s", sk);
             q448_print("t", tk);
-            field_print("c", &c);
-            field_print("b", &b);
+            field_print("c", c);
+            field_print("b", b);
             printf("\n\n");
         } else if (good) {
             successes ++;

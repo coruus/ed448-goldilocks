@@ -39,7 +39,7 @@ const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS] = {
 };
 
 const struct affine_t goldilocks_base_point = {
-    {{
+    {{{
 #ifdef USE_P521_3x3_TRANSPOSE
         U58LE(0x02a940a2f19ba6c),
         U58LE(0x3331c90d2c6ba52),
@@ -64,8 +64,8 @@ const struct affine_t goldilocks_base_point = {
         U58LE(0x06277e432c8a5ac),
         U58LE(0x0752cb45c48648b)
 #endif
-    }},
-    {{ 12 }}
+    }}},
+    {{{ 12 }}}
 };
 
 static const word_t curve_prime_order_lo[(261+WORD_BITS-1)/WORD_BITS] = {
@@ -82,8 +82,8 @@ const struct barrett_prime_t curve_prime_order = {
     curve_prime_order_lo
 };
 
-const struct field_t
-sqrt_d_minus_1 = {{
+const field_a_t
+sqrt_d_minus_1 = {{{
 #ifdef USE_P521_3x3_TRANSPOSE
     U58LE(0x1e2be72c1c81990),
     U58LE(0x207dfc238a33e46),
@@ -108,10 +108,10 @@ sqrt_d_minus_1 = {{
     U58LE(0x0524b9e715937f5),
     U58LE(0x0a9ea3ac10d6aed)
 #endif
-}};
+}}};
 
-const struct field_t
-sqrt_minus_d = {{
+const field_a_t
+sqrt_minus_d = {{{
 #ifdef USE_P521_3x3_TRANSPOSE
     U58LE(0x375d668ef98910e),
     U58LE(0x2e033a89e955dfc),
@@ -136,4 +136,4 @@ sqrt_minus_d = {{
     U58LE(0x009993c0e8ee528),
     U58LE(0x0d07656ee612ae6)
 #endif
-}};
+}}};

@@ -90,8 +90,8 @@ struct fixed_base_table_t {
  */
 mask_t
 montgomery_ladder (
-    struct field_t *out,
-    const struct field_t *in,
+    field_a_t out,
+    const field_a_t in,
     const word_t *scalar,
     unsigned int nbits,
     unsigned int n_extra_doubles

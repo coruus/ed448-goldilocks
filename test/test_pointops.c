@@ -12,15 +12,15 @@ static void
 failprint_ext (
     const struct extensible_t *a
 ) {
-    struct field_t zi, scaled;
-    field_print("    x", &a->x);
-    field_print("    y", &a->y);
-    field_print("    z", &a->z);
-    field_inverse(&zi, &a->z);
-    field_mul(&scaled, &zi, &a->x);
-    field_print("    X", &scaled);
-    field_mul(&scaled, &zi, &a->y);
-    field_print("    Y", &scaled);
+    field_a_t zi, scaled;
+    field_print("    x", a->x);
+    field_print("    y", a->y);
+    field_print("    z", a->z);
+    field_inverse(zi, a->z);
+    field_mul(scaled, zi, a->x);
+    field_print("    X", scaled);
+    field_mul(scaled, zi, a->y);
+    field_print("    Y", scaled);
     printf("\n");
 }
 
@@ -165,10 +165,10 @@ add_double_test (
     
     if (~succ) {
         printf("    Bases were:\n");
-        field_print("    x1", &base1->x);
-        field_print("    y1", &base1->y);
-        field_print("    x2", &base2->x);
-        field_print("    y2", &base2->y);
+        field_print("    x1", base1->x);
+        field_print("    y1", base1->y);
+        field_print("    x2", base2->x);
+        field_print("    y2", base2->y);
     }
     
     return succ ? 0 : -1;
@@ -211,18 +211,18 @@ single_twisting_test (
         succ = 0;
     } /* FUTURE: quadness */
     
-    field_t sera,serb;
-    untwist_and_double_and_serialize(&sera,&text);
+    field_a_t sera,serb;
+    untwist_and_double_and_serialize(sera,&text);
     copy_extensible(&tmpext,&exb);
     double_extensible(&tmpext);
-    serialize_extensible(&serb,&tmpext);
+    serialize_extensible(serb,&tmpext);
     
     /* check that their (doubled; FUTURE?) serializations are equal */
-    if (~field_eq(&sera,&serb)) {
+    if (~field_eq(sera,serb)) {
         youfail();
         printf("    Different serialization from twist + double ()\n");
-        field_print("    t", &sera);
-        field_print("    b", &serb);
+        field_print("    t", sera);
+        field_print("    b", serb);
         succ = 0;
     }
     
@@ -242,8 +242,8 @@ single_twisting_test (
     
     if (~succ) {
         printf("    Base was:\n");
-        field_print("    x", &base->x);
-        field_print("    y", &base->y);
+        field_print("    x", base->x);
+        field_print("    y", base->y);
     }
     
     
@@ -253,7 +253,7 @@ single_twisting_test (
 int test_decaf (void) {
     struct affine_t base;
     struct tw_affine_t tw_base;
-    struct field_t serf;
+    field_a_t serf;
     
     struct crandom_state_t crand;
     crandom_init_from_buffer(&crand, "my test_decaf random initializer");
@@ -267,87 +267,87 @@ int test_decaf (void) {
         #endif
         ser[0] &= ~1;
 
-        mask_t succ = field_deserialize(&serf, ser);
+        mask_t succ = field_deserialize(serf, ser);
         if (!succ) {
             youfail();
             printf("   Unlikely: fail at field_deserialize\n");
             return -1;
         }
         
-        succ &= decaf_deserialize_affine(&base, &serf, 0);
+        succ &= decaf_deserialize_affine(&base, serf, 0);
         if (!succ) continue;
         
         hits++;
-        struct field_t serf2;
+        field_a_t serf2;
         struct extensible_t ext;
         convert_affine_to_extensible(&ext, &base);
-        decaf_serialize_extensible(&serf2, &ext);
+        decaf_serialize_extensible(serf2, &ext);
         
         if (~validate_affine(&base)) {
             youfail();
             printf("Invalid decaf deser:\n");
-            field_print("    s", &serf);
-            field_print("    x", &base.x);
-            field_print("    y", &base.y);
+            field_print("    s", serf);
+            field_print("    x", base.x);
+            field_print("    y", base.y);
             fails ++;
-        } else if (~field_eq(&serf, &serf2)) {
+        } else if (~field_eq(serf, serf2)) {
             youfail();
             printf("Fail round-trip through decaf ser:\n");
-            field_print("    s", &serf);
-            field_print("    x", &base.x);
-            field_print("    y", &base.y);
+            field_print("    s", serf);
+            field_print("    x", base.x);
+            field_print("    y", base.y);
             printf("    deser is %s\n", validate_affine(&base) ? "valid" : "invalid");
-            field_print("    S", &serf2);
+            field_print("    S", serf2);
             fails ++;
         } else if (~is_even_pt(&ext)) {
             youfail();
             printf("Decaf deser isn't even:\n");
-            field_print("    s", &serf);
-            field_print("    x", &base.x);
-            field_print("    y", &base.y);
+            field_print("    s", serf);
+            field_print("    x", base.x);
+            field_print("    y", base.y);
             fails ++;
         }
         
-        succ = decaf_deserialize_tw_affine(&tw_base, &serf, 0);
+        succ = decaf_deserialize_tw_affine(&tw_base, serf, 0);
         struct tw_extensible_t tw_ext, tw_ext2;
         convert_tw_affine_to_tw_extensible(&tw_ext, &tw_base);
-        decaf_serialize_tw_extensible(&serf2, &tw_ext);
+        decaf_serialize_tw_extensible(serf2, &tw_ext);
         
         twist_even(&tw_ext2, &ext);
 
         if (~validate_tw_extensible(&tw_ext)) {
             youfail();
             printf("Invalid decaf tw deser:\n");
-            field_print("    s", &serf);
-            field_print("    x", &tw_base.x);
-            field_print("    y", &tw_base.y);
+            field_print("    s", serf);
+            field_print("    x", tw_base.x);
+            field_print("    y", tw_base.y);
             fails ++;
-        } else if (~field_eq(&serf, &serf2)) {
+        } else if (~field_eq(serf, serf2)) {
             youfail();
             printf("Fail round-trip through decaf ser:\n");
-            field_print("    s", &serf);
-            field_print("    x", &tw_base.x);
-            field_print("    y", &tw_base.y);
+            field_print("    s", serf);
+            field_print("    x", tw_base.x);
+            field_print("    y", tw_base.y);
             printf("    tw deser is %s\n", validate_tw_extensible(&tw_ext) ? "valid" : "invalid");
-            field_print("    S", &serf2);
+            field_print("    S", serf2);
             fails ++;
         } else if (~is_even_tw(&tw_ext)) {
             youfail();
             printf("Decaf tw deser isn't even:\n");
-            field_print("    s", &serf);
-            field_print("    x", &tw_base.x);
-            field_print("    y", &tw_base.y);
+            field_print("    s", serf);
+            field_print("    x", tw_base.x);
+            field_print("    y", tw_base.y);
             fails ++;
         } else if (~decaf_eq_tw_extensible(&tw_ext,&tw_ext2)) {
             youfail();
             printf("Decaf tw doesn't equal ext:\n");
-            field_print("    s", &serf);
-            field_print("    x1", &base.x);
-            field_print("    y1", &base.y);
-            field_print("    x2", &tw_base.x);
-            field_print("    y2", &tw_base.y);
-            field_print("    X2", &tw_ext2.x);
-            field_print("    Y2", &tw_ext2.y);
+            field_print("    s",  serf);
+            field_print("    x1", base.x);
+            field_print("    y1", base.y);
+            field_print("    x2", tw_base.x);
+            field_print("    y2", tw_base.y);
+            field_print("    X2", tw_ext2.x);
+            field_print("    Y2", tw_ext2.y);
             fails ++;
         }
         
@@ -365,7 +365,7 @@ int test_decaf (void) {
 
 int test_pointops (void) {
     struct affine_t base, pbase;
-    struct field_t serf;
+    field_a_t serf;
     
     struct crandom_state_t crand;
     crandom_init_from_buffer(&crand, "test_pointops random initializer");
@@ -390,7 +390,7 @@ int test_pointops (void) {
         #endif
         
         /* TODO: we need a field generate, which can return random or pathological. */
-        mask_t succ = field_deserialize(&serf, ser);
+        mask_t succ = field_deserialize(serf, ser);
         if (!succ) {
             youfail();
             printf("   Unlikely: fail at field_deserialize\n");
@@ -400,7 +400,7 @@ int test_pointops (void) {
         if (i) {
             copy_affine(&pbase, &base);
         }
-        elligator_2s_inject(&base, &serf);
+        elligator_2s_inject(&base, serf);
         
         if (i) {
             ret = add_double_test(&base, &pbase);

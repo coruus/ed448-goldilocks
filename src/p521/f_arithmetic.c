@@ -12,32 +12,32 @@
 
 void 
 field_isr (
-    struct field_t*       a,
-    const struct field_t* x
+    field_a_t a,
+    const field_a_t x
 ) {
-    struct field_t L0, L1, L2;
-    field_sqr  (   &L1,     x );
-    field_mul  (   &L0,     x,   &L1 );
-    field_sqrn (   &L2,   &L0,     2 );
-    field_mul  (   &L1,   &L0,   &L2 );
-    field_sqrn (   &L2,   &L1,     4 );
-    field_mul  (   &L0,   &L1,   &L2 );
-    field_sqrn (   &L2,   &L0,     8 );
-    field_mul  (   &L1,   &L0,   &L2 );
-    field_sqrn (   &L2,   &L1,    16 );
-    field_mul  (   &L0,   &L1,   &L2 );
-    field_sqrn (   &L2,   &L0,    32 );
-    field_mul  (   &L1,   &L0,   &L2 );
-    field_sqr  (   &L2,   &L1 );
-    field_mul  (   &L0,     x,   &L2 );
-    field_sqrn (   &L2,   &L0,    64 );
-    field_mul  (   &L0,   &L1,   &L2 );
-    field_sqrn (   &L2,   &L0,   129 );
-    field_mul  (   &L1,   &L0,   &L2 );
-    field_sqr  (   &L2,   &L1 );
-    field_mul  (   &L0,     x,   &L2 );
-    field_sqrn (   &L2,   &L0,   259 );
-    field_mul  (   &L1,   &L0,   &L2 );
-    field_sqr  (   &L0,   &L1 );
-    field_mul  (     a,     x,   &L0 );
+    field_a_t L0, L1, L2;
+    field_sqr  (   L1,     x );
+    field_mul  (   L0,     x,   L1 );
+    field_sqrn (   L2,   L0,     2 );
+    field_mul  (   L1,   L0,   L2 );
+    field_sqrn (   L2,   L1,     4 );
+    field_mul  (   L0,   L1,   L2 );
+    field_sqrn (   L2,   L0,     8 );
+    field_mul  (   L1,   L0,   L2 );
+    field_sqrn (   L2,   L1,    16 );
+    field_mul  (   L0,   L1,   L2 );
+    field_sqrn (   L2,   L0,    32 );
+    field_mul  (   L1,   L0,   L2 );
+    field_sqr  (   L2,   L1 );
+    field_mul  (   L0,     x,   L2 );
+    field_sqrn (   L2,   L0,    64 );
+    field_mul  (   L0,   L1,   L2 );
+    field_sqrn (   L2,   L0,   129 );
+    field_mul  (   L1,   L0,   L2 );
+    field_sqr  (   L2,   L1 );
+    field_mul  (   L0,     x,   L2 );
+    field_sqrn (   L2,   L0,   259 );
+    field_mul  (   L1,   L0,   L2 );
+    field_sqr  (   L0,   L1 );
+    field_mul  (     a,     x,   L0 );
 }

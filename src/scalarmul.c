@@ -15,8 +15,8 @@
 
 mask_t
 montgomery_ladder (
-    struct field_t *out,
-    const struct field_t *in,
+    field_a_t out,
+    const field_a_t in,
     const word_t *scalar,
     unsigned int nbits,
     unsigned int n_extra_doubles
@@ -30,15 +30,15 @@ montgomery_ladder (
         word_t w = scalar[j];
         for (i=n; i>=0; i--) {
             mask_t flip = -((w>>i)&1);
-            constant_time_cond_swap(&mont.xa,&mont.xd,sizeof(mont.xd),flip^pflip);
-            constant_time_cond_swap(&mont.za,&mont.zd,sizeof(mont.xd),flip^pflip);
+            constant_time_cond_swap(mont.xa,mont.xd,sizeof(mont.xd),flip^pflip);
+            constant_time_cond_swap(mont.za,mont.zd,sizeof(mont.xd),flip^pflip);
             montgomery_step(&mont);
             pflip = flip;
         }
         n = WORD_BITS-1;
     }
-    constant_time_cond_swap(&mont.xa,&mont.xd,sizeof(mont.xd),pflip);
-    constant_time_cond_swap(&mont.za,&mont.zd,sizeof(mont.xd),pflip);
+    constant_time_cond_swap(mont.xa,mont.xd,sizeof(mont.xd),pflip);
+    constant_time_cond_swap(mont.za,mont.zd,sizeof(mont.xd),pflip);
     
     assert(n_extra_doubles < INT_MAX);
     for (j=0; j<(int)n_extra_doubles; j++) {
@@ -475,8 +475,8 @@ precompute_fixed_base (
     struct tw_pniels_t pn_tmp;
   
     struct tw_pniels_t *doubles = (struct tw_pniels_t *) malloc_vector(sizeof(*doubles) * (t-1));
-    struct field_t *zs  = (struct field_t *) malloc_vector(sizeof(*zs) * (n<<(t-1)));
-    struct field_t *zis = (struct field_t *) malloc_vector(sizeof(*zis) * (n<<(t-1)));
+    field_a_t *zs  = (field_a_t *) malloc_vector(sizeof(*zs) * (n<<(t-1)));
+    field_a_t *zis = (field_a_t *) malloc_vector(sizeof(*zis) * (n<<(t-1)));
     
     struct tw_niels_t *table = prealloc;
     if (prealloc) {
@@ -562,7 +562,7 @@ precompute_fixed_base (
 
             convert_tw_extensible_to_tw_pniels(&pn_tmp, &start);
             copy_tw_niels(&table[idx], &pn_tmp.n);
-            field_copy(&zs[idx], &pn_tmp.z);
+            field_copy(zs[idx], pn_tmp.z);
 			
             if (j >= (1u<<(t-1)) - 1) break;
             int delta = (j+1) ^ ((j+1)>>1) ^ gray;
@@ -584,22 +584,22 @@ precompute_fixed_base (
 	
     field_simultaneous_invert(zis, zs, n<<(t-1));
 
-    field_t product;
+    field_a_t product;
     for (i=0; i<n<<(t-1); i++) {
-        field_mul(&product, &table[i].a, &zis[i]);
-        field_strong_reduce(&product);
-        field_copy(&table[i].a, &product);
+        field_mul(product, table[i].a, zis[i]);
+        field_strong_reduce(product);
+        field_copy(table[i].a, product);
         
-        field_mul(&product, &table[i].b, &zis[i]);
-        field_strong_reduce(&product);
-        field_copy(&table[i].b, &product);
+        field_mul(product, table[i].b, zis[i]);
+        field_strong_reduce(product);
+        field_copy(table[i].b, product);
         
-        field_mul(&product, &table[i].c, &zis[i]);
-        field_strong_reduce(&product);
-        field_copy(&table[i].c, &product);
+        field_mul(product, table[i].c, zis[i]);
+        field_strong_reduce(product);
+        field_copy(table[i].c, product);
     }
 	
-	mask_t ret = ~field_is_zero(&zis[0]);
+	mask_t ret = ~field_is_zero(zis[0]);
 
     free(doubles);
     free(zs);
@@ -635,8 +635,8 @@ precompute_fixed_base_wnaf (
     unsigned int tbits
 ) {
     int i;
-    struct field_t *zs  = (struct field_t *) malloc_vector(sizeof(*zs)<<tbits);
-    struct field_t *zis = (struct field_t *) malloc_vector(sizeof(*zis)<<tbits);
+    field_a_t *zs  = (field_a_t *) malloc_vector(sizeof(*zs)<<tbits);
+    field_a_t *zis = (field_a_t *) malloc_vector(sizeof(*zis)<<tbits);
 
     if (!zs || !zis) {
         free(zs);
@@ -650,7 +650,7 @@ precompute_fixed_base_wnaf (
     struct tw_pniels_t twop, tmp;
     
     convert_tw_extensible_to_tw_pniels(&tmp, &base);
-    field_copy(&zs[0], &tmp.z);
+    field_copy(zs[0], tmp.z);
     copy_tw_niels(&out[0], &tmp.n);
 
     if (tbits > 0) {
@@ -659,32 +659,32 @@ precompute_fixed_base_wnaf (
         add_tw_pniels_to_tw_extensible(&base, &tmp);
         
         convert_tw_extensible_to_tw_pniels(&tmp, &base);
-        field_copy(&zs[1], &tmp.z);
+        field_copy(zs[1], tmp.z);
         copy_tw_niels(&out[1], &tmp.n);
 
         for (i=2; i < 1<<tbits; i++) {
             add_tw_pniels_to_tw_extensible(&base, &twop);
             convert_tw_extensible_to_tw_pniels(&tmp, &base);
-            field_copy(&zs[i], &tmp.z);
+            field_copy(zs[i], tmp.z);
             copy_tw_niels(&out[i], &tmp.n);
         }
     }
     
     field_simultaneous_invert(zis, zs, 1<<tbits);
 
-    field_t product;
+    field_a_t product;
     for (i=0; i<1<<tbits; i++) {
-        field_mul(&product, &out[i].a, &zis[i]);
-        field_strong_reduce(&product);
-        field_copy(&out[i].a, &product);
+        field_mul(product, out[i].a, zis[i]);
+        field_strong_reduce(product);
+        field_copy(out[i].a, product);
         
-        field_mul(&product, &out[i].b, &zis[i]);
-        field_strong_reduce(&product);
-        field_copy(&out[i].b, &product);
+        field_mul(product, out[i].b, zis[i]);
+        field_strong_reduce(product);
+        field_copy(out[i].b, product);
         
-        field_mul(&product, &out[i].c, &zis[i]);
-        field_strong_reduce(&product);
-        field_copy(&out[i].c, &product);
+        field_mul(product, out[i].c, zis[i]);
+        field_strong_reduce(product);
+        field_copy(out[i].c, product);
     }
 
     free(zs);

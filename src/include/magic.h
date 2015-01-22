@@ -45,12 +45,12 @@
 /**
  * @brief sqrt(d-1), used for point formats and twisting.
  */
-extern const struct field_t sqrt_d_minus_1;
+extern const field_a_t sqrt_d_minus_1;
 
 /**
  * @brief sqrt(-d), used for point formats and twisting.
  */
-extern const struct field_t sqrt_minus_d;
+extern const field_a_t sqrt_minus_d;
 
 /**
  * @brief The base point for Goldilocks.
