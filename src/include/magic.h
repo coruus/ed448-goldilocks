@@ -50,7 +50,7 @@ extern const field_a_t sqrt_d_minus_1;
 /**
  * @brief The base point for Goldilocks.
  */
-extern const struct affine_t goldilocks_base_point;
+extern const affine_a_t goldilocks_base_point;
 
 /**
  * @brief The Goldilocks prime subgroup order.

@@ -72,7 +72,7 @@ static inline uint64_t maj(uint64_t h1, uint64_t h2, uint64_t h3) {
 
 static void
 sha512_process_block (
-    struct sha512_ctx_t *ctx
+    sha512_ctx_a_t ctx
 ) {
     uint64_t i, tmp, a, b,
         *w = (uint64_t *) ctx->block,
@@ -119,7 +119,7 @@ sha512_process_block (
 
 void
 sha512_init (
-    struct sha512_ctx_t *ctx
+    sha512_ctx_a_t ctx
 ) {
     ctx->nbytes = 0;
     memcpy(ctx->chain, sha512_init_state, sizeof(sha512_init_state));
@@ -128,7 +128,7 @@ sha512_init (
 
 void
 sha512_update (
-    struct sha512_ctx_t *ctx,
+    sha512_ctx_a_t ctx,
     const unsigned char *data,
     uint64_t bytes
 ) {
@@ -153,7 +153,7 @@ sha512_update (
 
 void
 sha512_final (
-    struct sha512_ctx_t *ctx,
+    sha512_ctx_a_t ctx,
     uint8_t result[64]
 ) {
     uint64_t fill = ctx->nbytes % 128, i;

@@ -20,23 +20,23 @@ extern "C" {
 /**
  * Affine point on an Edwards curve.
  */
-struct affine_t {
+typedef struct affine_t {
     field_a_t x, y;
-};
+} affine_a_t[1];
 
 /**
  * Affine point on a twisted Edwards curve.
  */
-struct tw_affine_t {
+typedef struct tw_affine_t {
     field_a_t x, y;
-};
+} tw_affine_a_t[1];
 
 /**
  * Montgomery buffer.
  */
-struct montgomery_t {
+typedef struct montgomery_t {
     field_a_t z0, xd, zd, xa, za;
-};
+} montgomery_a_t[1];
 
 /**
  * Extensible coordinates for Edwards curves, suitable for
@@ -56,36 +56,36 @@ struct montgomery_t {
  * lookahead trick.  It might be worth considering that trick
  * instead.
  */
-struct extensible_t {
+typedef struct extensible_t {
     field_a_t x, y, z, t, u;
-};
+} extensible_a_t[1];
 
 /**
  * Extensible coordinates for twisted Edwards curves,
  * suitable for accumulators.
  */
-struct tw_extensible_t {
+typedef struct tw_extensible_t {
     field_a_t x, y, z, t, u;
-};
+} tw_extensible_a_t[1];
 
 /**
  * Niels coordinates for twisted Edwards curves.
  * 
  * Good for mixed readdition; suitable for fixed tables.
  */
-struct tw_niels_t {
+typedef struct tw_niels_t {
     field_a_t a, b, c;
-};
+} tw_niels_a_t[1];
 
 /**
  * Projective niels coordinates for twisted Edwards curves.
  * 
  * Good for readdition; suitable for temporary tables.
  */
-struct tw_pniels_t {
-    struct tw_niels_t n;
+typedef struct tw_pniels_t {
+    tw_niels_a_t n;
     field_a_t z;
-};
+} tw_pniels_a_t[1];
 
 
 /**
@@ -93,8 +93,8 @@ struct tw_pniels_t {
  */
 static __inline__ void
 copy_affine (
-    struct affine_t*       a,
-    const struct affine_t* ds
+    affine_a_t       a,
+    const affine_a_t ds
 ) __attribute__((unused,always_inline));
 
 /**
@@ -102,8 +102,8 @@ copy_affine (
  */
 static __inline__ void
 copy_tw_affine (
-    struct tw_affine_t*       a,
-    const struct tw_affine_t* ds
+    tw_affine_a_t       a,
+    const tw_affine_a_t ds
 ) __attribute__((unused,always_inline));
 
 /**
@@ -111,8 +111,8 @@ copy_tw_affine (
  */
 static __inline__ void
 copy_montgomery (
-    struct montgomery_t*       a,
-    const struct montgomery_t* ds
+    montgomery_a_t       a,
+    const montgomery_a_t ds
 ) __attribute__((unused,always_inline));
 
 /**
@@ -120,8 +120,8 @@ copy_montgomery (
  */
 static __inline__ void
 copy_extensible (
-    struct extensible_t*       a,
-    const struct extensible_t* ds
+    extensible_a_t       a,
+    const extensible_a_t ds
 ) __attribute__((unused,always_inline));
 
 /**
@@ -129,8 +129,8 @@ copy_extensible (
  */
 static __inline__ void
 copy_tw_extensible (
-    struct tw_extensible_t*       a,
-    const struct tw_extensible_t* ds
+    tw_extensible_a_t       a,
+    const tw_extensible_a_t ds
 ) __attribute__((unused,always_inline));
 
 /**
@@ -138,8 +138,8 @@ copy_tw_extensible (
  */
 static __inline__ void
 copy_tw_niels (
-    struct tw_niels_t*       a,
-    const struct tw_niels_t* ds
+    tw_niels_a_t       a,
+    const tw_niels_a_t ds
 ) __attribute__((unused,always_inline));
 
 /**
@@ -147,8 +147,8 @@ copy_tw_niels (
  */
 static __inline__ void
 copy_tw_pniels (
-    struct tw_pniels_t*       a,
-    const struct tw_pniels_t* ds
+    tw_pniels_a_t       a,
+    const tw_pniels_a_t ds
 ) __attribute__((unused,always_inline));
 
 /**
@@ -157,8 +157,8 @@ copy_tw_pniels (
  */
 void
 add_tw_niels_to_tw_extensible (
-    struct tw_extensible_t*  d,
-    const struct tw_niels_t* e
+    tw_extensible_a_t  d,
+    const tw_niels_a_t e
 );
 
 /**
@@ -167,8 +167,8 @@ add_tw_niels_to_tw_extensible (
  */
 void
 sub_tw_niels_from_tw_extensible (
-    struct tw_extensible_t*  d,
-    const struct tw_niels_t* e
+    tw_extensible_a_t  d,
+    const tw_niels_a_t e
 );
 
 /**
@@ -177,8 +177,8 @@ sub_tw_niels_from_tw_extensible (
  */
 void
 add_tw_pniels_to_tw_extensible (
-    struct tw_extensible_t*   e,
-    const struct tw_pniels_t* a
+    tw_extensible_a_t   e,
+    const tw_pniels_a_t a
 );
 
 /**
@@ -187,8 +187,8 @@ add_tw_pniels_to_tw_extensible (
  */
 void
 sub_tw_pniels_from_tw_extensible (
-    struct tw_extensible_t*   e,
-    const struct tw_pniels_t* a
+    tw_extensible_a_t   e,
+    const tw_pniels_a_t a
 );
 
 /**
@@ -196,7 +196,7 @@ sub_tw_pniels_from_tw_extensible (
  */
 void
 double_tw_extensible (
-    struct tw_extensible_t* a
+    tw_extensible_a_t a
 );
 
 /**
@@ -204,7 +204,7 @@ double_tw_extensible (
  */
 void
 double_extensible (
-    struct extensible_t* a
+    extensible_a_t a
 );
 
 /**
@@ -214,8 +214,8 @@ double_extensible (
  */
 void
 twist_and_double (
-    struct tw_extensible_t*    b,
-    const struct extensible_t* a
+    tw_extensible_a_t    b,
+    const extensible_a_t a
 );
 
 /**
@@ -225,61 +225,61 @@ twist_and_double (
  */
 void
 untwist_and_double (
-    struct extensible_t*          b,
-    const struct tw_extensible_t* a
+    extensible_a_t          b,
+    const tw_extensible_a_t a
 );
 
 void
 convert_tw_affine_to_tw_pniels (
-    struct tw_pniels_t*       b,
-    const struct tw_affine_t* a
+    tw_pniels_a_t       b,
+    const tw_affine_a_t a
 );
 
 void
 convert_tw_affine_to_tw_extensible (
-    struct tw_extensible_t*   b,
-    const struct tw_affine_t* a
+    tw_extensible_a_t   b,
+    const tw_affine_a_t a
 );
 
 void
 convert_affine_to_extensible (
-    struct extensible_t*   b,
-    const struct affine_t* a
+    extensible_a_t   b,
+    const affine_a_t a
 );
 
 void
 convert_tw_extensible_to_tw_pniels (
-    struct tw_pniels_t*           b,
-    const struct tw_extensible_t* a
+    tw_pniels_a_t           b,
+    const tw_extensible_a_t a
 );
 
 void
 convert_tw_pniels_to_tw_extensible (
-    struct tw_extensible_t*   e,
-    const struct tw_pniels_t* d
+    tw_extensible_a_t   e,
+    const tw_pniels_a_t d
 );
 
 void
 convert_tw_niels_to_tw_extensible (
-    struct tw_extensible_t*  e,
-    const struct tw_niels_t* d
+    tw_extensible_a_t  e,
+    const tw_niels_a_t d
 );
 
 void
 montgomery_step (
-    struct montgomery_t* a
+    montgomery_a_t a
 );
 
 void
 deserialize_montgomery (
-    struct montgomery_t* a,
+    montgomery_a_t a,
     const field_a_t sbz
 );
 
 mask_t
 serialize_montgomery (
     field_a_t             b,
-    const struct montgomery_t* a,
+    const montgomery_a_t a,
     const field_a_t       sbz
 );
 
@@ -297,7 +297,7 @@ serialize_montgomery (
 void
 serialize_extensible (
     field_a_t             b,
-    const struct extensible_t* a
+    const extensible_a_t a
 );
 
 /**
@@ -306,7 +306,7 @@ serialize_extensible (
 void
 untwist_and_double_and_serialize (
     field_a_t                b,
-    const struct tw_extensible_t* a
+    const tw_extensible_a_t a
 );
 
 /**
@@ -320,8 +320,8 @@ untwist_and_double_and_serialize (
  */
 void
 twist_even (
-    struct tw_extensible_t*    b,
-    const struct extensible_t* a
+    tw_extensible_a_t    b,
+    const extensible_a_t a
 );
 
 /**
@@ -339,8 +339,8 @@ twist_even (
  */
 void
 test_only_twist (
-    struct tw_extensible_t*    b,
-    const struct extensible_t* a
+    tw_extensible_a_t    b,
+    const extensible_a_t a
 );
 
 mask_t
@@ -350,12 +350,12 @@ field_is_square (
 
 mask_t
 is_even_pt (
-    const struct extensible_t* a
+    const extensible_a_t a
 );
 
 mask_t
 is_even_tw (
-    const struct tw_extensible_t* a
+    const tw_extensible_a_t a
 );
 
 /**
@@ -363,7 +363,7 @@ is_even_tw (
  */
 mask_t
 deserialize_affine (
-    struct affine_t*     a,
+    affine_a_t     a,
     const field_a_t sz
 );
 
@@ -376,52 +376,52 @@ deserialize_affine (
  */
 mask_t
 deserialize_and_twist_approx (
-    struct tw_extensible_t* a,
+    tw_extensible_a_t a,
     const field_a_t    sz
 );
 
 void
 set_identity_extensible (
-    struct extensible_t* a
+    extensible_a_t a
 );
 
 void
 set_identity_tw_extensible (
-    struct tw_extensible_t* a
+    tw_extensible_a_t a
 );
 
 void
 set_identity_affine (
-    struct affine_t* a
+    affine_a_t a
 );
 
 mask_t
 eq_affine (
-    const struct affine_t* a,
-    const struct affine_t* b
+    const affine_a_t a,
+    const affine_a_t b
 );
 
 mask_t
 eq_extensible (
-    const struct extensible_t* a,
-    const struct extensible_t* b
+    const extensible_a_t a,
+    const extensible_a_t b
 );
 
 mask_t
 eq_tw_extensible (
-    const struct tw_extensible_t* a,
-    const struct tw_extensible_t* b
+    const tw_extensible_a_t a,
+    const tw_extensible_a_t b
 );
 
 void
 elligator_2s_inject (
-    struct affine_t*     a,
+    affine_a_t     a,
     const field_a_t r
 );
 
 mask_t
 validate_affine (
-    const struct affine_t* a
+    const affine_a_t a
 );
 
 /**
@@ -431,7 +431,7 @@ validate_affine (
  */
 mask_t
 validate_tw_extensible (
-    const struct tw_extensible_t* ext
+    const tw_extensible_a_t ext
 );
 
 /**
@@ -441,7 +441,7 @@ validate_tw_extensible (
  */
 mask_t
 validate_extensible (
-    const struct extensible_t* ext
+    const extensible_a_t ext
 );
 
 /**
@@ -450,7 +450,7 @@ validate_extensible (
 static __inline__ void
 __attribute__((unused))
 cond_negate_tw_niels (
-    struct tw_niels_t *n,
+    tw_niels_a_t n,
     mask_t doNegate
 ) {
     constant_time_cond_swap(n->a, n->b, sizeof(n->a), doNegate);
@@ -463,16 +463,16 @@ cond_negate_tw_niels (
 static __inline__ void
 __attribute__((unused))
 cond_negate_tw_pniels (
-    struct tw_pniels_t *n,
+    tw_pniels_a_t n,
     mask_t doNegate
 ) {
-    cond_negate_tw_niels(&n->n, doNegate);
+    cond_negate_tw_niels(n->n, doNegate);
 }
 
 void
 copy_affine (
-    struct affine_t*       a,
-    const struct affine_t* ds
+    affine_a_t       a,
+    const affine_a_t ds
 ) {
     field_copy ( a->x, ds->x );
     field_copy ( a->y, ds->y );
@@ -480,8 +480,8 @@ copy_affine (
 
 void
 copy_tw_affine (
-    struct tw_affine_t*       a,
-    const struct tw_affine_t* ds
+    tw_affine_a_t       a,
+    const tw_affine_a_t ds
 ) {
     field_copy ( a->x, ds->x );
     field_copy ( a->y, ds->y );
@@ -489,8 +489,8 @@ copy_tw_affine (
 
 void
 copy_montgomery (
-    struct montgomery_t*       a,
-    const struct montgomery_t* ds
+    montgomery_a_t       a,
+    const montgomery_a_t ds
 ) {
     field_copy ( a->z0, ds->z0 );
     field_copy ( a->xd, ds->xd );
@@ -501,8 +501,8 @@ copy_montgomery (
 
 void
 copy_extensible (
-    struct extensible_t*       a,
-    const struct extensible_t* ds
+    extensible_a_t       a,
+    const extensible_a_t ds
 ) {
     field_copy ( a->x, ds->x );
     field_copy ( a->y, ds->y );
@@ -513,8 +513,8 @@ copy_extensible (
 
 void
 copy_tw_extensible (
-    struct tw_extensible_t*       a,
-    const struct tw_extensible_t* ds
+    tw_extensible_a_t       a,
+    const tw_extensible_a_t ds
 ) {
     field_copy ( a->x, ds->x );
     field_copy ( a->y, ds->y );
@@ -525,8 +525,8 @@ copy_tw_extensible (
 
 void
 copy_tw_niels (
-    struct tw_niels_t*       a,
-    const struct tw_niels_t* ds
+    tw_niels_a_t       a,
+    const tw_niels_a_t ds
 ) {
     field_copy ( a->a, ds->a );
     field_copy ( a->b, ds->b );
@@ -535,10 +535,10 @@ copy_tw_niels (
 
 void
 copy_tw_pniels (
-    struct tw_pniels_t*       a,
-    const struct tw_pniels_t* ds
+    tw_pniels_a_t       a,
+    const tw_pniels_a_t ds
 ) {
-    copy_tw_niels( &a->n, &ds->n );
+    copy_tw_niels( a->n, ds->n );
     field_copy ( a->z, ds->z );
 }
 

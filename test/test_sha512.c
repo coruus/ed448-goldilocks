@@ -11,8 +11,8 @@ static int sha512_monte_carlo_core (
     const char *seed,
     const char *checks[100]
 ) { 
-    struct sha512_ctx_t sha;
-    sha512_init(&sha);
+    sha512_ctx_a_t sha;
+    sha512_init(sha);
     
     unsigned char md0[64],md1[64],md2[64];
     
@@ -31,12 +31,12 @@ static int sha512_monte_carlo_core (
     for (j=0; j<100; j++) {
         
         for (i=3; i<1003; i++) {
-            sha512_update(&sha,md0,sizeof(md0));
-            sha512_update(&sha,md1,sizeof(md1));
-            sha512_update(&sha,md2,sizeof(md2));
+            sha512_update(sha,md0,sizeof(md0));
+            sha512_update(sha,md1,sizeof(md1));
+            sha512_update(sha,md2,sizeof(md2));
             memcpy(md0,md1,sizeof(md1));
             memcpy(md1,md2,sizeof(md1));
-            sha512_final(&sha,md2);
+            sha512_final(sha,md2);
         }
         
         ret = hexdecode(md0,checks[j],64);

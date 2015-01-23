@@ -14,8 +14,8 @@
 
 void
 add_tw_niels_to_tw_extensible (
-    struct tw_extensible_t*  d,
-    const struct tw_niels_t* e
+    tw_extensible_a_t  d,
+    const tw_niels_a_t e
 ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY;
     field_a_t L0, L1;
@@ -36,8 +36,8 @@ add_tw_niels_to_tw_extensible (
 
 void
 sub_tw_niels_from_tw_extensible (
-    struct tw_extensible_t*  d,
-    const struct tw_niels_t* e
+    tw_extensible_a_t  d,
+    const tw_niels_a_t e
 ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY;
     field_a_t L0, L1;
@@ -58,29 +58,29 @@ sub_tw_niels_from_tw_extensible (
 
 void
 add_tw_pniels_to_tw_extensible (
-    struct tw_extensible_t*   e,
-    const struct tw_pniels_t* a
+    tw_extensible_a_t   e,
+    const tw_pniels_a_t a
 ) {
     field_a_t L0;
     field_mul ( L0, e->z, a->z );
     field_copy ( e->z, L0 );
-    add_tw_niels_to_tw_extensible( e, &a->n );
+    add_tw_niels_to_tw_extensible( e, a->n );
 }
 
 void
 sub_tw_pniels_from_tw_extensible (
-    struct tw_extensible_t*   e,
-    const struct tw_pniels_t* a
+    tw_extensible_a_t   e,
+    const tw_pniels_a_t a
 ) {
     field_a_t L0;
     field_mul ( L0, e->z, a->z );
     field_copy ( e->z, L0 );
-    sub_tw_niels_from_tw_extensible( e, &a->n );
+    sub_tw_niels_from_tw_extensible( e, a->n );
 }
 
 void
 double_tw_extensible (
-    struct tw_extensible_t* a
+    tw_extensible_a_t a
 ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY;
     field_a_t L0, L1, L2;
@@ -105,7 +105,7 @@ double_tw_extensible (
 
 void
 double_extensible (
-    struct extensible_t* a
+    extensible_a_t a
 ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY;
     field_a_t L0, L1, L2;
@@ -130,8 +130,8 @@ double_extensible (
 
 void
 twist_and_double (
-    struct tw_extensible_t*    b,
-    const struct extensible_t* a
+    tw_extensible_a_t    b,
+    const extensible_a_t a
 ) {
     field_a_t L0;
     field_sqr ( b->x, a->x );
@@ -151,8 +151,8 @@ twist_and_double (
 
 void
 untwist_and_double (
-    struct extensible_t*          b,
-    const struct tw_extensible_t* a
+    extensible_a_t          b,
+    const tw_extensible_a_t a
 ) {
     field_a_t L0;
     field_sqr ( b->x, a->x );
@@ -172,20 +172,20 @@ untwist_and_double (
 
 void
 convert_tw_affine_to_tw_pniels (
-    struct tw_pniels_t*       b,
-    const struct tw_affine_t* a
+    tw_pniels_a_t       b,
+    const tw_affine_a_t a
 ) {
-    field_sub ( b->n.a, a->y, a->x );
-    field_add ( b->n.b, a->x, a->y );
+    field_sub ( b->n->a, a->y, a->x );
+    field_add ( b->n->b, a->x, a->y );
     field_mul ( b->z, a->y, a->x );
-    field_mulw_scc_wr ( b->n.c, b->z, 2*EDWARDS_D-2 );
+    field_mulw_scc_wr ( b->n->c, b->z, 2*EDWARDS_D-2 );
     field_set_ui( b->z, 2 );
 }
 
 void
 convert_tw_affine_to_tw_extensible (
-    struct tw_extensible_t*   b,
-    const struct tw_affine_t* a
+    tw_extensible_a_t   b,
+    const tw_affine_a_t a
 ) {
     field_copy ( b->x, a->x );
     field_copy ( b->y, a->y );
@@ -196,8 +196,8 @@ convert_tw_affine_to_tw_extensible (
 
 void
 convert_affine_to_extensible (
-    struct extensible_t*   b,
-    const struct affine_t* a
+    extensible_a_t   b,
+    const affine_a_t a
 ) {
     field_copy ( b->x, a->x );
     field_copy ( b->y, a->y );
@@ -208,23 +208,23 @@ convert_affine_to_extensible (
 
 void
 convert_tw_extensible_to_tw_pniels (
-    struct tw_pniels_t*           b,
-    const struct tw_extensible_t* a
+    tw_pniels_a_t           b,
+    const tw_extensible_a_t a
 ) {
-    field_sub ( b->n.a, a->y, a->x );
-    field_add ( b->n.b, a->x, a->y );
+    field_sub ( b->n->a, a->y, a->x );
+    field_add ( b->n->b, a->x, a->y );
     field_mul ( b->z, a->u, a->t );
-    field_mulw_scc_wr ( b->n.c, b->z, 2*EDWARDS_D-2 );
+    field_mulw_scc_wr ( b->n->c, b->z, 2*EDWARDS_D-2 );
     field_add ( b->z, a->z, a->z );
 }
 
 void
 convert_tw_pniels_to_tw_extensible (
-    struct tw_extensible_t*   e,
-    const struct tw_pniels_t* d
+    tw_extensible_a_t   e,
+    const tw_pniels_a_t d
 ) {
-    field_add ( e->u, d->n.b, d->n.a );
-    field_sub ( e->t, d->n.b, d->n.a );
+    field_add ( e->u, d->n->b, d->n->a );
+    field_sub ( e->t, d->n->b, d->n->a );
     field_mul ( e->x, d->z, e->t );
     field_mul ( e->y, d->z, e->u );
     field_sqr ( e->z, d->z );
@@ -232,8 +232,8 @@ convert_tw_pniels_to_tw_extensible (
 
 void
 convert_tw_niels_to_tw_extensible (
-    struct tw_extensible_t*  e,
-    const struct tw_niels_t* d
+    tw_extensible_a_t  e,
+    const tw_niels_a_t d
 ) {
     field_add ( e->y, d->b, d->a );
     field_sub ( e->x, d->b, d->a );
@@ -244,7 +244,7 @@ convert_tw_niels_to_tw_extensible (
 
 void
 montgomery_step (
-    struct montgomery_t* a
+    montgomery_a_t a
 ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY;
     field_a_t L0, L1;
@@ -272,7 +272,7 @@ montgomery_step (
 
 void
 deserialize_montgomery (
-    struct montgomery_t* a,
+    montgomery_a_t a,
     const field_a_t sbz
 ) {
     field_sqr ( a->z0, sbz );
@@ -285,7 +285,7 @@ deserialize_montgomery (
 mask_t
 serialize_montgomery (
     field_a_t             b,
-    const struct montgomery_t* a,
+    const montgomery_a_t a,
     const field_a_t       sbz
 ) {
     mask_t L4, L5, L6;
@@ -332,7 +332,7 @@ serialize_montgomery (
 void
 serialize_extensible (
     field_a_t             b,
-    const struct extensible_t* a
+    const extensible_a_t a
 ) {
     field_a_t L0, L1, L2;
     field_sub ( L0, a->y, a->z );
@@ -351,7 +351,7 @@ serialize_extensible (
 void
 untwist_and_double_and_serialize (
     field_a_t                b,
-    const struct tw_extensible_t* a
+    const tw_extensible_a_t a
 ) {
     field_a_t L0, L1, L2, L3;
     field_mul ( L3, a->y, a->x );
@@ -375,8 +375,8 @@ untwist_and_double_and_serialize (
 
 void
 twist_even (
-    struct tw_extensible_t*    b,
-    const struct extensible_t* a
+    tw_extensible_a_t    b,
+    const extensible_a_t a
 ) {
     field_sqr ( b->y, a->z );
     field_sqr ( b->z, a->x );
@@ -401,8 +401,8 @@ twist_even (
 
 void
 test_only_twist (
-    struct tw_extensible_t*    b,
-    const struct extensible_t* a
+    tw_extensible_a_t    b,
+    const extensible_a_t a
 ) {
     field_a_t L0, L1;
     field_sqr ( b->u, a->z );
@@ -436,7 +436,7 @@ test_only_twist (
 
 mask_t
 is_even_pt (
-    const struct extensible_t* a
+    const extensible_a_t a
 ) {
     field_a_t L0, L1, L2;
     field_sqr ( L2, a->z );
@@ -447,7 +447,7 @@ is_even_pt (
 
 mask_t
 is_even_tw (
-    const struct tw_extensible_t* a
+    const tw_extensible_a_t a
 ) {
     field_a_t L0, L1, L2;
     field_sqr ( L2, a->z );
@@ -458,7 +458,7 @@ is_even_tw (
 
 mask_t
 deserialize_affine (
-    struct affine_t*     a,
+    affine_a_t     a,
     const field_a_t sz
 ) {
     field_a_t L0, L1, L2, L3;
@@ -492,7 +492,7 @@ deserialize_affine (
 
 mask_t
 deserialize_and_twist_approx (
-    struct tw_extensible_t* a,
+    tw_extensible_a_t a,
     const field_a_t    sz
 ) {
     field_a_t L0, L1;
@@ -537,7 +537,7 @@ deserialize_and_twist_approx (
 
 void
 set_identity_extensible (
-    struct extensible_t* a
+    extensible_a_t a
 ) {
     field_set_ui( a->x, 0 );
     field_set_ui( a->y, 1 );
@@ -548,7 +548,7 @@ set_identity_extensible (
 
 void
 set_identity_tw_extensible (
-    struct tw_extensible_t* a
+    tw_extensible_a_t a
 ) {
     field_set_ui( a->x, 0 );
     field_set_ui( a->y, 1 );
@@ -559,7 +559,7 @@ set_identity_tw_extensible (
 
 void
 set_identity_affine (
-    struct affine_t* a
+    affine_a_t a
 ) {
     field_set_ui( a->x, 0 );
     field_set_ui( a->y, 1 );
@@ -567,8 +567,8 @@ set_identity_affine (
 
 mask_t
 eq_affine (
-    const struct affine_t* a,
-    const struct affine_t* b
+    const affine_a_t a,
+    const affine_a_t b
 ) {
     mask_t L1, L2;
     field_a_t L0;
@@ -581,8 +581,8 @@ eq_affine (
 
 mask_t
 eq_extensible (
-    const struct extensible_t* a,
-    const struct extensible_t* b
+    const extensible_a_t a,
+    const extensible_a_t b
 ) {
     mask_t L3, L4;
     field_a_t L0, L1, L2;
@@ -599,8 +599,8 @@ eq_extensible (
 
 mask_t
 eq_tw_extensible (
-    const struct tw_extensible_t* a,
-    const struct tw_extensible_t* b
+    const tw_extensible_a_t a,
+    const tw_extensible_a_t b
 ) {
     mask_t L3, L4;
     field_a_t L0, L1, L2;
@@ -617,7 +617,7 @@ eq_tw_extensible (
 
 void
 elligator_2s_inject (
-    struct affine_t*     a,
+    affine_a_t     a,
     const field_a_t r
 ) {
     field_a_t L2, L3, L4, L5, L6, L7, L8;
@@ -676,7 +676,7 @@ elligator_2s_inject (
 
 mask_t
 validate_affine (
-    const struct affine_t* a
+    const affine_a_t a
 ) {
     field_a_t L0, L1, L2, L3;
     field_sqr ( L0, a->y );
@@ -691,7 +691,7 @@ validate_affine (
 
 mask_t
 validate_tw_extensible (
-    const struct tw_extensible_t* ext
+    const tw_extensible_a_t ext
 ) {
     mask_t L4, L5;
     field_a_t L0, L1, L2, L3;
@@ -728,7 +728,7 @@ validate_tw_extensible (
 
 mask_t
 validate_extensible (
-    const struct extensible_t* ext
+    const extensible_a_t ext
 ) {
     mask_t L4, L5;
     field_a_t L0, L1, L2, L3;

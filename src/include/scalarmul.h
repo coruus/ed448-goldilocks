@@ -30,7 +30,7 @@ typedef word_t scalar_t[SCALAR_WORDS];
  */
 struct fixed_base_table_t {
    /** Comb tables containing multiples of the base point. */
-  struct tw_niels_t *table;
+  tw_niels_a_t *table;
   
   /** Adjustments to the scalar in even and odd cases, respectively. */
   word_t scalar_adjustments[2*SCALAR_WORDS];
@@ -109,7 +109,7 @@ montgomery_ladder (
  */
 void
 scalarmul (
-    struct tw_extensible_t *working,
+    tw_extensible_a_t working,
     const word_t scalar[SCALAR_WORDS]
     /* TODO? int nbits */
 );
@@ -130,7 +130,7 @@ scalarmul (
  */
 void
 scalarmul_vlook (
-    struct tw_extensible_t *working,
+    tw_extensible_a_t working,
     const word_t scalar[SCALAR_WORDS]
 );
 
@@ -161,11 +161,11 @@ scalarmul_vlook (
 mask_t
 precompute_fixed_base (
   struct fixed_base_table_t *out,
-  const struct tw_extensible_t *base,
+  const tw_extensible_a_t base,
   unsigned int n,
   unsigned int t,
   unsigned int s,
-  struct tw_niels_t *prealloc
+  tw_niels_a_t *prealloc
 ) __attribute__((warn_unused_result));
 
  /**
@@ -197,7 +197,7 @@ destroy_fixed_base (
  */ 
 mask_t
 scalarmul_fixed_base (
-    struct tw_extensible_t *out,
+    tw_extensible_a_t out,
     const word_t *scalar,
     unsigned int nbits,
     const struct fixed_base_table_t *table
@@ -215,7 +215,7 @@ scalarmul_fixed_base (
  */ 
 void
 scalarmul_vt (
-    struct tw_extensible_t *working,
+    tw_extensible_a_t working,
     const word_t *scalar,
     unsigned int nbits
 );
@@ -236,8 +236,8 @@ scalarmul_vt (
  */
 mask_t
 precompute_fixed_base_wnaf (
-    struct tw_niels_t *out,
-    const struct tw_extensible_t *base,
+    tw_niels_a_t *out,
+    const tw_extensible_a_t base,
     unsigned int tbits
 ) __attribute__((warn_unused_result));
 
@@ -256,10 +256,10 @@ precompute_fixed_base_wnaf (
  */ 
 void
 scalarmul_fixed_base_wnaf_vt (
-    struct tw_extensible_t *out,
+    tw_extensible_a_t out,
     const word_t *scalar,
     unsigned int nbits,
-    const struct tw_niels_t *precmp,
+    const tw_niels_a_t *precmp,
     unsigned int table_bits
 );
 
@@ -281,12 +281,12 @@ scalarmul_fixed_base_wnaf_vt (
  */ 
 void
 linear_combo_var_fixed_vt (
-    struct tw_extensible_t *working,
+    tw_extensible_a_t working,
     const word_t scalar_var[SCALAR_WORDS],
     unsigned int nbits_var,
     const word_t scalar_pre[SCALAR_WORDS],
     unsigned int nbits_pre,
-    const struct tw_niels_t *precmp,
+    const tw_niels_a_t *precmp,
     unsigned int table_bits_pre
 );
 
@@ -309,7 +309,7 @@ linear_combo_var_fixed_vt (
  */
 mask_t
 linear_combo_combs_vt (
-    struct tw_extensible_t *out,
+    tw_extensible_a_t out,
     const word_t scalar1[SCALAR_WORDS],
     unsigned int nbits1,
     const struct fixed_base_table_t *table1,

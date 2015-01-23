@@ -258,12 +258,12 @@ int test_pointops (void) {
     crandom_init_from_buffer(&crand, "test_pointops random initializer");
     
     struct extensible_t ext_base;
-    if (!validate_affine(&goldilocks_base_point)) {
+    if (!validate_affine(goldilocks_base_point)) {
         youfail();
         printf("  Base point isn't on the curve.\n");
         return -1;
     }
-    convert_affine_to_extensible(&ext_base, &goldilocks_base_point);
+    convert_affine_to_extensible(&ext_base, goldilocks_base_point);
     if (!validate_ext(&ext_base, 2, "base")) return -1;
     
     int i, ret;

@@ -33,7 +33,7 @@ const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS] = {
     U64LE(0x0000000000000000)
 };
 
-const struct affine_t goldilocks_base_point = {
+const affine_a_t goldilocks_base_point = {{
 #ifdef USE_NEON_PERM
     {{{ 0xaed939f,0xc59d070,0xf0de840,0x5f065c3, 0xf4ba0c7,0xdf73324,0xc170033,0x3a6a26a,
        0x4c63d96,0x4609845,0xf3932d9,0x1b4faff, 0x6147eaa,0xa2692ff,0x9cecfa9,0x297ea0e
@@ -46,7 +46,7 @@ const struct affine_t goldilocks_base_point = {
     }}},
 #endif
     {{{ 19 }}}
-};
+}};
 
 static const word_t curve_prime_order_lo[(224+WORD_BITS-1)/WORD_BITS] = {
     U64LE(0xdc873d6d54a7bb0d),

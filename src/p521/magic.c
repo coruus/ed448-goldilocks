@@ -38,7 +38,7 @@ const word_t SCALARMUL_FIXED_WINDOW_ADJUSTMENT[2*SCALAR_WORDS] = {
     0x0
 };
 
-const struct affine_t goldilocks_base_point = {
+const affine_a_t goldilocks_base_point = {{
     {{{
 #ifdef USE_P521_3x3_TRANSPOSE
         U58LE(0x02a940a2f19ba6c),
@@ -66,7 +66,7 @@ const struct affine_t goldilocks_base_point = {
 #endif
     }}},
     {{{ 12 }}}
-};
+}};
 
 static const word_t curve_prime_order_lo[(261+WORD_BITS-1)/WORD_BITS] = {
     U64LE(0xbf15dbca0ae7f295),
