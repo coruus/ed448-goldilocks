@@ -285,20 +285,20 @@ montgomery_step (
     ANALYZE_THIS_ROUTINE_CAREFULLY;
     field_a_t L0, L1;
     field_add_nr ( L0, a->zd, a->xd );
-    field_sub ( L1, a->xd, a->zd );
-    field_sub ( a->zd, a->xa, a->za );
+    field_subx_nr ( L1, a->xd, a->zd );
+    field_subx_nr ( a->zd, a->xa, a->za );
     field_mul ( a->xd, L0, a->zd );
     field_add_nr ( a->zd, a->za, a->xa );
     field_mul ( a->za, L1, a->zd );
     field_add_nr ( a->xa, a->za, a->xd );
     field_sqr ( a->zd, a->xa );
     field_mul ( a->xa, a->z0, a->zd );
-    field_sub ( a->zd, a->xd, a->za );
+    field_subx_nr ( a->zd, a->xd, a->za );
     field_sqr ( a->za, a->zd );
     field_sqr ( a->xd, L0 );
     field_sqr ( L0, L1 );
     field_mulw_scc ( a->zd, a->xd, 1-EDWARDS_D ); /* FIXME PERF MULW */
-    field_sub ( L1, a->xd, L0 );
+    field_subx_nr ( L1, a->xd, L0 );
     field_mul ( a->xd, L0, a->zd );
     field_sub_nr ( L0, a->zd, L1 );
     field_bias ( L0, 4 - 2*is32 /*is32 ? 2 : 4*/ );
