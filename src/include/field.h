@@ -137,16 +137,16 @@ field_sqrn (
 
 static __inline__ mask_t
 __attribute__((unused,always_inline))
-field_low_bit (const struct field_t *f) {
-    struct field_t red;
-    field_copy(&red,f);
-    field_strong_reduce(&red);
+field_low_bit (const field_a_t f) {
+    field_a_t red;
+    field_copy(red,f);
+    field_strong_reduce(red);
     return -(1&red.limb[0]);
 }
 
 static __inline__ mask_t
 __attribute__((unused,always_inline))
-field_make_nonzero (struct field_t *f) {
+field_make_nonzero (field_a_t f) {
     mask_t z = field_is_zero(f);
     field_addw( f, -z );
     return z;
