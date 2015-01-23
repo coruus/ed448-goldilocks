@@ -384,7 +384,7 @@ serialize_extensible (
     field_mul ( L0, L2, L1 );
 }
 
-void
+static void
 decaf_make_even (
     field_a_t a
 ) {
