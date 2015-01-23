@@ -408,7 +408,7 @@ int test_pointops (void) {
         }
         
         ret = single_twisting_test(&base);
-        //if (ret) return ret;
+        if (ret) return ret;
     }
     
     return 0;
