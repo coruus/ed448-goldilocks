@@ -315,7 +315,7 @@ int test_decaf (void) {
         
         twist_even(&tw_ext2, &ext);
 
-        if (~validate_tw_extensible(&tw_ext)) {
+        if (~succ | ~validate_tw_extensible(&tw_ext)) {
             youfail();
             printf("Invalid decaf tw deser:\n");
             field_print("    s", serf);
