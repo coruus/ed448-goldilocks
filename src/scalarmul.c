@@ -356,10 +356,12 @@ linear_combo_combs_vt (
     assert(table2->t >= 1);
 #endif
   
-    tw_niels_a_t ni;
+    const struct tw_niels_t *ni;
     
-    unsigned int swords[2] = {scalar1b_words, scalar2b_words}, started = 0;
+    unsigned int swords[2] = {scalar1b_words, scalar2b_words};
     word_t *scalars[2] = {scalar1b,scalar2b};
+    
+    set_identity_tw_extensible(out);
     
     for (i=0; i<smax; i++) {
         if (i) double_tw_extensible(out);
@@ -386,20 +388,12 @@ linear_combo_combs_vt (
                 tab ^= invert;
                 tab &= (1<<(table->t-1)) - 1;
             
-                copy_tw_niels(ni, table->table[tab + (j<<(table->t-1))]);
-                cond_negate_tw_niels(ni,invert);
+                ni = table->table[tab + (j<<(table->t-1))];
                 
-                if (started) {
-                    add_tw_niels_to_tw_extensible(out, ni);
-                } else {
-                    convert_tw_niels_to_tw_extensible(out, ni);
-                    started = 1;
-                }
-            
+                if (invert) sub_tw_niels_from_tw_extensible(out, ni);
+                else add_tw_niels_to_tw_extensible(out, ni);
             }
         }
-        
-        assert(started);
     }
     
     return MASK_SUCCESS;
