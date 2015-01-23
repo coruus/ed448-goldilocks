@@ -26,8 +26,8 @@ add_tw_niels_to_tw_extensible (
     field_mul  (   L1, d->u, d->t );
     field_mul  ( d->x, e->c,   L1 );
     field_add_nr  ( d->u,   L0, d->y );
-    field_sub_nr ( d->t, d->y,   L0 );
-    field_sub_nr ( d->y, d->z, d->x );
+    field_subx_nr ( d->t, d->y,   L0 );
+    field_subx_nr ( d->y, d->z, d->x );
     field_add_nr  (   L0, d->x, d->z );
     field_mul  ( d->z,   L0, d->y );
     field_mul  ( d->x, d->y, d->t );
@@ -41,16 +41,16 @@ sub_tw_niels_from_tw_extensible (
 ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY;
     field_a_t L0, L1;
-    field_sub_nr (   L1, d->y, d->x );
+    field_subx_nr (   L1, d->y, d->x );
     field_mul  (   L0, e->b,   L1 );
     field_add_nr  (   L1, d->x, d->y );
     field_mul  ( d->y, e->a,   L1 );
     field_mul  (   L1, d->u, d->t );
     field_mul  ( d->x, e->c,   L1 );
     field_add_nr  ( d->u,   L0, d->y );
-    field_sub_nr ( d->t, d->y,   L0 );
+    field_subx_nr ( d->t, d->y,   L0 );
     field_add_nr  ( d->y, d->x, d->z );
-    field_sub_nr (   L0, d->z, d->x );
+    field_subx_nr (   L0, d->z, d->x );
     field_mul  ( d->z,   L0, d->y );
     field_mul  ( d->x, d->y, d->t );
     field_mul  ( d->y,   L0, d->u );
@@ -92,7 +92,7 @@ double_tw_extensible (
     field_sub_nr  ( a->t,   L1, a->u );
     field_bias ( a->t,     3 );
     IF32( field_weak_reduce( a->t ) );
-    field_sub_nr (   L1,   L0,   L2 );
+    field_subx_nr (   L1,   L0,   L2 );
     field_sqr  ( a->x, a->z );
     field_bias ( a->x,     2-is32 /*is32 ? 1 : 2*/ );
     field_add_nr  ( a->z, a->x, a->x );
@@ -117,7 +117,7 @@ double_extensible (
     field_sub_nr  ( a->t, a->u,   L1 );
     field_bias ( a->t,     3 );
     IF32( field_weak_reduce( a->t ) );
-    field_sub_nr ( a->u,   L0,   L2 );
+    field_subx_nr ( a->u,   L0,   L2 );
     field_sqr  ( a->x, a->z );
     field_bias ( a->x,     2 );
     field_add_nr  ( a->z, a->x, a->x );
