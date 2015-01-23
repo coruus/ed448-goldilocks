@@ -41,7 +41,7 @@
 #else
 #define FIELD_HASH_BYTES (SHA512_OUTPUT_BYTES * ((FIELD_BYTES-1)/SHA512_OUTPUT_BYTES + 1))
 static inline void field_hash_final (
-    sha512_ctx_a_t *ctx,
+    sha512_ctx_a_t ctx,
     unsigned char out[FIELD_HASH_BYTES]
 ) {
     /* SHA PRNG I guess? I really should have used SHAKE */

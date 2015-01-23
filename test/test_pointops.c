@@ -362,14 +362,15 @@ int test_decaf (void) {
             fails ++;
         }
         
-        word_t scalar = i;
-        mask_t res = montgomery_ladder_decaf(serf2,serf,&scalar,i,0);
-        // youfail();
-        // printf("Decaf Montgomery ladder i=%d res=%d\n", i, (int)res);
-        // field_print("    s", serf);
-        // field_print("    o", serf2);
-        // printf("\n");
-        (void)res;
+        word_t scalar = 1;
+        mask_t res = decaf_montgomery_ladder(serf2,serf,&scalar,1+(i%31));
+        if (~res | ~field_eq(serf2,serf)) {
+            youfail();
+            printf("Decaf Montgomery ladder i=%d res=%d\n", 1+(i%31), (int)res);
+            field_print("    s", serf);
+            field_print("    o", serf2);
+            printf("\n");
+        }
     }
     if (hits < 1000) {
         youfail();

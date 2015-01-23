@@ -296,14 +296,14 @@ serialize_montgomery (
 );
 
 mask_t
-serialize_montgomery_decaf (
+decaf_serialize_montgomery (
     field_a_t             b,
     const montgomery_aux_a_t a,
-    const field_a_t       sbz
+    mask_t swapped
 );
     
 void
-deserialize_montgomery_decaf (
+decaf_deserialize_montgomery (
     montgomery_aux_a_t a,
     const field_a_t s
 );

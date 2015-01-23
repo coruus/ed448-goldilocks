@@ -191,7 +191,7 @@ constant_time_lookup (
 static __inline__ void
 __attribute__((unused,always_inline))
 constant_time_mask (
-    void *__restrict__ a_,
+    void * a_,
     const void *b_,
     word_t elem_bytes,
     mask_t mask

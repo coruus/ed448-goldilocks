@@ -243,7 +243,7 @@ convert_tw_niels_to_tw_extensible (
 }
 
 void
-deserialize_montgomery_decaf (
+decaf_deserialize_montgomery (
     montgomery_aux_a_t a,
     const field_a_t s
 ) {
@@ -252,20 +252,6 @@ deserialize_montgomery_decaf (
     field_set_ui ( a->za, 1 );
     field_set_ui ( a->xd, 1 );
     field_set_ui ( a->zd, 0 );
-}
-
-mask_t
-serialize_montgomery_decaf (
-    field_a_t             b,
-    const montgomery_aux_a_t a,
-    const field_a_t       sbz
-) {
-    field_a_t L0, L1;
-    field_isr(L0,a->zd);
-    field_sqr(L1,L0);
-    field_mul(b,a->xd,L1);
-    (void)sbz;
-    return 0; // Fail, because this routine isn't done yet.
 }
 
 void
@@ -405,6 +391,82 @@ decaf_make_even (
 ) {
     field_cond_neg ( a, field_low_bit(a) );
     field_strong_reduce ( a );
+}
+
+mask_t
+decaf_serialize_montgomery (
+    field_a_t             out,
+    const montgomery_aux_a_t a,
+    mask_t                swapped
+) { 
+    field_a_t xz_d, xz_a, x0, den, L0, L1, L2, L3;
+    mask_t zcase, output_zero, flip, succ, za_zero;
+    field_mul(xz_d, a->xd, a->zd);
+    field_mul(xz_a, a->xa, a->za);
+    output_zero = field_is_zero(xz_d);
+    za_zero = field_is_zero(a->za);
+    field_addw(xz_d, -output_zero); /* make xz_d always nonzero */
+    zcase = output_zero | field_is_zero(xz_a);
+    
+    field_sqr(x0, a->s0);
+    
+    /* Curve test in zcase */
+    field_copy(L0,x0);
+    field_addw(L0,1);
+    field_sqr(L1,L0);
+    field_mulw_scc_wr(L0,x0,-4*EDWARDS_D);
+    field_add(L1,L1,L0);
+    constant_time_select(xz_a,L1,xz_a,sizeof(xz_a),zcase);
+    
+    /* Compute denominator */
+    field_mul(L0, x0, xz_d);
+    field_mulw(L2, L0, 4);
+    field_mul(L1, L2, xz_a);
+    field_isr(den, L1);
+
+    /* Check squareness */
+    field_sqr(L2, den);
+    field_mul(L0, L1, L2);
+    field_addw(L0, 1);
+    succ = ~field_low_bit(a->s0) & ~field_is_zero(L0);
+
+    /* Compute y/x */
+    field_mul(L1, x0, a->xd);
+    field_sub(L1, a->zd, L1);
+    field_mul(L0, a->za, L1); /* L0 = "opq" */
+    field_mul(L1, x0, a->zd);
+    field_sub(L1, L1, a->xd);
+    field_mul(L2, a->xa, L1); /* L2 = "pqr" */
+
+    field_sub(L1, L0, L2);
+    field_add(L0, L0, L2);
+    field_mul(L2, L1, den); /* L2 = y0 / x0 */
+    field_mul(L1, L0, den); /* L1 = yO / xO */
+    flip = field_low_bit(L1) ^ field_low_bit(L2) ^ za_zero;
+    constant_time_select(L0, a->zd, a->xd, sizeof(L0), flip); /* L0 = "times" */
+    /* OK, done with y-coordinates */
+
+    /* OK, now correct for swappage */
+    field_add(den,den,den);
+    field_mul(L1,den,a->s0);
+    field_sqr(L2,L1);
+    field_mul(L3,L2,xz_a);
+    constant_time_select(den,L3,L1,sizeof(den),swapped &~ zcase);
+
+    /* compute the output */
+    field_mul(L1,L0,den);
+    
+    constant_time_select(L2,a->s0,a->zs,sizeof(L2),zcase); /* zs, but s0 in zcase */
+    field_mul(L0,L1,L2);
+    
+    constant_time_select(L3,a->xd,a->zd,sizeof(L3),za_zero);
+    constant_time_select(L2,L3,a->xs,sizeof(L2),zcase); /* xs, but zq or qq in zcase */
+    field_mul(out,L0,L2);
+    
+    constant_time_mask(out,out,sizeof(field_a_t),~output_zero);
+    decaf_make_even(out);
+    
+    return succ;
 }
 
 void

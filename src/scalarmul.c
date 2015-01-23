@@ -49,15 +49,14 @@ montgomery_ladder (
 }
 
 mask_t
-montgomery_ladder_decaf (
+decaf_montgomery_ladder (
     field_a_t out,
     const field_a_t in,
     const word_t *scalar,
-    unsigned int nbits,
-    unsigned int n_extra_doubles
+    unsigned int nbits
 ) { 
     montgomery_aux_a_t mont;
-    deserialize_montgomery_decaf(mont, in);
+    decaf_deserialize_montgomery(mont, in);
     
     int i,j,n=(nbits-1)%WORD_BITS;
     mask_t pflip = 0;
@@ -75,12 +74,7 @@ montgomery_ladder_decaf (
     constant_time_cond_swap(mont->xa,mont->xd,sizeof(mont->xd),pflip);
     constant_time_cond_swap(mont->za,mont->zd,sizeof(mont->xd),pflip);
     
-    assert(n_extra_doubles < INT_MAX);
-    for (j=0; j<(int)n_extra_doubles; j++) {
-        montgomery_aux_step(mont);
-    }
-    
-    return serialize_montgomery_decaf(out, mont, in);
+    return decaf_serialize_montgomery(out, mont, pflip);
 }
 
 static __inline__ void

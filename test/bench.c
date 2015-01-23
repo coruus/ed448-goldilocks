@@ -328,7 +328,7 @@ int main(int argc, char **argv) {
 	
     when = now();
     for (i=0; i<nbase/10; i++) {
-        ignore_result(montgomery_ladder_decaf(a,b,sk,FIELD_BITS,0));
+        ignore_result(decaf_montgomery_ladder(a,b,sk,FIELD_BITS));
     }
     when = now() - when;
     printf("decafladder: %5.1fµs\n", when * 1e6 / i);

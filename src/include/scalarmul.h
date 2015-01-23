@@ -100,7 +100,7 @@ montgomery_ladder (
 /**
  * Full Montgomery aux ladder in decaf format.
  *
- * Out = [2^n_extra_doubles * scalar] * in, where
+ * Out = scalar * in, where
  * scalar is little-endian and has length $nbits$ bits.
  *
  * This function (once it's done; TODO) will always reject points
@@ -115,20 +115,17 @@ montgomery_ladder (
  * @param [in] scalar The scalar's little-endian representation.
  * @param [in] nbits The number of bits in the scalar.  Note that
  * unlike in Curve25519, we do not require the top bit to be set.
- * @param [in] n_extra_doubles The number of extra doubles to do at
- * the end.
  *
  * @retval MASK_SUCCESS The operation was successful.
  * @retval MASK_FAILURE The input point was invalid, or the output
  * would be the identity or the point of order 2.
  */
 mask_t
-montgomery_ladder_decaf (
+decaf_montgomery_ladder (
     field_a_t out,
     const field_a_t in,
     const word_t *scalar,
-    unsigned int nbits,
-    unsigned int n_extra_doubles
+    unsigned int nbits
 ) __attribute__((warn_unused_result));
     
 /**
