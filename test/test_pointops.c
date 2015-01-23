@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "ec_point.h"
+#include "scalarmul.h"
 #include "magic.h"
 #include "field.h"
 #include "crandom.h"
@@ -261,21 +262,31 @@ int test_decaf (void) {
     int i, hits = 0, fails = 0;
     for (i=0; i<1000; i++) {
         uint8_t ser[FIELD_BYTES];
-        crandom_generate(&crand, ser, sizeof(ser));
-        #if (FIELD_BITS % 8)
-            ser[FIELD_BYTES-1] &= (1<<(FIELD_BITS%8)) - 1;
-        #endif
-        ser[0] &= ~1;
+        
+        int j;
+        
+        mask_t succ = 0;
+        for (j=0; j<128 && !succ; j++) {
+            crandom_generate(&crand, ser, sizeof(ser));
+            #if (FIELD_BITS % 8)
+                ser[FIELD_BYTES-1] &= (1<<(FIELD_BITS%8)) - 1;
+            #endif
+            ser[0] &= ~1;
 
-        mask_t succ = field_deserialize(serf, ser);
+            succ = field_deserialize(serf, ser);
+            if (!succ) {
+                youfail();
+                printf("   Unlikely: fail at field_deserialize\n");
+                return -1;
+            }
+        
+            succ &= decaf_deserialize_affine(&base, serf, 0);
+        }
         if (!succ) {
             youfail();
-            printf("   Unlikely: fail at field_deserialize\n");
+            printf("Unlikely: fail 128 desers\n");
             return -1;
         }
-        
-        succ &= decaf_deserialize_affine(&base, serf, 0);
-        if (!succ) continue;
         
         hits++;
         field_a_t serf2;
@@ -351,10 +362,18 @@ int test_decaf (void) {
             fails ++;
         }
         
+        word_t scalar = i;
+        mask_t res = montgomery_ladder_decaf(serf2,serf,&scalar,i,0);
+        // youfail();
+        // printf("Decaf Montgomery ladder i=%d res=%d\n", i, (int)res);
+        // field_print("    s", serf);
+        // field_print("    o", serf2);
+        // printf("\n");
+        (void)res;
     }
-    if (hits < 350) {
+    if (hits < 1000) {
         youfail();
-        printf("   Unlikely: only %d successes in decaf_deser\n", hits);
+        printf("   Fail: only %d successes in decaf_deser\n", hits);
         return -1;
     } else if (fails) {
         return -1;

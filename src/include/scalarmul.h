@@ -98,6 +98,40 @@ montgomery_ladder (
 ) __attribute__((warn_unused_result));
     
 /**
+ * Full Montgomery aux ladder in decaf format.
+ *
+ * Out = [2^n_extra_doubles * scalar] * in, where
+ * scalar is little-endian and has length $nbits$ bits.
+ *
+ * This function (once it's done; TODO) will always reject points
+ * on the twist.
+ *
+ * This function takes constant time with respect to $*in$
+ * and $*scalar$, but not of course with respect to nbits or
+ * n_extra_doubles.
+ *
+ * @param [out] out The output point.
+ * @param [in] in The base point.
+ * @param [in] scalar The scalar's little-endian representation.
+ * @param [in] nbits The number of bits in the scalar.  Note that
+ * unlike in Curve25519, we do not require the top bit to be set.
+ * @param [in] n_extra_doubles The number of extra doubles to do at
+ * the end.
+ *
+ * @retval MASK_SUCCESS The operation was successful.
+ * @retval MASK_FAILURE The input point was invalid, or the output
+ * would be the identity or the point of order 2.
+ */
+mask_t
+montgomery_ladder_decaf (
+    field_a_t out,
+    const field_a_t in,
+    const word_t *scalar,
+    unsigned int nbits,
+    unsigned int n_extra_doubles
+) __attribute__((warn_unused_result));
+    
+/**
  * Scalar multiply a twisted Edwards-form point.
  *
  * This function takes constant time.

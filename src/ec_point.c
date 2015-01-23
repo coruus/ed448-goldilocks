@@ -248,10 +248,24 @@ deserialize_montgomery_decaf (
     const field_a_t s
 ) {
     field_copy ( a->s0, s );
-    field_copy ( a->xa, s );
+    field_sqr ( a->xa, s );
     field_set_ui ( a->za, 1 );
     field_set_ui ( a->xd, 1 );
     field_set_ui ( a->zd, 0 );
+}
+
+mask_t
+serialize_montgomery_decaf (
+    field_a_t             b,
+    const montgomery_aux_a_t a,
+    const field_a_t       sbz
+) {
+    field_a_t L0, L1;
+    field_isr(L0,a->zd);
+    field_sqr(L1,L0);
+    field_mul(b,a->xd,L1);
+    (void)sbz;
+    return 0; // Fail, because this routine isn't done yet.
 }
 
 void
@@ -259,23 +273,22 @@ montgomery_aux_step (
     struct montgomery_aux_t* a
 ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY;
-    field_add_nr ( a->xs, a->xa, a->za ); 
-    field_subx_nr ( a->zs, a->xa, a->za ); 
-    field_add_nr ( a->xa, a->xd, a->zd ); 
-    field_subx_nr ( a->za, a->xd, a->zd ); 
-    field_mul ( a->xd, a->xa, a->zs ); 
-    field_mul ( a->zd, a->xs, a->za ); 
-    field_add_nr ( a->xs, a->xd, a->zd ); 
-    field_subx_nr ( a->zd, a->xd, a->zd ); 
-    field_mul ( a->zs, a->zd, a->s0 ); 
-    field_sqr ( a->zd, a->xa );         
-    field_sqr ( a->xa, a->za );         
-    field_subx_nr ( a->za, a->zd, a->xa ); 
-    IF32( field_weak_reduce( a->za ) );
-    field_mul ( a->xd, a->xa, a->zd ); 
-    field_mulw_scc_wr ( a->zd, a->xa, 1-EDWARDS_D ); 
-    field_add_nr ( a->xa, a->za, a->zd ); 
-    field_mul ( a->zd, a->xa, a->za ); 
+    field_add_nr ( a->xs, a->xa, a->za );
+    field_subx_nr ( a->zs, a->xa, a->za );
+    field_add_nr ( a->xa, a->xd, a->zd );
+    field_subx_nr ( a->za, a->xd, a->zd );
+    field_mul ( a->xd, a->xa, a->zs );
+    field_mul ( a->zd, a->xs, a->za );
+    field_add_nr ( a->xs, a->xd, a->zd );
+    field_subx_nr ( a->zd, a->xd, a->zd );
+    field_mul ( a->zs, a->zd, a->s0 );
+    field_sqr ( a->zd, a->xa );
+    field_sqr ( a->xa, a->za );
+    field_subx_nr ( a->za, a->zd, a->xa );
+    field_mul ( a->xd, a->xa, a->zd );
+    field_mulw_scc_wr ( a->zd, a->za, 1-EDWARDS_D );
+    field_add_nr ( a->xa, a->xa, a->zd );
+    field_mul ( a->zd, a->xa, a->za );
     field_sqr ( a->xa, a->xs );         
     field_sqr ( a->za, a->zs );         
 }

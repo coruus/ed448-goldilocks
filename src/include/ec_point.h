@@ -294,6 +294,13 @@ serialize_montgomery (
     const montgomery_a_t a,
     const field_a_t       sbz
 );
+
+mask_t
+serialize_montgomery_decaf (
+    field_a_t             b,
+    const montgomery_aux_a_t a,
+    const field_a_t       sbz
+);
     
 void
 deserialize_montgomery_decaf (

@@ -48,6 +48,41 @@ montgomery_ladder (
     return serialize_montgomery(out, mont, in);
 }
 
+mask_t
+montgomery_ladder_decaf (
+    field_a_t out,
+    const field_a_t in,
+    const word_t *scalar,
+    unsigned int nbits,
+    unsigned int n_extra_doubles
+) { 
+    montgomery_aux_a_t mont;
+    deserialize_montgomery_decaf(mont, in);
+    
+    int i,j,n=(nbits-1)%WORD_BITS;
+    mask_t pflip = 0;
+    for (j=(nbits+WORD_BITS-1)/WORD_BITS-1; j>=0; j--) {
+        word_t w = scalar[j];
+        for (i=n; i>=0; i--) {
+            mask_t flip = -((w>>i)&1);
+            constant_time_cond_swap(mont->xa,mont->xd,sizeof(mont->xd),flip^pflip);
+            constant_time_cond_swap(mont->za,mont->zd,sizeof(mont->xd),flip^pflip);
+            montgomery_aux_step(mont);
+            pflip = flip;
+        }
+        n = WORD_BITS-1;
+    }
+    constant_time_cond_swap(mont->xa,mont->xd,sizeof(mont->xd),pflip);
+    constant_time_cond_swap(mont->za,mont->zd,sizeof(mont->xd),pflip);
+    
+    assert(n_extra_doubles < INT_MAX);
+    for (j=0; j<(int)n_extra_doubles; j++) {
+        montgomery_aux_step(mont);
+    }
+    
+    return serialize_montgomery_decaf(out, mont, in);
+}
+
 static __inline__ void
 __attribute__((unused,always_inline))
 constant_time_lookup_tw_pniels (
