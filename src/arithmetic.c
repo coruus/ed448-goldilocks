@@ -9,7 +9,7 @@
  */
 
 #include "field.h"
-#include "ec_point.h" // TODO
+#include "ec_point.h" 
 
 mask_t
 field_eq (
@@ -32,10 +32,10 @@ field_inverse (
     const field_a_t x
 ) {
     field_a_t L0, L1;
-    field_isr  (   L0,     x );
-    field_sqr  (   L1,   L0 );
-    field_sqr  (   L0,   L1 );
-    field_mul  (     a,     x,   L0 );
+    field_isr ( L0, x );
+    field_sqr ( L1, L0 );
+    field_sqr ( L0, L1 );
+    field_mul ( a, x, L0 );
 }
 
 mask_t
@@ -43,11 +43,11 @@ field_is_square (
     const field_a_t x
 ) {
     field_a_t L0, L1;
-    field_isr  (   L0,     x );
-    field_sqr  (   L1,   L0 );
-    field_mul  (   L0,     x,  L1 );
-    field_subw(   L0,     1 );
-    return field_is_zero(   L0 ) | field_is_zero(     x );
+    field_isr ( L0, x );
+    field_sqr ( L1, L0 );
+    field_mul ( L0, x, L1 );
+    field_subw( L0, 1 );
+    return field_is_zero( L0 ) | field_is_zero( x );
 }
 
 void
