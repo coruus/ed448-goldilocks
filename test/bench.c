@@ -146,19 +146,19 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("rand448:     %5.1fns\n", when * 1e9 / i);
     
-    struct sha512_ctx_t sha;
+    sha512_ctx_a_t sha;
     uint8_t hashout[128];
     when = now();
     for (i=0; i<nbase; i++) {
-        sha512_init(&sha);
-        sha512_final(&sha, hashout);
+        sha512_init(sha);
+        sha512_final(sha, hashout);
     }
     when = now() - when;
     printf("sha512 1blk: %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase; i++) {
-        sha512_update(&sha, hashout, 128);
+        sha512_update(sha, hashout, 128);
     }
     when = now() - when;
     printf("sha512 blk:  %5.1fns (%0.2f MB/s)\n", when * 1e9 / i, 128*i/when/1e6);
@@ -356,7 +356,7 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("edwards vtm: %5.1fµs\n", when * 1e6 / i);
     
-    struct tw_niels_t wnaft[1<<6];
+    tw_niels_a_t wnaft[1<<6];
     when = now();
     for (i=0; i<nbase/10; i++) {
         ignore_result(precompute_fixed_base_wnaf(wnaft,&ext,6));

@@ -39,6 +39,7 @@ struct crandom_state_t {
     int reseeds_mandatory;
     int randomfd;
 } __attribute__((aligned(16))) ;
+typedef struct crandom_state_t crandom_state_a_t[1];
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,7 +65,7 @@ extern "C" {
  */
 int
 crandom_init_from_file (
-    struct crandom_state_t *state,
+    crandom_state_a_t state,
     const char *filename,
     int reseed_interval,
     int reseeds_mandatory
@@ -87,7 +88,7 @@ crandom_init_from_file (
  */
 void
 crandom_init_from_buffer (
-    struct crandom_state_t *state,
+    crandom_state_a_t state,
     const char initial_seed[32]
 );
 
@@ -118,7 +119,7 @@ crandom_init_from_buffer (
  */
 int
 crandom_generate (
-    struct crandom_state_t *state,
+    crandom_state_a_t state,
     unsigned char *output,
     unsigned long long length
 );
@@ -131,7 +132,7 @@ crandom_generate (
  */
 void
 crandom_destroy (
-    struct crandom_state_t *state
+    crandom_state_a_t state
 );
 
 #ifdef __cplusplus

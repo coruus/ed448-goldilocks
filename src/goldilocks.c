@@ -41,7 +41,7 @@
 #else
 #define FIELD_HASH_BYTES (SHA512_OUTPUT_BYTES * ((FIELD_BYTES-1)/SHA512_OUTPUT_BYTES + 1))
 static inline void field_hash_final (
-    struct sha512_ctx_t *ctx,
+    sha512_ctx_a_t *ctx,
     unsigned char out[FIELD_HASH_BYTES]
 ) {
     /* SHA PRNG I guess? I really should have used SHAKE */
@@ -67,19 +67,19 @@ struct goldilocks_precomputed_public_key_t {
 
 /* FUTURE: auto. */
 static struct {
-    const char * volatile state;
+    const char * volatile status;
 #if GOLDILOCKS_USE_PTHREAD
     pthread_mutex_t mutex;
 #endif
-    struct tw_niels_t combs[COMB_N << (COMB_T-1)];
+    tw_niels_a_t combs[COMB_N << (COMB_T-1)];
     struct fixed_base_table_t fixed_base;
-    struct tw_niels_t wnafs[1<<WNAF_PRECMP_BITS];
-    struct crandom_state_t rand;
+    tw_niels_a_t wnafs[1<<WNAF_PRECMP_BITS];
+    crandom_state_a_t rand;
 } goldilocks_global;
 
 static inline mask_t
 goldilocks_check_init(void) {
-    if (likely(goldilocks_global.state == G_INITED)) {
+    if (likely(goldilocks_global.status == G_INITED)) {
         return MASK_SUCCESS;
     } else {
         return MASK_FAILURE;
@@ -88,7 +88,7 @@ goldilocks_check_init(void) {
 
 int
 goldilocks_init (void) {
-    const char *res = compare_and_swap(&goldilocks_global.state, NULL, G_INITING);
+    const char *res = compare_and_swap(&goldilocks_global.status, NULL, G_INITING);
     if (res == G_INITED) return GOLDI_EALREADYINIT;
     else if (res) {
         return GOLDI_ECORRUPT;
@@ -99,37 +99,37 @@ goldilocks_init (void) {
     if (ret) goto fail;
 #endif
     
-    struct extensible_t ext;
-    struct tw_extensible_t text;
+    extensible_a_t ext;
+    tw_extensible_a_t text;
     
     /* Sanity check: the base point is on the curve. */
-    assert(validate_affine(&goldilocks_base_point));
+    assert(validate_affine(goldilocks_base_point));
     
     /* Convert it to twisted Edwards. */
-    convert_affine_to_extensible(&ext, &goldilocks_base_point);
-    twist_even(&text, &ext);
+    convert_affine_to_extensible(ext, goldilocks_base_point);
+    twist_even(text, ext);
     
     /* Precompute the tables. */
     mask_t succ;
 
-    succ =  precompute_fixed_base(&goldilocks_global.fixed_base, &text,
+    succ =  precompute_fixed_base(&goldilocks_global.fixed_base, text,
         COMB_N, COMB_T, COMB_S, goldilocks_global.combs);
-    succ &= precompute_fixed_base_wnaf(goldilocks_global.wnafs, &text, WNAF_PRECMP_BITS);
+    succ &= precompute_fixed_base_wnaf(goldilocks_global.wnafs, text, WNAF_PRECMP_BITS);
     
-    int criff_res = crandom_init_from_file(&goldilocks_global.rand,
+    int criff_res = crandom_init_from_file(goldilocks_global.rand,
         GOLDILOCKS_RANDOM_INIT_FILE,
         GOLDILOCKS_RANDOM_RESEED_INTERVAL,
         GOLDILOCKS_RANDOM_RESEEDS_MANDATORY);
         
 #ifdef SUPERCOP_WONT_LET_ME_OPEN_FILES
     if (criff_res == EMFILE) {
-        crandom_init_from_buffer(&goldilocks_global.rand, "SUPERCOP won't let me open files");
+        crandom_init_from_buffer(goldilocks_global.rand, "SUPERCOP won't let me open files");
         criff_res = 0;
     }
 #endif
         
     if (succ & !criff_res) {
-        if (!bool_compare_and_swap(&goldilocks_global.state, G_INITING, G_INITED)) {
+        if (!bool_compare_and_swap(&goldilocks_global.status, G_INITING, G_INITED)) {
             abort();
         }
         return 0;
@@ -138,7 +138,7 @@ goldilocks_init (void) {
     /* it failed! fall though... */
 
 fail:
-    if (!bool_compare_and_swap(&goldilocks_global.state, G_INITING, G_FAILED)) {
+    if (!bool_compare_and_swap(&goldilocks_global.status, G_INITING, G_FAILED)) {
         /* ok something is seriously wrong */
         abort();
     }
@@ -160,20 +160,20 @@ goldilocks_derive_private_key (
     word_t sk[GOLDI_FIELD_WORDS];
     assert(sizeof(skb) >= sizeof(sk));
     
-    struct sha512_ctx_t ctx;
-    struct tw_extensible_t exta;
+    sha512_ctx_a_t ctx;
+    tw_extensible_a_t exta;
     field_a_t pk;
     
-    sha512_init(&ctx);
-    sha512_update(&ctx, (const unsigned char *)"derivepk", GOLDI_DIVERSIFY_BYTES);
-    sha512_update(&ctx, proto, GOLDI_SYMKEY_BYTES);
-    field_hash_final(&ctx, (unsigned char *)skb);
+    sha512_init(ctx);
+    sha512_update(ctx, (const unsigned char *)"derivepk", GOLDI_DIVERSIFY_BYTES);
+    sha512_update(ctx, proto, GOLDI_SYMKEY_BYTES);
+    field_hash_final(ctx, (unsigned char *)skb);
 
     barrett_deserialize_and_reduce(sk, skb, sizeof(skb), &curve_prime_order);
     barrett_serialize(privkey->opaque, sk, GOLDI_FIELD_BYTES);
 
-    scalarmul_fixed_base(&exta, sk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
-    untwist_and_double_and_serialize(pk, &exta);
+    scalarmul_fixed_base(exta, sk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
+    untwist_and_double_and_serialize(pk, exta);
     
     field_serialize(&privkey->opaque[GOLDI_FIELD_BYTES], pk);
     
@@ -204,7 +204,7 @@ goldilocks_keygen (
     if (ml_ret) return ml_ret;
 #endif
 
-    int ret = crandom_generate(&goldilocks_global.rand, proto, sizeof(proto));
+    int ret = crandom_generate(goldilocks_global.rand, proto, sizeof(proto));
 
 #if GOLDILOCKS_USE_PTHREAD
     ml_ret = pthread_mutex_unlock(&goldilocks_global.mutex);
@@ -267,9 +267,9 @@ goldilocks_shared_secret_core (
     
 #if GOLDI_IMPLEMENT_PRECOMPUTED_KEYS
     if (pre) {
-        struct tw_extensible_t tw;
-        succ &= scalarmul_fixed_base(&tw, sk, GOLDI_SCALAR_BITS, &pre->table);
-        untwist_and_double_and_serialize(pk, &tw);
+        tw_extensible_a_t tw;
+        succ &= scalarmul_fixed_base(tw, sk, GOLDI_SCALAR_BITS, &pre->table);
+        untwist_and_double_and_serialize(pk, tw);
     } else {
         succ &= montgomery_ladder(pk,pk,sk,GOLDI_SCALAR_BITS,1);
     }
@@ -282,8 +282,8 @@ goldilocks_shared_secret_core (
     field_serialize(gxy,pk);
     
     /* obliterate records of our failure by adjusting with obliteration key */
-    struct sha512_ctx_t ctx;
-    sha512_init(&ctx);
+    sha512_ctx_a_t ctx;
+    sha512_init(ctx);
 
 #ifdef EXPERIMENT_ECDH_OBLITERATE_CT
     uint8_t oblit[GOLDI_DIVERSIFY_BYTES + GOLDI_SYMKEY_BYTES];
@@ -294,21 +294,21 @@ goldilocks_shared_secret_core (
     for (i=0; i<GOLDI_SYMKEY_BYTES; i++) {
         oblit[GOLDI_DIVERSIFY_BYTES+i] = my_privkey->opaque[2*GOLDI_FIELD_BYTES+i] & ~(succ&msucc);
     }
-    sha512_update(&ctx, oblit, sizeof(oblit));
+    sha512_update(ctx, oblit, sizeof(oblit));
 #endif
     
 #ifdef EXPERIMENT_ECDH_STIR_IN_PUBKEYS
     /* stir in the sum and product of the pubkeys. */
     uint8_t a_pk[GOLDI_FIELD_BYTES];
     field_serialize(a_pk, sum);
-    sha512_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
+    sha512_update(ctx, a_pk, GOLDI_FIELD_BYTES);
     field_serialize(a_pk, prod);
-    sha512_update(&ctx, a_pk, GOLDI_FIELD_BYTES);
+    sha512_update(ctx, a_pk, GOLDI_FIELD_BYTES);
 #endif
        
     /* stir in the shared key and finish */
-    sha512_update(&ctx, gxy, GOLDI_FIELD_BYTES);
-    sha512_final(&ctx, shared);
+    sha512_update(ctx, gxy, GOLDI_FIELD_BYTES);
+    sha512_final(ctx, shared);
     
     return (GOLDI_ECORRUPT & ~msucc)
         | (GOLDI_EINVAL & msucc &~ succ)
@@ -340,12 +340,12 @@ goldilocks_derive_challenge(
 ) {
     /* challenge = H(pk, [nonceG], message). */
     unsigned char sha_out[FIELD_HASH_BYTES];
-    struct sha512_ctx_t ctx;
-    sha512_init(&ctx);
-    sha512_update(&ctx, pubkey, GOLDI_FIELD_BYTES);
-    sha512_update(&ctx, gnonce, GOLDI_FIELD_BYTES);
-    sha512_update(&ctx, message, message_len);
-    field_hash_final(&ctx, sha_out);
+    sha512_ctx_a_t ctx;
+    sha512_init(ctx);
+    sha512_update(ctx, pubkey, GOLDI_FIELD_BYTES);
+    sha512_update(ctx, gnonce, GOLDI_FIELD_BYTES);
+    sha512_update(ctx, message, message_len);
+    field_hash_final(ctx, sha_out);
     barrett_deserialize_and_reduce(challenge, sha_out, sizeof(sha_out), &curve_prime_order);
 }
 
@@ -371,22 +371,22 @@ goldilocks_sign (
     /* Derive a nonce.  TODO: use HMAC. FUTURE: factor. */
     unsigned char sha_out[FIELD_HASH_BYTES];
     word_t tk[GOLDI_FIELD_WORDS];
-    struct sha512_ctx_t ctx;
-    sha512_init(&ctx);
-    sha512_update(&ctx, (const unsigned char *)"signonce", 8);
-    sha512_update(&ctx, &privkey->opaque[2*GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
-    sha512_update(&ctx, message, message_len);
-    sha512_update(&ctx, &privkey->opaque[2*GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
-    field_hash_final(&ctx, sha_out);
+    sha512_ctx_a_t ctx;
+    sha512_init(ctx);
+    sha512_update(ctx, (const unsigned char *)"signonce", 8);
+    sha512_update(ctx, &privkey->opaque[2*GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
+    sha512_update(ctx, message, message_len);
+    sha512_update(ctx, &privkey->opaque[2*GOLDI_FIELD_BYTES], GOLDI_SYMKEY_BYTES);
+    field_hash_final(ctx, sha_out);
     barrett_deserialize_and_reduce(tk, sha_out, sizeof(sha_out), &curve_prime_order);
     
     /* 4[nonce]G */
     uint8_t signature_tmp[GOLDI_FIELD_BYTES];
-    struct tw_extensible_t exta;
+    tw_extensible_a_t exta;
     field_a_t gsk;
-    scalarmul_fixed_base(&exta, tk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
-    double_tw_extensible(&exta);
-    untwist_and_double_and_serialize(gsk, &exta);
+    scalarmul_fixed_base(exta, tk, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base);
+    double_tw_extensible(exta);
+    untwist_and_double_and_serialize(gsk, exta);
     field_serialize(signature_tmp, gsk);
     
     word_t challenge[GOLDI_FIELD_WORDS];
@@ -450,21 +450,21 @@ goldilocks_verify (
     goldilocks_derive_challenge(challenge, pubkey->opaque, signature, message, message_len);
     
     field_a_t eph;
-    struct tw_extensible_t pk_text;
+    tw_extensible_a_t pk_text;
     
     /* deserialize [nonce]G */
     succ = field_deserialize(eph, signature);
     if (!succ) return GOLDI_EINVAL;
     
-    succ = deserialize_and_twist_approx(&pk_text, pk);
+    succ = deserialize_and_twist_approx(pk_text, pk);
     if (!succ) return GOLDI_EINVAL;
     
-    linear_combo_var_fixed_vt( &pk_text,
+    linear_combo_var_fixed_vt( pk_text,
         challenge, GOLDI_SCALAR_BITS,
         s, GOLDI_SCALAR_BITS,
         goldilocks_global.wnafs, WNAF_PRECMP_BITS );
     
-    untwist_and_double_and_serialize( pk, &pk_text );
+    untwist_and_double_and_serialize( pk, pk_text );
 
     succ = field_eq(eph, pk);
     return succ ? 0 : GOLDI_EINVAL;
@@ -483,7 +483,7 @@ goldilocks_precompute_public_key (
     
     if (!precom) return NULL;
     
-    struct tw_extensible_t pk_text;
+    tw_extensible_a_t pk_text;
     
     field_a_t pk;
     mask_t succ = field_deserialize(pk, pub->opaque);
@@ -492,13 +492,13 @@ goldilocks_precompute_public_key (
         return NULL;
     }
     
-    succ = deserialize_and_twist_approx(&pk_text, pk);
+    succ = deserialize_and_twist_approx(pk_text, pk);
     if (!succ) {
         free(precom);
         return NULL;
     }
 
-    succ =  precompute_fixed_base(&precom->table, &pk_text,
+    succ =  precompute_fixed_base(&precom->table, pk_text,
         COMB_N, COMB_T, COMB_S, NULL);
     if (!succ) {
         free(precom);
@@ -539,20 +539,20 @@ goldilocks_verify_precomputed (
     goldilocks_derive_challenge(challenge, pubkey->pub.opaque, signature, message, message_len);
     
     field_a_t eph, pk;
-    struct tw_extensible_t pk_text;
+    tw_extensible_a_t pk_text;
     
     /* deserialize [nonce]G */
     succ = field_deserialize(eph, signature);
     if (!succ) return GOLDI_EINVAL;
         
     succ = linear_combo_combs_vt (
-        &pk_text,
+        pk_text,
         challenge, GOLDI_SCALAR_BITS, &pubkey->table,
         s, GOLDI_SCALAR_BITS, &goldilocks_global.fixed_base
     );
     if (!succ) return GOLDI_EINVAL;
     
-    untwist_and_double_and_serialize( pk, &pk_text );
+    untwist_and_double_and_serialize( pk, pk_text );
 
     succ = field_eq(eph, pk);
     return succ ? 0 : GOLDI_EINVAL;

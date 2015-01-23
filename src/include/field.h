@@ -141,7 +141,7 @@ field_low_bit (const field_a_t f) {
     field_a_t red;
     field_copy(red,f);
     field_strong_reduce(red);
-    return -(1&red.limb[0]);
+    return -(1&red->limb[0]);
 }
 
 static __inline__ mask_t

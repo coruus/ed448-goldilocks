@@ -80,7 +80,7 @@ single_scalarmul_compatibility_test (
     
     /* compute using precomp wNAF */
     for (i=0; i<nsizes; i++) {
-        struct tw_niels_t pre[1<<i];
+        tw_niels_a_t pre[1<<i];
         
         succ = precompute_fixed_base_wnaf(pre, &text, i);
         if (!succ) {
@@ -177,7 +177,7 @@ single_linear_combo_test (
     if (!succ) return 1;
     
     struct fixed_base_table_t t1, t2;
-    struct tw_niels_t wnaf[32];
+    tw_niels_a_t wnaf[32];
     memset(&t1,0,sizeof(t1));
     memset(&t2,0,sizeof(t2));
     
