@@ -70,52 +70,6 @@ constant_time_lookup_tw_niels (
     constant_time_lookup(out,in,sizeof(*out),nin,idx);
 }
 
-/*
-static __inline__ void
-constant_time_lookup_tw_pniels (
-    tw_pniels_a_t out,
-    const tw_pniels_a_t in,
-    int nin,
-    int idx
-) {
-    big_register_t big_one = br_set_to_mask(1), big_i = br_set_to_mask(idx);
-    big_register_t *o = (big_register_t *)out;
-    const big_register_t *i = (const big_register_t *)in;
-    int j;
-    unsigned int k;
-    
-    really_memset(out, 0, sizeof(*out));
-    for (j=0; j<nin; j++, big_i-=big_one) {
-        big_register_t mask = br_is_zero(big_i);
-        for (k=0; k<sizeof(*out)/sizeof(*o); k++) {
-            o[k] |= mask & i[k+j*sizeof(*out)/sizeof(*o)];
-        }
-    }
-}
-
-static __inline__ void
-constant_time_lookup_tw_niels (
-    tw_niels_a_t out,
-    const tw_niels_a_t in,
-    int nin,
-    int idx
-) {
-    big_register_t big_one = br_set_to_mask(1), big_i = br_set_to_mask(idx);
-    big_register_t *o = (big_register_t *)out;
-    const big_register_t *i = (const big_register_t *)in;
-    int j;
-    unsigned int k;
-    
-    really_memset(out, 0, sizeof(*out));
-    for (j=0; j<nin; j++, big_i-=big_one) {
-        big_register_t mask = br_is_zero(big_i);
-        for (k=0; k<sizeof(*out)/sizeof(*o); k++) {
-            o[k] |= mask & i[k+j*sizeof(*out)/sizeof(*o)];
-        }
-    }
-}
-*/
-
 static void
 convert_to_signed_window_form (
     word_t *out,
@@ -180,7 +134,7 @@ scalarmul (
         inv = (bits>>(WINDOW-1))-1;
     bits ^= inv;
     
-    constant_time_lookup_tw_pniels(pn, multiples, NTABLE, bits & WINDOW_T_MASK);
+    constant_time_lookup_tw_pniels(pn, (const tw_pniels_a_t*)multiples, NTABLE, bits & WINDOW_T_MASK);
     cond_negate_tw_pniels(pn, inv);
     convert_tw_pniels_to_tw_extensible(working, pn);
 		
@@ -200,7 +154,7 @@ scalarmul (
         inv = (bits>>(WINDOW-1))-1;
         bits ^= inv;
     
-        constant_time_lookup_tw_pniels(pn, multiples, NTABLE, bits & WINDOW_T_MASK);
+        constant_time_lookup_tw_pniels(pn, (const tw_pniels_a_t*)multiples, NTABLE, bits & WINDOW_T_MASK);
         cond_negate_tw_pniels(pn, inv);
         add_tw_pniels_to_tw_extensible(working, pn);
     }
@@ -355,7 +309,7 @@ scalarmul_fixed_base (
             tab ^= invert;
             tab &= (1<<(t-1)) - 1;
             
-            constant_time_lookup_tw_niels(ni, table->table + (j<<(t-1)), 1<<(t-1), tab);
+            constant_time_lookup_tw_niels(ni, (const tw_niels_a_t*)table->table + (j<<(t-1)), 1<<(t-1), tab);
             cond_negate_tw_niels(ni, invert);
             if (i||j) {
                 add_tw_niels_to_tw_extensible(out, ni);
@@ -582,7 +536,7 @@ precompute_fixed_base (
         }
     }
 	
-    field_simultaneous_invert(zis, zs, n<<(t-1));
+    field_simultaneous_invert(zis, (const field_a_t*)zs, n<<(t-1));
 
     field_a_t product;
     for (i=0; i<n<<(t-1); i++) {
@@ -670,7 +624,7 @@ precompute_fixed_base_wnaf (
         }
     }
     
-    field_simultaneous_invert(zis, zs, 1<<tbits);
+    field_simultaneous_invert(zis, (const field_a_t *)zs, 1<<tbits);
 
     field_a_t product;
     for (i=0; i<1<<tbits; i++) {

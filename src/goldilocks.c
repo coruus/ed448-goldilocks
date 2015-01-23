@@ -462,7 +462,7 @@ goldilocks_verify (
     linear_combo_var_fixed_vt( pk_text,
         challenge, GOLDI_SCALAR_BITS,
         s, GOLDI_SCALAR_BITS,
-        goldilocks_global.wnafs, WNAF_PRECMP_BITS );
+        (const tw_niels_a_t*)goldilocks_global.wnafs, WNAF_PRECMP_BITS );
     
     untwist_and_double_and_serialize( pk, pk_text );
 
