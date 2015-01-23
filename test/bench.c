@@ -367,7 +367,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
-        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,wnaft,6);
+        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,(const tw_niels_a_t*)wnaft,6);
     }
     when = now() - when;
     printf("edwards vt6: %5.1fµs\n", when * 1e6 / i);
@@ -382,7 +382,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
-        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,wnaft,4);
+        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,(const tw_niels_a_t*)wnaft,4);
     }
     when = now() - when;
     printf("edwards vt4: %5.1fµs\n", when * 1e6 / i);
@@ -397,7 +397,7 @@ int main(int argc, char **argv) {
     when = now();
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
-        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,wnaft,5);
+        scalarmul_fixed_base_wnaf_vt(&ext,sk,SCALAR_BITS,(const tw_niels_a_t*)wnaft,5);
     }
     when = now() - when;
     printf("edwards vt5: %5.1fµs\n", when * 1e6 / i);
@@ -406,7 +406,7 @@ int main(int argc, char **argv) {
     for (i=0; i<nbase/10; i++) {
         q448_randomize(&crand, sk);
         q448_randomize(&crand, tk);
-        linear_combo_var_fixed_vt(&ext,sk,FIELD_BITS,tk,FIELD_BITS,wnaft,5);
+        linear_combo_var_fixed_vt(&ext,sk,FIELD_BITS,tk,FIELD_BITS,(const tw_niels_a_t*)wnaft,5);
     }
     when = now() - when;
     printf("vt vf combo: %5.1fµs\n", when * 1e6 / i);
@@ -716,7 +716,7 @@ int main(int argc, char **argv) {
         serialize_extensible(b, &exta);
 
         ignore_result(precompute_fixed_base_wnaf(wnaft,&exu,5));
-        linear_combo_var_fixed_vt(&ext,sk,FIELD_BITS,tk,FIELD_BITS,wnaft,5);
+        linear_combo_var_fixed_vt(&ext,sk,FIELD_BITS,tk,FIELD_BITS,(const tw_niels_a_t*)wnaft,5);
         untwist_and_double(&exta,&exv);
         serialize_extensible(c, &exta);
         

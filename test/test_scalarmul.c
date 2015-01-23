@@ -89,7 +89,7 @@ single_scalarmul_compatibility_test (
             continue;
         }
         
-        scalarmul_fixed_base_wnaf_vt(&work, scalar, nbits, pre, i);
+        scalarmul_fixed_base_wnaf_vt(&work, scalar, nbits, (const tw_niels_a_t*)pre, i);
         
         untwist_and_double_and_serialize(wout[i], &work);
     }
@@ -193,7 +193,7 @@ single_linear_combo_test (
     
     /* use the dedicated wNAF linear combo algorithm */
     copy_tw_extensible(&working, &text1);
-    linear_combo_var_fixed_vt(&working, scalar1, nbits1, scalar2, nbits2, wnaf, 5);
+    linear_combo_var_fixed_vt(&working, scalar1, nbits1, scalar2, nbits2, (const tw_niels_a_t*)wnaf, 5);
     untwist_and_double_and_serialize(result_wnaf, &working);
     
     /* use the dedicated combs algorithm */
