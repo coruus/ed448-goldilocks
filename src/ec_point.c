@@ -451,7 +451,7 @@ decaf_serialize_montgomery (
     field_mul(L1,den,a->s0);
     field_sqr(L2,L1);
     field_mul(L3,L2,xz_a);
-    constant_time_select(den,L3,L1,sizeof(den),swapped &~ zcase);
+    constant_time_select(den,L3,L1,sizeof(den),swapped | zcase);
 
     /* compute the output */
     field_mul(L1,L0,den);
@@ -459,7 +459,7 @@ decaf_serialize_montgomery (
     constant_time_select(L2,a->s0,a->zs,sizeof(L2),zcase); /* zs, but s0 in zcase */
     field_mul(L0,L1,L2);
     
-    constant_time_select(L3,a->xd,a->zd,sizeof(L3),za_zero);
+    constant_time_select(L3,a->zd,a->xd,sizeof(L3),za_zero);
     constant_time_select(L2,L3,a->xs,sizeof(L2),zcase); /* xs, but zq or qq in zcase */
     field_mul(out,L0,L2);
     

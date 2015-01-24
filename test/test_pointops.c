@@ -251,6 +251,100 @@ single_twisting_test (
     return succ ? 0 : -1;
 }
 
+int test_decaf_evil (void) {
+    
+#if FIELD_BITS != 448 || WORD_BITS != 64
+    
+    printf(" [ UNIMP ] ");
+    return 0;
+#else
+    
+    word_t evil_scalars[5][7] = {
+        {0},
+        {0x2378c292ab5844f3,0x216cc2728dc58f55,0xc44edb49aed63690,0xffffffff7cca23e9,
+         0xffffffffffffffff,0xffffffffffffffff,0x3fffffffffffffff}, /* q */
+        {0xdc873d6d54a7bb0d,0xde933d8d723a70aa,0x3bb124b65129c96f,
+         0x335dc16,0x0,0x0,0x4000000000000000}, /* qtwist */
+        {0x46f1852556b089e6,0x42d984e51b8b1eaa,0x889db6935dac6d20,0xfffffffef99447d3,
+         0xffffffffffffffff,0xffffffffffffffff,0x7fffffffffffffff}, /* 2q */
+        {0xb90e7adaa94f761a,0xbd267b1ae474e155,0x7762496ca25392df,0x66bb82c,
+             0x0,0x0,0x8000000000000000} /* 2*qtwist */
+    };
+    word_t random_scalar[7];
+    
+    unsigned char evil_inputs[3][56];
+    memset(evil_inputs[0],0,56);
+    memset(evil_inputs[1],0,56);
+    memset(evil_inputs[2],0xff,56);
+    evil_inputs[1][0] = 1;
+    evil_inputs[2][0] = evil_inputs[2][28] = 0xFE;
+    
+    unsigned char random_input[56];
+    
+    
+    crandom_state_a_t crand;
+    crandom_init_from_buffer(crand, "my evil_decaf random initializer");
+
+    int i,j,fails=0;
+    int ret = 0;
+    for (i=0; i<100; i++) {
+        
+        crandom_generate(crand, (unsigned char *)random_scalar, sizeof(random_scalar));
+        if (i<15) {
+            memcpy(random_scalar, evil_scalars[i%5], sizeof(random_scalar));
+            if (i%3 == 1) random_scalar[0] ++;
+            if (i%3 == 2) random_scalar[0] --;
+        }
+        
+        for (j=0; j<100; j++) {
+            crandom_generate(crand, random_input, sizeof(random_input));
+            mask_t should = 0, care_should = 0;
+            if (j<3) {
+                memcpy(random_input, evil_inputs[j], sizeof(random_input));
+                care_should = -1;
+                should = (j==0) ? -1 : 0;
+            } else {
+                random_input[0] &= ~1;
+            }
+            
+            field_a_t base, out_m, out_e;
+            mask_t s_base = field_deserialize(base,random_input);
+            
+            affine_a_t pt_e;
+            tw_affine_a_t pt_te;
+            // TODO: test don't allow identity
+            mask_t s_e  = decaf_deserialize_affine(pt_e,base,-1);
+            mask_t s_te = decaf_deserialize_tw_affine(pt_te,base,-1);
+            mask_t s_m  = decaf_montgomery_ladder(out_m, base, random_scalar, 448);
+            
+            tw_extensible_a_t work;
+            convert_tw_affine_to_tw_extensible(work,pt_te);
+            scalarmul(work, random_scalar);
+            decaf_serialize_tw_extensible(out_e, work);
+            
+            if ((care_should && should != s_m)
+                || ~s_base || s_e != s_te || s_m != s_te || (s_te && ~field_eq(out_e,out_m))
+            ) {
+                youfail();
+                field_print("    base", base);
+                scalar_print("    scal", random_scalar, (448+WORD_BITS-1)/WORD_BITS);
+                field_print("    oute", out_e);
+                field_print("    outm", out_m);
+                printf("    succ: m=%d, e=%d, t=%d, b=%d, should=%d[%d]\n",
+                    -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_base,-(int)should,-(int)care_should
+                );
+                ret = -1;
+                fails++;
+            }
+        }
+    }
+    if (fails) {
+        printf("    Failed %d trials\n", fails);
+    }
+    return ret;
+#endif
+}
+
 int test_decaf (void) {
     struct affine_t base;
     struct tw_affine_t tw_base;

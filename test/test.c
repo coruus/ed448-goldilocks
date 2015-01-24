@@ -121,6 +121,9 @@ int main(int argc, char **argv) {
 
     begin_test("Decaf point encoding");
     test_decaf();
+
+    begin_test("Decaf pathological cases");
+    test_decaf_evil();
     
     begin_test("Scalarmul compatibility");
     test_scalarmul_compatibility();
