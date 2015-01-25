@@ -137,9 +137,11 @@ field_sqrn (
 
 static __inline__ mask_t
 __attribute__((unused,always_inline))
-field_low_bit (const field_a_t f) {
+field_high_bit (const field_a_t f) {
     field_a_t red;
     field_copy(red,f);
+    field_weak_reduce(red);
+    field_add_RAW(red,red,red);
     field_strong_reduce(red);
     return -(1&red->limb[0]);
 }

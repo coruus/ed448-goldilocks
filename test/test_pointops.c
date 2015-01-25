@@ -304,7 +304,7 @@ int test_decaf_evil (void) {
                 care_should = -1;
                 should = (j==0) ? -1 : 0;
             } else {
-                random_input[0] &= ~1;
+                random_input[55] &= 0x7F;
             }
             
             field_a_t base, out_m, out_e;
@@ -362,10 +362,7 @@ int test_decaf (void) {
         mask_t succ = 0;
         for (j=0; j<128 && !succ; j++) {
             crandom_generate(&crand, ser, sizeof(ser));
-            #if (FIELD_BITS % 8)
-                ser[FIELD_BYTES-1] &= (1<<(FIELD_BITS%8)) - 1;
-            #endif
-            ser[0] &= ~1;
+            ser[FIELD_BYTES-1] &= (1<<((FIELD_BITS-1)%8)) - 1;
 
             succ = field_deserialize(serf, ser);
             if (!succ) {

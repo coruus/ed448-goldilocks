@@ -386,10 +386,10 @@ serialize_extensible (
 }
 
 static void
-decaf_make_even (
+decaf_abs (
     field_a_t a
 ) {
-    field_cond_neg ( a, field_low_bit(a) );
+    field_cond_neg ( a, field_high_bit(a) );
     field_strong_reduce ( a );
 }
 
@@ -428,7 +428,7 @@ decaf_serialize_montgomery (
     field_sqr(L2, den);
     field_mul(L0, L1, L2);
     field_addw(L0, 1);
-    succ = ~field_low_bit(a->s0) & ~field_is_zero(L0);
+    succ = ~field_high_bit(a->s0) & ~field_is_zero(L0);
 
     /* Compute y/x */
     field_mul(L1, x0, a->xd);
@@ -442,7 +442,7 @@ decaf_serialize_montgomery (
     field_add(L0, L0, L2);
     field_mul(L2, L1, den); /* L2 = y0 / x0 */
     field_mul(L1, L0, den); /* L1 = yO / xO */
-    flip = field_low_bit(L1) ^ field_low_bit(L2) ^ za_zero;
+    flip = field_high_bit(L1) ^ field_high_bit(L2) ^ za_zero;
     constant_time_select(L0, a->zd, a->xd, sizeof(L0), flip); /* L0 = "times" */
     /* OK, done with y-coordinates */
 
@@ -464,7 +464,7 @@ decaf_serialize_montgomery (
     field_mul(out,L0,L2);
     
     constant_time_mask(out,out,sizeof(field_a_t),~output_zero);
-    decaf_make_even(out);
+    decaf_abs(out);
     
     return succ;
 }
@@ -490,10 +490,10 @@ decaf_serialize_extensible (
     field_mul ( L0, L2, L3 );
     field_add ( L3, L1, L1 );        
     field_mul ( L2, L3, a->z );   
-    field_cond_neg ( L1, ~field_low_bit(L2) ); 
+    field_cond_neg ( L1, ~field_high_bit(L2) ); 
     field_mul ( L2, L1, a->y ); 
     field_add ( b, L0, L2 );
-    decaf_make_even ( b );
+    decaf_abs ( b );
 }
 
 void
@@ -517,10 +517,10 @@ decaf_serialize_tw_extensible (
     field_mul ( L0, L2, L3 );
     field_add ( L3, L1, L1 );  
     field_mul ( L2, L3, a->z );   
-    field_cond_neg ( L1, ~field_low_bit(L2) ); 
+    field_cond_neg ( L1, ~field_high_bit(L2) ); 
     field_mul ( L2, L1, a->y ); 
     field_add ( b, L0, L2 );
-    decaf_make_even ( b );
+    decaf_abs ( b );
 }
 
 mask_t
@@ -533,7 +533,7 @@ decaf_deserialize_affine (
     mask_t succ, zero;
     zero = field_is_zero(s);
     succ = allow_identity | ~zero;
-    succ &= ~field_low_bit(s);
+    succ &= ~field_high_bit(s);
     field_sqr ( L0, s );
     field_copy ( L1, L0 );
     field_addw ( L1, 1 );
@@ -550,7 +550,7 @@ decaf_deserialize_affine (
     succ &= ~field_is_zero( L0 );
     field_mul ( L2, L3, L1 );
     field_mul ( L3, L2, L4 );
-    field_cond_neg ( L4, field_low_bit(L3) );
+    field_cond_neg ( L4, field_high_bit(L3) );
     field_mul ( L3, L4, s );
     field_sqr ( L4, L3 );
     field_mul ( L0, L2, L4 );
@@ -574,7 +574,7 @@ decaf_deserialize_tw_affine (
     mask_t succ, zero;
     zero = field_is_zero(s);
     succ = allow_identity | ~zero;
-    succ &= ~field_low_bit(s);
+    succ &= ~field_high_bit(s);
     field_sqr ( L0, s );
     field_neg ( L1, L0 );
     field_addw ( L1, 1 );
@@ -591,7 +591,7 @@ decaf_deserialize_tw_affine (
     succ &= ~field_is_zero( L0 );
     field_mul ( L2, L3, L1 );
     field_mul ( L3, L2, L4 );
-    field_cond_neg ( L4, field_low_bit(L3) );
+    field_cond_neg ( L4, field_high_bit(L3) );
     field_mul ( L3, L4, s );
     field_sqr ( L4, L3 );
     field_mul ( L0, L2, L4 );
