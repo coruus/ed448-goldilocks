@@ -90,6 +90,17 @@ constant_time_lookup_tw_pniels (
 
 static __inline__ void
 __attribute__((unused,always_inline))
+constant_time_lookup_tw_extended (
+    tw_extended_a_t out,
+    const tw_extended_a_t *in,
+    int nin,
+    int idx
+) {
+    constant_time_lookup(out,in,sizeof(*out),nin,idx);
+}
+
+static __inline__ void
+__attribute__((unused,always_inline))
 constant_time_lookup_tw_niels (
     tw_niels_a_t out,
     const tw_niels_a_t *in,
@@ -186,6 +197,65 @@ scalarmul (
         constant_time_lookup_tw_pniels(pn, (const tw_pniels_a_t*)multiples, NTABLE, bits & WINDOW_T_MASK);
         cond_negate_tw_pniels(pn, inv);
         add_tw_pniels_to_tw_extensible(working, pn);
+    }
+}
+
+void
+scalarmul_ed (
+    tw_extended_a_t working,
+    const word_t scalar[SCALAR_WORDS]
+) {
+    const int WINDOW = SCALARMUL_FIXED_WINDOW_SIZE,
+        WINDOW_MASK = (1<<WINDOW)-1, WINDOW_T_MASK = WINDOW_MASK >> 1,
+        NTABLE = 1<<(WINDOW-1),
+        nbits = ROUND_UP(SCALAR_BITS,WINDOW);
+    
+    word_t scalar2[SCALAR_WORDS];
+    convert_to_signed_window_form (
+        scalar2, scalar, SCALAR_WORDS,
+        SCALARMUL_FIXED_WINDOW_ADJUSTMENT, SCALAR_WORDS
+    );
+
+    tw_extended_a_t
+	  tmp VECTOR_ALIGNED,
+	  multiples[NTABLE] VECTOR_ALIGNED;
+
+    copy_tw_extended(tmp, working);
+    add_tw_extended(tmp, tmp);
+    copy_tw_extended(multiples[0], working);
+
+    int i,j;
+    for (i=1; i<NTABLE; i++) {
+        add_tw_extended(working, tmp);
+        copy_tw_extended(multiples[i], working);
+    }
+
+    i = nbits - WINDOW;
+    int bits = scalar2[i/WORD_BITS] >> (i%WORD_BITS) & WINDOW_MASK,
+        inv = (bits>>(WINDOW-1))-1;
+    bits ^= inv;
+    
+    set_identity_tw_extended(working);
+
+    for (; i>=0; i-=WINDOW) {
+        if (i != nbits-WINDOW) {
+            for (j=0; j<WINDOW; j++) {
+                add_tw_extended(working,working);
+            }
+        }
+
+        bits = scalar2[i/WORD_BITS] >> (i%WORD_BITS);
+        
+        if (i/WORD_BITS < SCALAR_WORDS-1 && i%WORD_BITS >= WORD_BITS-WINDOW) {
+            bits ^= scalar2[i/WORD_BITS+1] << (WORD_BITS - (i%WORD_BITS));
+        }
+                
+        bits &= WINDOW_MASK;
+        inv = (bits>>(WINDOW-1))-1;
+        bits ^= inv;
+    
+        constant_time_lookup_tw_extended(tmp, (const tw_extended_a_t*)multiples, NTABLE, bits & WINDOW_T_MASK);
+        add_sub_tw_extended(working, tmp, inv);
     }
 }
 

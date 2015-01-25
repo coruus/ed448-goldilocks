@@ -4,7 +4,11 @@
  *   Copyright (c) 2014 Cryptography Research, Inc.  \n
  *   Released under the MIT License.  See LICENSE.txt for license information.
  * @author Mike Hamburg
- * @warning This file was automatically generated.
+ *
+ * This file contains a huge number of different options for EC point arithmetic,
+ * but only a few of them will be used by any given library.  They are here for
+ * reference and for consistency checks.  The Goldilocks library link step strips
+ * out unused functions.
  */
 
 #ifndef __CC_INCLUDED_EC_POINT_H__
@@ -76,6 +80,14 @@ typedef struct tw_extensible_t {
 } tw_extensible_a_t[1];
 
 /**
+ * Extended coordinates for twisted Edwards curves.
+ * Jack of all trades, master of none.
+ */
+typedef struct tw_extended_t {
+    field_a_t x, y, z, t;
+} tw_extended_a_t[1];
+
+/**
  * Niels coordinates for twisted Edwards curves.
  * 
  * Good for mixed readdition; suitable for fixed tables.
@@ -138,6 +150,15 @@ static __inline__ void
 copy_tw_extensible (
     tw_extensible_a_t       a,
     const tw_extensible_a_t ds
+) __attribute__((unused,always_inline));
+
+/**
+ * Auto-generated copy method.
+ */
+static __inline__ void
+copy_tw_extended (
+    tw_extended_a_t       a,
+    const tw_extended_a_t ds
 ) __attribute__((unused,always_inline));
 
 /**
@@ -270,6 +291,25 @@ void
 convert_tw_niels_to_tw_extensible (
     tw_extensible_a_t  e,
     const tw_niels_a_t d
+);
+
+void
+convert_tw_extensible_to_tw_extended (
+    tw_extended_a_t   b,
+    const tw_extensible_a_t a
+);
+
+void
+add_tw_extended (
+    tw_extended_a_t  d,
+    const tw_extended_a_t e
+);
+
+void
+add_sub_tw_extended (
+    tw_extended_a_t  d,
+    const tw_extended_a_t e,
+    mask_t sub
 );
 
 void
@@ -435,6 +475,21 @@ decaf_serialize_tw_extensible (
     const tw_extensible_a_t a
 );
 
+
+mask_t
+decaf_deserialize_tw_extended (
+    tw_extended_a_t       a,
+    const field_a_t s,
+    mask_t allow_identity
+)
+__attribute__((warn_unused_result));
+
+void
+decaf_serialize_tw_extended (
+    field_a_t            b,
+    const tw_extended_a_t a
+);
+
 void
 set_identity_extensible (
     extensible_a_t a
@@ -443,6 +498,11 @@ set_identity_extensible (
 void
 set_identity_tw_extensible (
     tw_extensible_a_t a
+);
+
+void
+set_identity_tw_extended (
+    tw_extended_a_t a
 );
 
 void
@@ -483,6 +543,13 @@ mask_t
 decaf_eq_tw_extensible (
     const tw_extensible_a_t a,
     const tw_extensible_a_t b
+)
+__attribute__((warn_unused_result));
+
+mask_t
+decaf_eq_tw_extended (
+    const tw_extended_a_t a,
+    const tw_extended_a_t b
 )
 __attribute__((warn_unused_result));
 
@@ -590,6 +657,17 @@ copy_tw_extensible (
     field_copy ( a->z, ds->z );
     field_copy ( a->t, ds->t );
     field_copy ( a->u, ds->u );
+}
+
+void
+copy_tw_extended (
+    tw_extended_a_t       a,
+    const tw_extended_a_t ds
+) {
+    field_copy ( a->x, ds->x );
+    field_copy ( a->y, ds->y );
+    field_copy ( a->z, ds->z );
+    field_copy ( a->t, ds->t );
 }
 
 void

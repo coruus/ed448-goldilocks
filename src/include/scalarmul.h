@@ -146,6 +146,23 @@ scalarmul (
 );
     
 /**
+ * Scalar multiply a twisted Edwards-form point, simply, in extended coordinates.
+ *
+ * This function takes constant time.
+ *
+ * Currently the scalar is always exactly 448 bits long.
+ *
+ * @param [inout] working The point to multply.
+ * @param [in] scalar The scalar, in little-endian form.
+ */
+void
+scalarmul_ed (
+    tw_extended_a_t working,
+    const word_t scalar[SCALAR_WORDS]
+    /* TODO? int nbits */
+);
+    
+/**
  * Scalar multiply a twisted Edwards-form point.  Use the same
  * algorithm as scalarmul(), but uses variable array indices.
  *

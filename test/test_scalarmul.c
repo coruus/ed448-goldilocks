@@ -17,7 +17,7 @@ single_scalarmul_compatibility_test (
     int nbits
 ) {
     struct tw_extensible_t text, work;
-    field_a_t mont, ct, vl, vt, decaf_s, decaf_m, decaf_te;
+    field_a_t mont, ct, vl, vt, sced, decaf_s, decaf_m, decaf_te;
     
     int ret = 0, i;
     mask_t succ, succm;
@@ -110,11 +110,21 @@ single_scalarmul_compatibility_test (
         scalarmul_vt(&work, scalar, nbits);
         untwist_and_double_and_serialize(vt, &work);
         
-    
+    	tw_extended_a_t ed;
+        convert_tw_extensible_to_tw_extended(ed, &text);
+	scalarmul_ed(ed, scalar);
+	field_copy(work.x, ed->x);
+	field_copy(work.y, ed->y);
+	field_copy(work.z, ed->z);
+	field_copy(work.t, ed->t);
+	field_set_ui(work.u, 1);
+        untwist_and_double_and_serialize(sced, &work);
+
         /* check consistency mont vs window */
         consistent &= field_eq(mont, ct);
         consistent &= field_eq(mont, vl);
         consistent &= field_eq(mont, vt);
+        consistent &= field_eq(mont, sced);
     }
     
     /* check consistency mont vs combs */
@@ -163,6 +173,7 @@ single_scalarmul_compatibility_test (
             field_print("    ct ", ct);
             field_print("    vl ", vl);
             field_print("    vt ", vt);
+            field_print("    ed ", sced);
         }
         
         printf("decaf: succ = %d, %d\n", (int)succ_dm, (int)succ_dta);

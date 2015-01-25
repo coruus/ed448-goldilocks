@@ -134,6 +134,7 @@ add_double_test (
     mask_t succ = MASK_SUCCESS;
     struct extensible_t exb;
     struct tw_extensible_t text1, text2, texta, textb;
+    struct tw_extended_t ted1, ted2;
     struct tw_pniels_t pn;
     
     /* Convert to ext */
@@ -154,6 +155,25 @@ add_double_test (
     convert_tw_extensible_to_tw_pniels(&pn, &text2);
     copy_tw_extensible(&textb, &text1);
     add_tw_pniels_to_tw_extensible(&textb, &pn);
+
+    convert_tw_extensible_to_tw_extended(&ted1, &text1);
+    convert_tw_extensible_to_tw_extended(&ted2, &text2);
+    add_tw_extended(&ted1, &ted2);
+    convert_tw_extensible_to_tw_extended(&ted2, &textb);
+    
+    if (~decaf_eq_tw_extended(&ted1, &ted2)) {
+        youfail();
+        succ = 0;
+        printf("    Tw extended simple compat:\n");
+        field_print("    x1",ted1.x);
+        field_print("    y1",ted1.y);
+        field_print("    z1",ted1.z);
+        field_print("    t1",ted1.t);
+        field_print("    x2",ted2.x);
+        field_print("    y2",ted2.y);
+        field_print("    z2",ted2.z);
+        field_print("    t2",ted2.t);
+    }
     
     succ &= fail_if_different_tw(&texta,&textb,"Addition commutativity","a+b","b+a");
     
@@ -161,7 +181,7 @@ add_double_test (
     add_tw_pniels_to_tw_extensible(&textb, &pn);
     copy_tw_extensible(&texta, &text2);
     double_tw_extensible(&texta);
-    
+
     succ &= fail_if_different_tw(&texta,&textb,"Doubling test","2b","b+b");
     
     if (~succ) {
@@ -307,31 +327,39 @@ int test_decaf_evil (void) {
                 random_input[55] &= 0x7F;
             }
             
-            field_a_t base, out_m, out_e;
+            field_a_t base, out_m, out_e, out_ed;
             mask_t s_base = field_deserialize(base,random_input);
             
             affine_a_t pt_e;
             tw_affine_a_t pt_te;
+            tw_extended_a_t pt_ed;
             // TODO: test don't allow identity
             mask_t s_e  = decaf_deserialize_affine(pt_e,base,-1);
             mask_t s_te = decaf_deserialize_tw_affine(pt_te,base,-1);
+            mask_t s_ed = decaf_deserialize_tw_extended(pt_ed,base,-1);
             mask_t s_m  = decaf_montgomery_ladder(out_m, base, random_scalar, 448);
             
             tw_extensible_a_t work;
             convert_tw_affine_to_tw_extensible(work,pt_te);
             scalarmul(work, random_scalar);
             decaf_serialize_tw_extensible(out_e, work);
+
+            scalarmul_ed(pt_ed, random_scalar);
+            decaf_serialize_tw_extended(out_ed, pt_ed);
             
             if ((care_should && should != s_m)
-                || ~s_base || s_e != s_te || s_m != s_te || (s_te && ~field_eq(out_e,out_m))
+                || ~s_base || s_e != s_te || s_m != s_te || s_ed != s_te
+                || (s_te && ~field_eq(out_e,out_m))
+                || (s_ed && ~field_eq(out_e,out_ed))
             ) {
                 youfail();
                 field_print("    base", base);
                 scalar_print("    scal", random_scalar, (448+WORD_BITS-1)/WORD_BITS);
                 field_print("    oute", out_e);
+                field_print("    outE", out_ed);
                 field_print("    outm", out_m);
-                printf("    succ: m=%d, e=%d, t=%d, b=%d, should=%d[%d]\n",
-                    -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_base,-(int)should,-(int)care_should
+                printf("    succ: m=%d, e=%d, t=%d, b=%d, T=%d, should=%d[%d]\n",
+                    -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_base,-(int)s_ed,-(int)should,-(int)care_should
                 );
                 ret = -1;
                 fails++;
@@ -452,7 +480,29 @@ int test_decaf (void) {
             field_print("    Y2", tw_ext2.y);
             fails ++;
         }
-        
+
+        tw_extended_a_t ed;
+        succ = decaf_deserialize_tw_extended(ed, serf, 0);
+        decaf_serialize_tw_extended(serf2, ed);
+
+        if (~succ) {
+            youfail();
+            printf("Invalid decaf ed deser:\n");
+            field_print("    s", serf);
+            fails ++;
+        } else if (~field_eq(serf, serf2)) {
+            youfail();
+            printf("Fail round-trip through decaf ser:\n");
+            field_print("    s", serf);
+            field_print("    x", ed->x);
+            field_print("    y", ed->y);
+            field_print("    z", ed->z);
+            field_print("    t", ed->t);
+            printf("    tw deser is %s\n", validate_tw_extensible(&tw_ext) ? "valid" : "invalid");
+            field_print("    S", serf2);
+            fails ++;
+        }
+
         word_t scalar = 1;
         mask_t res = decaf_montgomery_ladder(serf2,serf,&scalar,1+(i%31));
         if (~res | ~field_eq(serf2,serf)) {

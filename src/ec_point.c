@@ -7,6 +7,11 @@
  * @author Mike Hamburg
  * @warning This file was automatically generated.
  *     Then it was edited by hand.  Good luck, have fun.
+ *
+ * This file contains a huge number of different options for EC point arithmetic,
+ * but only a few of them will be used by any given library.  They are here for
+ * reference and for consistency checks.  The Goldilocks library link step strips
+ * out unused functions.
  */
 
 #include "ec_point.h"
@@ -19,7 +24,7 @@ add_tw_niels_to_tw_extensible (
 ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY;
     field_a_t L0, L1;
-    field_sub ( L1, d->y, d->x );
+    field_subx_nr ( L1, d->y, d->x );
     field_mul ( L0, e->a, L1 );
     field_add_nr ( L1, d->x, d->y );
     field_mul ( d->y, e->b, L1 );
@@ -32,6 +37,62 @@ add_tw_niels_to_tw_extensible (
     field_mul ( d->z, L0, d->y );
     field_mul ( d->x, d->y, d->t );
     field_mul ( d->y, L0, d->u );
+}
+
+void
+add_tw_extended (
+    tw_extended_a_t  d,
+    const tw_extended_a_t e
+) {
+    ANALYZE_THIS_ROUTINE_CAREFULLY;
+    field_a_t L0, L1, L2;
+    field_subx_nr ( L1, d->y, d->x );
+    field_subx_nr ( L2, e->y, e->x );
+    field_mul ( L0, L2, L1 );
+    field_add_nr ( L1, d->y, d->x );
+    field_add_nr ( L2, e->y, e->x );
+    field_mul ( d->y, L2, L1 );
+    field_mul ( L1, e->t, d->t );
+    field_mulw_scc_wr ( d->x, L1, 2-2*EDWARDS_D );
+    field_add_nr ( L1, L0, d->y );
+    field_subx_nr ( L2, d->y, L0 );
+    field_mul ( L0, d->z, e->z );
+    field_add_nr ( L0, L0, L0 );
+    field_add_nr ( d->y, L0, d->x );
+    field_subx_nr ( L0, L0, d->x );
+    field_mul ( d->z, L0, d->y );
+    field_mul ( d->x, d->y, L2 );
+    field_mul ( d->y, L0, L1 );
+    field_mul ( d->t, L1, L2 );
+}
+
+void
+add_sub_tw_extended (
+    tw_extended_a_t  d,
+    const tw_extended_a_t e,
+    mask_t sub
+) {
+    field_a_t L0, L1, L2, L3;
+    field_sub ( L1, d->y, d->x );
+    field_sub ( L2, e->y, e->x );
+    field_add ( L3, e->y, e->x );
+    constant_time_cond_swap(L2,L3,sizeof(L2),sub);
+    field_mul ( L0, L2, L1 );
+    field_add ( L1, d->y, d->x );
+    field_mul ( d->y, L3, L1 );
+    field_mul ( L1, e->t, d->t );
+    field_mulw_scc_wr ( d->x, L1, 2-2*EDWARDS_D );
+    field_add ( L1, L0, d->y );
+    field_sub ( L2, d->y, L0 );
+    field_mul ( L0, d->z, e->z );
+    field_add ( L0, L0, L0 );
+    field_add ( d->y, L0, d->x );
+    field_sub ( L0, L0, d->x );
+    constant_time_cond_swap(L0,d->y,sizeof(L0),sub);
+    field_mul ( d->z, L0, d->y );
+    field_mul ( d->x, d->y, L2 );
+    field_mul ( d->y, L0, L1 );
+    field_mul ( d->t, L1, L2 );
 }
 
 void
@@ -192,6 +253,17 @@ convert_tw_affine_to_tw_extensible (
     field_set_ui( b->z, 1 );
     field_copy ( b->t, a->x );
     field_copy ( b->u, a->y );
+}
+
+void
+convert_tw_extensible_to_tw_extended (
+    tw_extended_a_t   b,
+    const tw_extensible_a_t a
+) {
+    field_copy ( b->x, a->x );
+    field_copy ( b->y, a->y );
+    field_copy ( b->z, a->z );
+    field_mul ( b->t, a->t, a->u );
 }
 
 void
@@ -523,6 +595,90 @@ decaf_serialize_tw_extensible (
     decaf_abs ( b );
 }
 
+void
+decaf_serialize_tw_extended (
+    field_a_t b,
+    const tw_extended_a_t a
+) {
+    field_a_t L0, L1, L2, L3;
+    field_mulw_scc ( L0, a->y, 1-EDWARDS_D ); 
+    field_mul ( L2, L0, a->t ); 
+    field_mul ( L0, a->x, a->z ); 
+    field_sub ( L3, L2, L0 ); 
+    field_add ( L0, a->z, a->y ); 
+    field_sub ( L1, a->z, a->y ); 
+    field_mul ( L2, L1, L0 );
+    field_mulw_scc ( L1, L2, -EDWARDS_D );
+    field_isr ( L0, L1 );
+    field_mulw_scc ( L1, L0, -EDWARDS_D ); 
+    field_mul ( L2, L1, L0 );
+    field_mul ( L0, L2, L3 );
+    field_add ( L3, L1, L1 );  
+    field_mul ( L2, L3, a->z );   
+    field_cond_neg ( L1, ~field_high_bit(L2) ); 
+    field_mul ( L2, L1, a->y ); 
+    field_add ( b, L0, L2 );
+    decaf_abs ( b );
+}
+
+/*
+static void
+tw_extended_efgh (
+    tw_extended_a_t a,
+    field_a_t x,
+    field_a_t xz,
+    field_a_t y,
+    field_a_t yz
+) {
+    field_mul(a->x,x,yz);
+    field_mul(a->y,y,xz);
+    field_mul(a->z,xz,yz);
+    field_mul(a->t,x,y);
+}
+*/
+
+mask_t
+decaf_deserialize_tw_extended (
+    tw_extended_a_t a,
+    const field_a_t s,
+    mask_t allow_identity
+) {
+    field_a_t L0, L1, L2, L3, L4;
+    mask_t succ, zero;
+    zero = field_is_zero(s);
+    succ = allow_identity | ~zero;
+    succ &= ~field_high_bit(s);
+
+    field_sqr ( L0, s ); // L0 = s^2
+    field_neg ( a->z, L0 );
+    field_addw ( a->z, 1 );
+    field_sqr ( L1, a->z ); 
+    field_mulw_scc_wr ( L2, L0, 4-4*EDWARDS_D );
+    field_add ( L2, L2, L1 ); // L2 = [t^2]
+    field_mul ( L1, L2, L0 ); // L1 = [t^2] s^2
+
+    field_isr ( L3, L1 ); // L3 =? 1/ts; check it
+    field_sqr ( L4, L3 );
+    field_mul ( L0, L4, L1 );
+    field_addw( L0, 1 );
+    succ &= ~field_is_zero( L0 );
+
+    field_mul ( L1, L2, L3 ); // L1 = t^2 * 1/ts = t/s
+    field_cond_neg ( L3, field_high_bit(L1) ); // negate 1/ts?
+
+    field_add( a->x, s, s );
+    field_mul ( L2, L3, s );
+
+    field_neg ( L1, a->z );      
+    field_addw ( L1, 2 );
+    field_mul ( L0, L1, L2 );
+    field_mul(a->y,L0,a->z);
+    field_mul(a->t,a->x,L0);
+    field_addw ( a->y, -zero );
+
+    return succ;
+}
+
 mask_t
 decaf_deserialize_affine (
     affine_a_t a,
@@ -804,6 +960,16 @@ set_identity_extensible (
 }
 
 void
+set_identity_tw_extended (
+    tw_extended_a_t a
+) {
+    field_set_ui( a->x, 0 );
+    field_set_ui( a->y, 1 );
+    field_set_ui( a->z, 1 );
+    field_set_ui( a->t, 0 );
+}
+
+void
 set_identity_tw_extensible (
     tw_extensible_a_t a
 ) {
@@ -827,12 +993,21 @@ decaf_eq_extensible (
     const struct extensible_t* a,
     const struct extensible_t* b
 ) {
-    field_a_t L0, L1, L2;
-    field_mul ( L2, b->y, a->x );
+    field_a_t L0, L1;
+    field_mul ( L0, b->y, a->x );
     field_mul ( L1, a->y, b->x );
-    field_sub ( L0, L2, L1 );
-    field_bias ( L0, 2 );
-    return field_is_zero ( L0 );
+    return field_eq(L0,L1);
+}
+
+mask_t
+decaf_eq_tw_extended (
+    const tw_extended_a_t a,
+    const tw_extended_a_t b
+) {
+    field_a_t L0, L1;
+    field_mul ( L0, b->y, a->x );
+    field_mul ( L1, a->y, b->x );
+    return field_eq(L0,L1);
 }
 
 mask_t

@@ -267,12 +267,23 @@ int main(int argc, char **argv) {
     
     memset(&ext,0,sizeof(ext));
     memset(&niels,0,sizeof(niels)); /* avoid assertions in p521 even though this isn't a valid ext or niels */
+
+    tw_extended_a_t ed;
+    convert_tw_extensible_to_tw_extended(ed,&ext);
+
     when = now();
     for (i=0; i<nbase*100; i++) {
         add_tw_niels_to_tw_extensible(&ext, &niels);
     }
     when = now() - when;
     printf("exti+niels:  %5.1fns\n", when * 1e9 / i);
+
+    when = now();
+    for (i=0; i<nbase*100; i++) {
+        add_tw_extended(ed,ed);
+    }
+    when = now() - when;
+    printf("txt + txt :  %5.1fns\n", when * 1e9 / i);
     
     convert_tw_extensible_to_tw_pniels(&pniels, &ext);
     when = now();
@@ -346,6 +357,23 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("edwards svl: %5.1fµs\n", when * 1e6 / i);
+    
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        scalarmul_ed(ed,sk);
+    }
+    when = now() - when;
+    printf("edwards txt: %5.1fµs\n", when * 1e6 / i);
+    
+    field_set_ui(a,0);
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+	ignore_result(decaf_deserialize_tw_extended(ed,a,-1));
+        scalarmul_ed(ed,sk);
+	decaf_serialize_tw_extended(a,ed);
+    }
+    when = now() - when;
+    printf("simple ECDH: %5.1fµs\n", when * 1e6 / i);
     
     when = now();
     for (i=0; i<nbase/10; i++) {
