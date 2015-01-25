@@ -99,7 +99,7 @@ ifeq ($(UNAME),Darwin)
 else
 	$(LD) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
 	strip --discard-all $@
-	ln -sf $@ build/goldilocks.so.1
+	ln -sf `basename $@` build/goldilocks.so.1
 endif
 
 build/timestamp:
