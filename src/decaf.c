@@ -25,22 +25,22 @@ static const gf ZERO = {0}, ONE = {1}, TWO = {2};
 static const word_t LMASK = (1ull<<LBITS)-1;
 static const gf P = { LMASK, LMASK, LMASK, LMASK, LMASK-1, LMASK, LMASK, LMASK };
 #define FOR_LIMB(i,op) { unsigned int i=0; \
-   op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; }
+   op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
+}
 
 static const int EDWARDS_D = -39081;
 
 siv gf_cpy(gf x, const gf y) { FOR_LIMB(i, x[i] = y[i]); }
 
-siv gf_mul_x (gf c, const gf a, const word_t *b, int limbs_b) {
+static inline void __attribute__((always_inline)) gf_mul_inline (gf c, const gf a, const gf b) {
     gf aa;
     gf_cpy(aa,a);
     
     dword_t accum[NLIMBS] = {0};
-    int i;
-    for (i=0; i<limbs_b; i++) {
-        FOR_LIMB(j,{ accum[(i+j)%NLIMBS] += (__uint128_t)b[i] * aa[j]; });
+    FOR_LIMB(i, {
+        FOR_LIMB(j,{ accum[(i+j)%NLIMBS] += (dword_t)b[i] * aa[j]; });
         aa[(NLIMBS-1-i)^(NLIMBS/2)] += aa[NLIMBS-1-i];
-    }
+    });
     
     accum[NLIMBS-1] += accum[NLIMBS-2] >> LBITS;
     accum[NLIMBS-2] &= LMASK;
@@ -52,43 +52,26 @@ siv gf_mul_x (gf c, const gf a, const word_t *b, int limbs_b) {
     FOR_LIMB(j, c[j] = accum[j] );
 }
 
-static void gf_mul( gf a, const gf b, const gf c ) { gf_mul_x(a,b,c,NLIMBS); }
-static void gf_sqr( gf a, const gf b ) { gf_mul_x(a,b,b,NLIMBS); }
-
-siv gf_sqrn ( gf x, const gf y, int n ) {
-    gf_cpy(x,y);
-    int i;
-    for (i=0; i<n; i++) gf_sqr(x,x);
-}
+static void gf_mul( gf a, const gf b, const gf c ) { gf_mul_inline(a,b,c); }
+static void gf_sqr( gf a, const gf b ) { gf_mul_inline(a,b,b); }
 
 static void gf_isqrt(gf y, const gf x) {
     gf a, b, c;
-    gf_sqrn( b,    x,   1 );
-    gf_mul ( c,    x,   b );
-    gf_sqrn( b,   c,    1 );
-    gf_mul ( c,   x,   b );
-    gf_sqrn( b,   c,    3 );
-    gf_mul ( a,   c,   b );
-    gf_sqrn( b,   a,    3 );
-    gf_mul ( a,   c,   b );
-    gf_sqrn( c,   a,    9 );
-    gf_mul ( b,   a,   c );
-    gf_sqrn( a,   b,    1  );
-    gf_mul ( c,     x,  a  );
-    gf_sqrn( a,   c,   18  );
-    gf_mul ( c,   b,   a  );
-    gf_sqrn( a,   c,   37  );
-    gf_mul ( b,   c,   a  );
-    gf_sqrn( a,   b,   37  );
-    gf_mul ( b,   c,   a  );
-    gf_sqrn( a,   b,   111 );
-    gf_mul ( c,   b,   a   );
-    gf_sqrn( a,   c,     1 );
-    gf_mul ( b,   x,    a  );
-    gf_sqrn( a,   b,   223 );
-    gf_mul ( y,   c,   a   );
+    gf_sqr ( c,   x );
+#define STEP(s,m,n) {gf_mul(s,m,c); gf_cpy(c,s); int i; for (i=0;i<n;i++) gf_sqr(c,c);}
+    STEP(b,x,1);
+    STEP(b,x,3);
+    STEP(a,b,3);
+    STEP(a,b,9);
+    STEP(b,a,1);
+    STEP(a,x,18);
+    STEP(a,b,37);
+    STEP(b,a,37);
+    STEP(b,a,111);
+    STEP(a,b,1);
+    STEP(b,x,223);
+    gf_mul(y,a,c);
 }
-
 
 siv gf_reduce(gf x) {
     x[NLIMBS/2] += x[NLIMBS-1] >> LBITS;
@@ -110,10 +93,11 @@ siv gf_sub ( gf x, const gf y, const gf z ) {
 
 siv gf_mlw(gf a, const gf b, word_t w) {
     if (w>0) {
-        gf_mul_x(a,b,&w,1);
+        gf ww = {w};
+        gf_mul_inline(a,b,ww);
     } else {
-        word_t ww = -w;
-        gf_mul_x(a,b,&ww,1);
+        gf ww = {-w};
+        gf_mul_inline(a,b,ww);
         gf_sub(a,ZERO,a);
     }
 }
@@ -170,36 +154,6 @@ static inline word_t hibit(const gf x) {
     return -(y[0]&1);
 }
 
-// FIXME: 32-bit cleanliness
-siv gf_ser ( uint8_t serial[DECAF_SER_BYTES], const gf x ) {
-    int j;
-    gf red;
-    gf_cpy(red,x);
-    gf_canon(red);
-    FOR_LIMB(i,{
-        for (j=0; j<7; j++) {
-            serial[7*i+j] = red[i];
-            red[i] >>= 8;
-        }
-    });
-}
-
-// FIXME: 32-bit cleanliness
-static mask_t gf_deser ( gf x, const uint8_t serial[DECAF_SER_BYTES] ) {
-    int j;
-    FOR_LIMB(i, {
-        uint64_t out = 0;
-        for (j=0; j<7; j++) {
-            out |= ((uint64_t)serial[7*i+j])<<(8*j);
-        }
-        x[i] = out;
-    });
-    
-    sdword_t accum = 0;
-    FOR_LIMB(i, accum = (accum + P[i] - x[i]) >> WBITS );
-    return ~accum;
-}
-
 const decaf_point_t decaf_identity_point = {{{0},{1},{1},{0}}};
 
 siv add_sub_point (
@@ -231,7 +185,7 @@ siv add_sub_point (
     gf_mul ( p->t, b, c );
 }
     
-void decaf_encode( uint8_t ser[DECAF_SER_BYTES], const decaf_point_t p ) {
+void decaf_encode( unsigned char ser[DECAF_SER_BYTES], const decaf_point_t p ) {
     gf a, b, c, d;
     gf_mlw ( a, p->y, 1-EDWARDS_D ); 
     gf_mul ( c, a, p->t ); 
@@ -251,16 +205,39 @@ void decaf_encode( uint8_t ser[DECAF_SER_BYTES], const decaf_point_t p ) {
     gf_mul ( c, b, p->y ); 
     gf_add ( a, a, c );
     cond_neg ( a, hibit(a) );
-    gf_ser(ser,a);
+    
+    // FIXME arch
+    gf_canon(a);
+    int j;
+    FOR_LIMB(i,{
+        for (j=0; j<7; j++) {
+            ser[7*i+j] = a[i];
+            a[i] >>= 8;
+        }
+    });
 }
     
 decaf_bool_t decaf_decode (
     decaf_point_t p,
-    const uint8_t ser[DECAF_SER_BYTES],
+    const unsigned char ser[DECAF_SER_BYTES],
     decaf_bool_t allow_identity
 ) {
     gf s, a, b, c, d, e;
-    mask_t succ = gf_deser( s, ser );
+    
+    // FIXME arch
+    int j;
+    FOR_LIMB(i, {
+        word_t out = 0;
+        for (j=0; j<7; j++) {
+            out |= ((word_t)ser[7*i+j])<<(8*j);
+        }
+        s[i] = out;
+    });
+    
+    sdword_t accum = 0;
+    FOR_LIMB(i, accum = (accum + P[i] - s[i]) >> WBITS );
+    
+    mask_t succ = ~accum;
     mask_t zero = gf_eq(s, ZERO);
     succ &= allow_identity | ~zero;
     succ &= ~hibit(s);

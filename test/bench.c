@@ -16,6 +16,7 @@
 #include "crandom.h"
 #include "goldilocks.h"
 #include "sha512.h"
+#include "decaf.h"
 
 static __inline__ void
 ignore_result ( int result ) {
@@ -284,6 +285,17 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("txt + txt :  %5.1fns\n", when * 1e9 / i);
+
+    decaf_point_t Da,Db,Dc;
+    memset(Da,0,sizeof(Da));
+    memset(Db,0,sizeof(Db));
+    memset(Dc,0,sizeof(Dc));
+    when = now();
+    for (i=0; i<nbase*100; i++) {
+        decaf_add(Da,Db,Dc);
+    }
+    when = now() - when;
+    printf("dec + dec :  %5.1fns\n", when * 1e9 / i);
     
     convert_tw_extensible_to_tw_pniels(&pniels, &ext);
     when = now();

@@ -17,7 +17,7 @@ typedef uint64_t decaf_word_t, decaf_bool_t;
 #define DECAF_SER_BYTES 56
 typedef struct decaf_point_s {
     decaf_word_t x[DECAF_LIMBS],y[DECAF_LIMBS],z[DECAF_LIMBS],t[DECAF_LIMBS];
-} __attribute__((aligned(32))) decaf_point_t[1];
+} decaf_point_t[1];
 
 static const decaf_bool_t DECAF_SUCCESS = -(decaf_bool_t)1, DECAF_FAILURE = 0;
 
