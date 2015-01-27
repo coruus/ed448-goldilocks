@@ -23,21 +23,35 @@
 #include <stdint.h>
 
 typedef uint64_t decaf_word_t, decaf_bool_t;
+
+/* TODO: perfield, so when 25519 hits this will change */
+#define DECAF_FIELD_BITS 448
 #define DECAF_LIMBS (512/8/sizeof(decaf_word_t))
-#define DECAF_SER_BYTES 56
+
+/** Number of bytes in a serialized point.  One less bit than you'd think. */
+#define DECAF_SER_BYTES ((DECAF_FIELD_BITS+6)/8)
+
+/** Twisted Edwards (-1,d-1) extended homogeneous coordinates */
 typedef struct decaf_point_s {
     decaf_word_t x[DECAF_LIMBS],y[DECAF_LIMBS],z[DECAF_LIMBS],t[DECAF_LIMBS];
 } decaf_point_t[1];
 
 static const decaf_bool_t DECAF_TRUE = -(decaf_bool_t)1, DECAF_FALSE = 0;
+
+/** NB Success is -1, failure is 0.  TODO: see if people would rather the reverse. */
 static const decaf_bool_t DECAF_SUCCESS = DECAF_TRUE, DECAF_FAILURE = DECAF_FALSE;
 
+/** The identity point on the curve. */
 const decaf_point_t decaf_identity;
+
+/** An arbitrarily chosen base point on the curve.  TODO: define */
+const decaf_point_t decaf_basepoint;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
+
+/* Goldilocks' build flags default to hidden and stripping executables. */
 #define API_VIS __attribute__((visibility("default")))
 #define WARN_UNUSED __attribute__((warn_unused_result))
 #define NONNULL2 __attribute__((nonnull(1,2)))
