@@ -65,7 +65,7 @@ HEADERS= Makefile $(shell find . -name "*.h") build/timestamp
 
 LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
   build/$(FIELD).o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o \
-	build/f_arithmetic.o build/arithmetic.o
+	build/f_arithmetic.o build/arithmetic.o build/decaf.o
 
 TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o

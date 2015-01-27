@@ -68,7 +68,8 @@ add_tw_extended (
 
 void
 add_sub_tw_extended (
-    tw_extended_a_t  d,
+    tw_extended_a_t c,
+    const tw_extended_a_t  d,
     const tw_extended_a_t e,
     mask_t sub
 ) {
@@ -79,20 +80,20 @@ add_sub_tw_extended (
     constant_time_cond_swap(L2,L3,sizeof(L2),sub);
     field_mul ( L0, L2, L1 );
     field_add ( L1, d->y, d->x );
-    field_mul ( d->y, L3, L1 );
+    field_mul ( c->y, L3, L1 );
     field_mul ( L1, e->t, d->t );
-    field_mulw_scc_wr ( d->x, L1, 2-2*EDWARDS_D );
+    field_mulw_scc_wr ( c->x, L1, 2-2*EDWARDS_D );
     field_add ( L1, L0, d->y );
-    field_sub ( L2, d->y, L0 );
+    field_sub ( L2, c->y, L0 );
     field_mul ( L0, d->z, e->z );
     field_add ( L0, L0, L0 );
-    field_add ( d->y, L0, d->x );
-    field_sub ( L0, L0, d->x );
-    constant_time_cond_swap(L0,d->y,sizeof(L0),sub);
-    field_mul ( d->z, L0, d->y );
-    field_mul ( d->x, d->y, L2 );
-    field_mul ( d->y, L0, L1 );
-    field_mul ( d->t, L1, L2 );
+    field_add ( c->y, L0, c->x );
+    field_sub ( L0, L0, c->x );
+    constant_time_cond_swap(L0,c->y,sizeof(L0),sub);
+    field_mul ( c->z, L0, c->y );
+    field_mul ( c->x, c->y, L2 );
+    field_mul ( c->y, L0, L1 );
+    field_mul ( c->t, L1, L2 );
 }
 
 void

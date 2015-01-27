@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "ec_point.h"
+#include "decaf.h"
 #include "scalarmul.h"
 #include "magic.h"
 #include "field.h"
@@ -156,12 +157,14 @@ add_double_test (
     copy_tw_extensible(&textb, &text1);
     add_tw_pniels_to_tw_extensible(&textb, &pn);
 
+    decaf_point_t ted3;
     convert_tw_extensible_to_tw_extended(&ted1, &text1);
     convert_tw_extensible_to_tw_extended(&ted2, &text2);
+    decaf_add(ted3, (struct decaf_point_s*)&ted1, (struct decaf_point_s*)&ted2);
     add_tw_extended(&ted1, &ted2);
     convert_tw_extensible_to_tw_extended(&ted2, &textb);
     
-    if (~decaf_eq_tw_extended(&ted1, &ted2)) {
+    if (~decaf_eq_tw_extended(&ted1, &ted2) | ~decaf_eq((struct decaf_point_s*)&ted1, ted3)) {
         youfail();
         succ = 0;
         printf("    Tw extended simple compat:\n");
@@ -173,6 +176,12 @@ add_double_test (
         field_print("    y2",ted2.y);
         field_print("    z2",ted2.z);
         field_print("    t2",ted2.t);
+        struct tw_extended_t *t3 = (struct tw_extended_t *)&ted3;
+        field_print("    x3",t3->x);
+        field_print("    y3",t3->y);
+        field_print("    z3",t3->z);
+        field_print("    t3",t3->t);
+        
     }
     
     succ &= fail_if_different_tw(&texta,&textb,"Addition commutativity","a+b","b+a");

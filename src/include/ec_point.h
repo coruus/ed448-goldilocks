@@ -307,7 +307,8 @@ add_tw_extended (
 
 void
 add_sub_tw_extended (
-    tw_extended_a_t  d,
+    tw_extended_a_t  c,
+    const tw_extended_a_t  d,
     const tw_extended_a_t e,
     mask_t sub
 );

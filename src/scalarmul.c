@@ -255,7 +255,7 @@ scalarmul_ed (
         bits ^= inv;
     
         constant_time_lookup_tw_extended(tmp, (const tw_extended_a_t*)multiples, NTABLE, bits & WINDOW_T_MASK);
-        add_sub_tw_extended(working, tmp, inv);
+        add_sub_tw_extended(working, working, tmp, inv);
     }
 }
 
