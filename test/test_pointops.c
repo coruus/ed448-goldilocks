@@ -356,10 +356,20 @@ int test_decaf_evil (void) {
             scalarmul_ed(pt_ed, random_scalar);
             decaf_serialize_tw_extended(out_ed, pt_ed);
             
+            uint8_t ser_de[56], ser_ed[56];
+            decaf_point_t pt_dec, pt_dec2;
+            memcpy(pt_dec, pt_ed, sizeof(pt_dec));
+            decaf_encode(ser_de, pt_dec);
+            mask_t succ_dec = decaf_decode(pt_dec2, ser_de, -1);
+            field_serialize(ser_ed, out_ed);
+            
             if ((care_should && should != s_m)
                 || ~s_base || s_e != s_te || s_m != s_te || s_ed != s_te
                 || (s_te && ~field_eq(out_e,out_m))
                 || (s_ed && ~field_eq(out_e,out_ed))
+                || memcmp(ser_de, ser_ed, 56)
+                || (s_e & ~succ_dec)
+                || (s_e & ~decaf_eq(pt_dec, pt_dec2))
             ) {
                 youfail();
                 field_print("    base", base);
@@ -367,8 +377,9 @@ int test_decaf_evil (void) {
                 field_print("    oute", out_e);
                 field_print("    outE", out_ed);
                 field_print("    outm", out_m);
-                printf("    succ: m=%d, e=%d, t=%d, b=%d, T=%d, should=%d[%d]\n",
-                    -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_base,-(int)s_ed,-(int)should,-(int)care_should
+                printf("    succ: m=%d, e=%d, t=%d, b=%d, T=%d, D=%d, should=%d[%d]\n",
+                    -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_base,-(int)s_ed,-(int)succ_dec,
+                    -(int)should,-(int)care_should
                 );
                 ret = -1;
                 fails++;
