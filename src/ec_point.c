@@ -548,7 +548,7 @@ decaf_serialize_extensible (
     const extensible_a_t a
 ) {
     field_a_t L0, L1, L2, L3;
-    field_mulw_scc ( L2, a->y, EDWARDS_D ); 
+    field_mulw_scc_wr ( L2, a->y, EDWARDS_D ); 
     field_mul ( L3, L2, a->t ); 
     field_mul ( L2, L3, a->u ); 
     field_mul ( L0, a->x, a->z ); 
@@ -556,9 +556,9 @@ decaf_serialize_extensible (
     field_add ( L0, a->y, a->z ); 
     field_sub ( L1, a->z, a->y ); 
     field_mul ( L2, L1, L0 );
-    field_mulw_scc ( L1, L2, 1-EDWARDS_D );
+    field_mulw_scc_wr ( L1, L2, 1-EDWARDS_D );
     field_isr ( L0, L1 );
-    field_mulw_scc ( L1, L0, 1-EDWARDS_D ); 
+    field_mulw_scc_wr ( L1, L0, 1-EDWARDS_D ); 
     field_mul ( L2, L1, L0 );
     field_mul ( L0, L2, L3 );
     field_add ( L3, L1, L1 );        

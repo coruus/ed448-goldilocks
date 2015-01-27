@@ -295,7 +295,7 @@ int main(int argc, char **argv) {
         decaf_add(Da,Db,Dc);
     }
     when = now() - when;
-    printf("dec + dec :  %5.1fns\n", when * 1e9 / i);
+    printf("dec + dec:   %5.1fns\n", when * 1e9 / i);
     
     convert_tw_extensible_to_tw_pniels(&pniels, &ext);
     when = now();
@@ -355,7 +355,14 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("decafladder: %5.1fµs\n", when * 1e6 / i);
-    
+   
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        decaf_scalarmul(Da,Db,sk,sizeof(sk)/sizeof(word_t));
+    }
+    when = now() - when;
+    printf("decaf slow:  %5.1fµs\n", when * 1e6 / i);
+
     when = now();
     for (i=0; i<nbase/10; i++) {
         scalarmul(&ext,sk);

@@ -3,6 +3,7 @@
 #include <stdio.h>
 
 #include "scalarmul.h"
+#include "decaf.h"
 #include "ec_point.h"
 #include "field.h"
 #include "crandom.h"
@@ -110,21 +111,29 @@ single_scalarmul_compatibility_test (
         scalarmul_vt(&work, scalar, nbits);
         untwist_and_double_and_serialize(vt, &work);
         
+        decaf_point_t ed2;
     	tw_extended_a_t ed;
         convert_tw_extensible_to_tw_extended(ed, &text);
-	scalarmul_ed(ed, scalar);
-	field_copy(work.x, ed->x);
-	field_copy(work.y, ed->y);
-	field_copy(work.z, ed->z);
-	field_copy(work.t, ed->t);
-	field_set_ui(work.u, 1);
+        decaf_scalarmul(ed2, (struct decaf_point_s *)ed, scalar, 7);
+
+        scalarmul_ed(ed, scalar);
+        field_copy(work.x, ed->x);
+        field_copy(work.y, ed->y);
+        field_copy(work.z, ed->z);
+        field_copy(work.t, ed->t);
+        field_set_ui(work.u, 1);
         untwist_and_double_and_serialize(sced, &work);
+
+        uint8_t ser1[(FIELD_BITS+6)/8], ser2[(FIELD_BITS+6)/8];
+        decaf_encode(ser1, (struct decaf_point_s *)ed);
+        decaf_encode(ser2, ed2);
 
         /* check consistency mont vs window */
         consistent &= field_eq(mont, ct);
         consistent &= field_eq(mont, vl);
         consistent &= field_eq(mont, vt);
         consistent &= field_eq(mont, sced);
+        consistent &= memcmp(ser1,ser2,sizeof(ser1)) ? 0 : -1;
     }
     
     /* check consistency mont vs combs */
@@ -141,7 +150,7 @@ single_scalarmul_compatibility_test (
     copy_tw_extensible(&work,&text);
     double_tw_extensible(&work);
     decaf_serialize_tw_extensible(decaf_s, &work);
-    
+
     mask_t succ_dm, succ_dta;
     succ_dm  = decaf_montgomery_ladder(decaf_m, decaf_s, scalar, nbits);
     succ_dta = deserialize_and_twist_approx(&work, mont);

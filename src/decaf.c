@@ -16,13 +16,13 @@ typedef __int128_t sdword_t;
 #define WBITS 64
 #define LBITS 56
 
-#define siv static inline void
+#define sv static void
 #define NLIMBS 8
 
 typedef word_t gf[NLIMBS];
 static const gf ZERO = {0}, ONE = {1}, TWO = {2};
 
-static const word_t LMASK = (1ull<<LBITS)-1;
+#define LMASK ((1ull<<LBITS)-1)
 static const gf P = { LMASK, LMASK, LMASK, LMASK, LMASK-1, LMASK, LMASK, LMASK };
 #define FOR_LIMB(i,op) { unsigned int i=0; \
    op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
@@ -30,9 +30,11 @@ static const gf P = { LMASK, LMASK, LMASK, LMASK, LMASK-1, LMASK, LMASK, LMASK }
 
 static const int EDWARDS_D = -39081;
 
-siv gf_cpy(gf x, const gf y) { FOR_LIMB(i, x[i] = y[i]); }
+/** Copy x = y */
+sv gf_cpy(gf x, const gf y) { FOR_LIMB(i, x[i] = y[i]); }
 
-static inline void __attribute__((always_inline)) gf_mul_inline (gf c, const gf a, const gf b) {
+/** Mostly-unoptimized multiply (PERF), but at least it's unrolled. */
+sv gf_mul (gf c, const gf a, const gf b) {
     gf aa;
     gf_cpy(aa,a);
     
@@ -52,13 +54,15 @@ static inline void __attribute__((always_inline)) gf_mul_inline (gf c, const gf 
     FOR_LIMB(j, c[j] = accum[j] );
 }
 
-static void gf_mul( gf a, const gf b, const gf c ) { gf_mul_inline(a,b,c); }
-static void gf_sqr( gf a, const gf b ) { gf_mul_inline(a,b,b); }
+/** No dedicated square (PERF) */
+#define gf_sqr(c,a) gf_mul(c,a,a)
 
-static void gf_isqrt(gf y, const gf x) {
+/** Inverse square root using addition chain. */
+sv gf_isqrt(gf y, const gf x) {
+    int i;
+#define STEP(s,m,n) gf_mul(s,m,c); gf_cpy(c,s); for (i=0;i<n;i++) gf_sqr(c,c);
     gf a, b, c;
     gf_sqr ( c,   x );
-#define STEP(s,m,n) {gf_mul(s,m,c); gf_cpy(c,s); int i; for (i=0;i<n;i++) gf_sqr(c,c);}
     STEP(b,x,1);
     STEP(b,x,3);
     STEP(a,b,3);
@@ -73,7 +77,8 @@ static void gf_isqrt(gf y, const gf x) {
     gf_mul(y,a,c);
 }
 
-siv gf_reduce(gf x) {
+/** Weak reduce mod p. */
+sv gf_reduce(gf x) {
     x[NLIMBS/2] += x[NLIMBS-1] >> LBITS;
     FOR_LIMB(j,{
         x[j] += x[(j-1)%NLIMBS] >> LBITS;
@@ -81,34 +86,32 @@ siv gf_reduce(gf x) {
     });
 }
 
-siv gf_add ( gf x, const gf y, const gf z ) {
+/** Add mod p.  Conservatively always weak-reduce. (PERF) */
+sv gf_add ( gf x, const gf y, const gf z ) {
     FOR_LIMB(i, x[i] = y[i] + z[i] );
     gf_reduce(x);
 }
 
-siv gf_sub ( gf x, const gf y, const gf z ) {
+/** Subtract mod p.  Conservatively always weak-reduce. (PERF) */
+sv gf_sub ( gf x, const gf y, const gf z ) {
     FOR_LIMB(i, x[i] = y[i] - z[i] + 2*P[i] );
     gf_reduce(x);
 }
 
-siv gf_mlw(gf a, const gf b, word_t w) {
-    if (w>0) {
-        gf ww = {w};
-        gf_mul_inline(a,b,ww);
-    } else {
-        gf ww = {-w};
-        gf_mul_inline(a,b,ww);
-        gf_sub(a,ZERO,a);
-    }
+/** Constant time, x = is_z ? z : y */
+sv cond_sel(gf x, const gf y, const gf z, mask_t is_z) {
+    FOR_LIMB(i, x[i] = (y[i] & ~is_z) | (z[i] & is_z) );
 }
 
-siv cond_neg(gf x, mask_t neg) {
+/** Constant time, if (neg) x=-x; */
+sv cond_neg(gf x, mask_t neg) {
     gf y;
     gf_sub(y,ZERO,x);
-    FOR_LIMB(i, x[i] = (x[i] & ~neg) | (y[i] & neg) );
+    cond_sel(x,x,y,neg);
 }
 
-siv cond_swap(gf x, gf y, mask_t swap) {
+/** Constant time, if (swap) (x,y) = (y,x); */
+sv cond_swap(gf x, gf y, mask_t swap) {
     FOR_LIMB(i, {
         word_t s = (x[i] ^ y[i]) & swap;
         x[i] ^= s;
@@ -116,7 +119,23 @@ siv cond_swap(gf x, gf y, mask_t swap) {
     });
 }
 
-static void gf_canon ( gf a ) {
+/**
+ * Mul by signed int.  Not constant-time WRT the sign of that int.
+ * Just uses a full mul (PERF)
+ */
+sv gf_mlw(gf a, const gf b, int w) {
+    if (w>0) {
+        gf ww = {w};
+        gf_mul(a,b,ww);
+    } else {
+        gf ww = {-w};
+        gf_mul(a,b,ww);
+        gf_sub(a,ZERO,a);
+    }
+}
+
+/** Canonicalize */
+sv gf_canon ( gf a ) {
     gf_reduce(a);
 
     /* subtract p with borrow */
@@ -138,53 +157,43 @@ static void gf_canon ( gf a ) {
     });
 }
 
-static inline word_t gf_eq(const gf a, const gf b) {
+/** Compare a==b */
+static word_t __attribute__((noinline)) gf_eq(const gf a, const gf b) {
     gf c;
     gf_sub(c,a,b);
     gf_canon(c);
     word_t ret=0;
     FOR_LIMB(i, ret |= c[i] );
+    /* Hope the compiler is too dumb to optimize this, thus noinline */
     return ((dword_t)ret - 1) >> WBITS;
 }
 
-static inline word_t hibit(const gf x) {
+/** Return high bit of x = low bit of 2x mod p */
+static word_t hibit(const gf x) {
     gf y;
     gf_add(y,x,x);
     gf_canon(y);
     return -(y[0]&1);
 }
 
-const decaf_point_t decaf_identity_point = {{{0},{1},{1},{0}}};
-
-siv add_sub_point (
-    decaf_point_t p,
-    const decaf_point_t q,
-    const decaf_point_t r,
-    mask_t sub
+/* a = use_c ? c : b */
+sv decaf_cond_sel (
+    decaf_point_t a,
+    const decaf_point_t b,
+    const decaf_point_t c,
+    mask_t use_c
 ) {
-    gf a, b, c, d;
-    gf_sub ( b, q->y, q->x );
-    gf_sub ( c, r->y, r->x );
-    gf_add ( d, r->y, r->x );
-    cond_swap(c,d,sub);
-    gf_mul ( a, c, b );
-    gf_add ( b, q->y, q->x );
-    gf_mul ( p->y, d, b );
-    gf_mul ( b, r->t, q->t );
-    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
-    gf_add ( b, a, p->y );
-    gf_sub ( c, p->y, a );
-    gf_mul ( a, q->z, r->z );
-    gf_add ( a, a, a );
-    gf_add ( p->y, a, p->x );
-    gf_sub ( a, a, p->x );
-    cond_swap(a,p->y,sub);
-    gf_mul ( p->z, a, p->y );
-    gf_mul ( p->x, p->y, c );
-    gf_mul ( p->y, a, b );
-    gf_mul ( p->t, b, c );
+    cond_sel(a->x, b->x, c->x, use_c);
+    cond_sel(a->y, b->y, c->y, use_c);
+    cond_sel(a->z, b->z, c->z, use_c);
+    cond_sel(a->t, b->t, c->t, use_c);
 }
-    
+
+/* *** API begins here *** */    
+
+/** identity = (0,1) */
+const decaf_point_t decaf_identity = {{{0},{1},{1},{0}}};
+
 void decaf_encode( unsigned char ser[DECAF_SER_BYTES], const decaf_point_t p ) {
     gf a, b, c, d;
     gf_mlw ( a, p->y, 1-EDWARDS_D ); 
@@ -216,14 +225,11 @@ void decaf_encode( unsigned char ser[DECAF_SER_BYTES], const decaf_point_t p ) {
         }
     });
 }
-    
-decaf_bool_t decaf_decode (
-    decaf_point_t p,
-    const unsigned char ser[DECAF_SER_BYTES],
-    decaf_bool_t allow_identity
-) {
-    gf s, a, b, c, d, e;
-    
+
+/**
+ * Deserialize a bool, return TRUE if < p.
+ */
+static decaf_bool_t gf_deser(gf s, const unsigned char ser[DECAF_SER_BYTES]) {
     // FIXME arch
     int j;
     FOR_LIMB(i, {
@@ -235,9 +241,17 @@ decaf_bool_t decaf_decode (
     });
     
     sdword_t accum = 0;
-    FOR_LIMB(i, accum = (accum + P[i] - s[i]) >> WBITS );
+    FOR_LIMB(i, accum = (accum + s[i] - P[i]) >> WBITS );
+    return accum;
+}
     
-    mask_t succ = ~accum;
+decaf_bool_t decaf_decode (
+    decaf_point_t p,
+    const unsigned char ser[DECAF_SER_BYTES],
+    decaf_bool_t allow_identity
+) {
+    gf s, a, b, c, d, e;
+    mask_t succ = gf_deser(s, ser);
     mask_t zero = gf_eq(s, ZERO);
     succ &= allow_identity | ~zero;
     succ &= ~hibit(s);
@@ -264,24 +278,92 @@ decaf_bool_t decaf_decode (
     return succ;
 }
     
-void decaf_add(decaf_point_t a, const decaf_point_t b, const decaf_point_t c) {
-    add_sub_point(a,b,c,0);
+void decaf_add_sub (
+    decaf_point_t p,
+    const decaf_point_t q,
+    const decaf_point_t r,
+    decaf_bool_t do_sub
+) {
+    /* Twisted Edward formulas, complete when 4-torsion isn't involved */
+    gf a, b, c, d;
+    gf_sub ( b, q->y, q->x );
+    gf_sub ( c, r->y, r->x );
+    gf_add ( d, r->y, r->x );
+    cond_swap(c,d,do_sub);
+    gf_mul ( a, c, b );
+    gf_add ( b, q->y, q->x );
+    gf_mul ( p->y, d, b );
+    gf_mul ( b, r->t, q->t );
+    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
+    gf_add ( b, a, p->y );
+    gf_sub ( c, p->y, a );
+    gf_mul ( a, q->z, r->z );
+    gf_add ( a, a, a );
+    gf_add ( p->y, a, p->x );
+    gf_sub ( a, a, p->x );
+    cond_swap(a,p->y,do_sub);
+    gf_mul ( p->z, a, p->y );
+    gf_mul ( p->x, p->y, c );
+    gf_mul ( p->y, a, b );
+    gf_mul ( p->t, b, c );
 }
     
 void decaf_sub(decaf_point_t a, const decaf_point_t b, const decaf_point_t c) {
-    add_sub_point(a,b,c,-1);
+    decaf_add_sub(a,b,c,-1);
 }
     
-void decaf_add_sub (
+void decaf_add(decaf_point_t a, const decaf_point_t b, const decaf_point_t c) {
+    decaf_add_sub(a,b,c,0);
+}
+
+/* No dedicated point double (PERF) */
+#define decaf_dbl(a,b) decaf_add(a,b,b)
+
+void decaf_copy (
+    decaf_point_t a,
+    const decaf_point_t b
+) {
+    gf_cpy(a->x, b->x);
+    gf_cpy(a->y, b->y);
+    gf_cpy(a->z, b->z);
+    gf_cpy(a->t, b->t);
+}
+
+void decaf_scalarmul (
     decaf_point_t a,
     const decaf_point_t b,
-    const decaf_point_t c,
-    decaf_bool_t do_sub
+    const decaf_word_t *scalar,
+    unsigned int scalar_words
 ) {
-    add_sub_point(a,b,c,do_sub);
+    if (scalar_words == 0) {
+        decaf_copy(a,decaf_identity);
+        return;
+    }
+    /* w=2 signed window uses about 1.5 adds per bit.
+     * I figured a few extra lines was worth the 25% speedup.
+     * NB: if adapting this function to scalarmul by a
+     * possibly-odd number of unmasked bits, may need to mask.
+     */
+    decaf_point_t w,b3,tmp;
+    decaf_dbl(w,b);
+    /* b3 = b*3 */
+    decaf_add(b3,w,b);
+    int i;
+    for (i=scalar_words*WBITS-2; i>0; i-=2) {
+        decaf_word_t bits = scalar[i/WBITS]>>(i%WBITS);
+        decaf_cond_sel(tmp,b,b3,((bits^(bits>>1))&1)-1);
+        decaf_dbl(w,w);
+        decaf_add_sub(w,w,tmp,((bits>>1)&1)-1);
+        decaf_dbl(w,w);
+    }
+    decaf_add_sub(w,w,b,((scalar[0]>>1)&1)-1);
+    /* low bit is special because fo signed window */
+    decaf_cond_sel(tmp,b,decaf_identity,-(scalar[0]&1));
+    decaf_sub(a,w,tmp);
 }
 
 decaf_bool_t decaf_eq ( const decaf_point_t p, const decaf_point_t q ) {
+    /* equality mod 2-torsion compares x/y */
     gf a, b;
     gf_mul ( a, p->y, q->x );
     gf_mul ( b, q->y, p->x );
