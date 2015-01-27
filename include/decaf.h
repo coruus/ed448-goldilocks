@@ -66,6 +66,11 @@ void decaf_add_sub (
     const decaf_point_t c,
     decaf_bool_t do_sub
 ) API_VIS NONNULL3;
+    
+#undef API_VIS
+#undef WARN_UNUSED
+#undef NONNULL2
+#undef NONNULL3
 
 #ifdef __cplusplus
 }; /* extern "C" */
