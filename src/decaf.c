@@ -245,6 +245,37 @@ static decaf_bool_t gf_deser(gf s, const unsigned char ser[DECAF_SER_BYTES]) {
     return accum;
 }
     
+/* Constant-time add or subtract */
+sv decaf_add_sub (
+    decaf_point_t p,
+    const decaf_point_t q,
+    const decaf_point_t r,
+    decaf_bool_t do_sub
+) {
+    /* Twisted Edward formulas, complete when 4-torsion isn't involved */
+    gf a, b, c, d;
+    gf_sub ( b, q->y, q->x );
+    gf_sub ( c, r->y, r->x );
+    gf_add ( d, r->y, r->x );
+    cond_swap(c,d,do_sub);
+    gf_mul ( a, c, b );
+    gf_add ( b, q->y, q->x );
+    gf_mul ( p->y, d, b );
+    gf_mul ( b, r->t, q->t );
+    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
+    gf_add ( b, a, p->y );
+    gf_sub ( c, p->y, a );
+    gf_mul ( a, q->z, r->z );
+    gf_add ( a, a, a );
+    gf_add ( p->y, a, p->x );
+    gf_sub ( a, a, p->x );
+    cond_swap(a,p->y,do_sub);
+    gf_mul ( p->z, a, p->y );
+    gf_mul ( p->x, p->y, c );
+    gf_mul ( p->y, a, b );
+    gf_mul ( p->t, b, c );
+}   
+    
 decaf_bool_t decaf_decode (
     decaf_point_t p,
     const unsigned char ser[DECAF_SER_BYTES],
@@ -275,39 +306,10 @@ decaf_bool_t decaf_decode (
     gf_mul ( p->y,a,p->z );
     gf_mul ( p->t,p->x,a );
     p->y[0] -= zero;
+    /* TODO: do something safe if ~succ? */
     return succ;
 }
-    
-void decaf_add_sub (
-    decaf_point_t p,
-    const decaf_point_t q,
-    const decaf_point_t r,
-    decaf_bool_t do_sub
-) {
-    /* Twisted Edward formulas, complete when 4-torsion isn't involved */
-    gf a, b, c, d;
-    gf_sub ( b, q->y, q->x );
-    gf_sub ( c, r->y, r->x );
-    gf_add ( d, r->y, r->x );
-    cond_swap(c,d,do_sub);
-    gf_mul ( a, c, b );
-    gf_add ( b, q->y, q->x );
-    gf_mul ( p->y, d, b );
-    gf_mul ( b, r->t, q->t );
-    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
-    gf_add ( b, a, p->y );
-    gf_sub ( c, p->y, a );
-    gf_mul ( a, q->z, r->z );
-    gf_add ( a, a, a );
-    gf_add ( p->y, a, p->x );
-    gf_sub ( a, a, p->x );
-    cond_swap(a,p->y,do_sub);
-    gf_mul ( p->z, a, p->y );
-    gf_mul ( p->x, p->y, c );
-    gf_mul ( p->y, a, b );
-    gf_mul ( p->t, b, c );
-}
-    
+
 void decaf_sub(decaf_point_t a, const decaf_point_t b, const decaf_point_t c) {
     decaf_add_sub(a,b,c,-1);
 }
