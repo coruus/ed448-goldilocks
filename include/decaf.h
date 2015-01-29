@@ -171,17 +171,32 @@ decaf_bool_t decaf_valid (
 ) API_VIS WARN_UNUSED NONNULL1;
 
 /**
- * @brief Elligator-like hash to curve.
+ * @brief Almost-Elligator-like hash to curve.
  *
- * May be up to 4:1 on [0,(p-1)/2]
- * // TODO: check that it isn't more.
+ * Call this function with the output of a hash to make a hash to the curve.
  *
- * @param [in] ser A serialized point.
+ * This function runs Elligator2 on the decaf Jacobi quartic model.  It then
+ * uses the isogeny to put the result in twisted Edwards form.  As a result,
+ * it is safe (cannot produce points of order 4), and would be compatible with
+ * hypothetical other implementations of Decaf using a Montgomery or untwisted
+ * Edwards model.
+ *
+ * Unlike Elligator, this function may be up to 4:1 on [0,(p-1)/2]:
+ *   A factor of 2 due to the isogeny.
+ *   A factor of 2 because we quotient out the 2-torsion.
+ * // TODO: check that it isn't more, especially for the identity point.
+ *
+ * This function isn't quite indifferentiable from a random oracle.
+ * However, it is suitable for many protocols, including SPEKE and SPAKE2 EE. 
+ * Furthermore, calling it twice with independent seeds and adding the results
+ * is indifferentiable from a random oracle.
+ *
+ * @param [in] hashed_data Output of some hash function.
  * @param [out] pt The hashed input
  */
 void decaf_nonuniform_map_to_curve (
     decaf_point_t pt,
-    const unsigned char ser[DECAF_SER_BYTES]
+    const unsigned char hashed_data[DECAF_SER_BYTES]
 ) API_VIS NONNULL2;
     
 #undef API_VIS
