@@ -44,7 +44,7 @@ static mask_t mpz_to_scalar (
     mpz_init(modded);
     mpz_mod(modded, in, mp_scalar_field);
     mpz_export(ser, NULL, -1, 1, -1, 0, modded);
-    mask_t succ = decaf_decode_scalar(out, ser);
+    mask_t succ = decaf_scalar_decode(out, ser);
     return succ;
 }
 
@@ -62,7 +62,7 @@ static mask_t scalar_assert_eq_gmp(
     
     memset(yser,0,sizeof(yser));
     
-    decaf_encode_scalar(xser, x);
+    decaf_scalar_encode(xser, x);
     
     mpz_init(modded);
     mpz_mod(modded, y, mp_scalar_field);
@@ -224,15 +224,15 @@ static mask_t test_scalar (
     succ &= mpz_to_scalar(yy,y);
     mpz_init(t);
     
-    decaf_add_scalars(tt,xx,yy);
+    decaf_scalar_add(tt,xx,yy);
     mpz_add(t,x,y);
     succ &= scalar_assert_eq_gmp("scalar add",xx,yy,tt,x,y,t);
     
-    decaf_sub_scalars(tt,xx,yy);
+    decaf_scalar_sub(tt,xx,yy);
     mpz_sub(t,x,y);
     succ &= scalar_assert_eq_gmp("scalar sub",xx,yy,tt,x,y,t);
     
-    decaf_mul_scalars(tt,xx,yy);
+    decaf_scalar_mul(tt,xx,yy);
     mpz_mul(t,x,y);
     succ &= scalar_assert_eq_gmp("scalar mul",xx,yy,tt,x,y,t);
     

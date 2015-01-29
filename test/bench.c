@@ -271,7 +271,7 @@ int main(int argc, char **argv) {
     memset(bsc,0,sizeof(bsc));
     when = now();
     for (i=0; i<nbase*10; i++) {
-        decaf_mul_scalars(csc,asc,bsc);
+        decaf_scalar_mul(csc,asc,bsc);
     }
     when = now() - when;
     printf("decaf mulsc: %5.1fns\n", when * 1e9 / i);
@@ -302,7 +302,7 @@ int main(int argc, char **argv) {
     memset(Dc,0,sizeof(Dc));
     when = now();
     for (i=0; i<nbase*100; i++) {
-        decaf_add(Da,Db,Dc);
+        decaf_point_add(Da,Db,Dc);
     }
     when = now() - when;
     printf("dec + dec:   %5.1fns\n", when * 1e9 / i);
@@ -368,7 +368,7 @@ int main(int argc, char **argv) {
    
     when = now();
     for (i=0; i<nbase/10; i++) {
-        decaf_scalarmul(Da,Db,sk,sizeof(sk)/sizeof(word_t));
+        decaf_point_scalarmul(Da,Db,asc);
     }
     when = now() - when;
     printf("decaf slow:  %5.1fµs\n", when * 1e6 / i);

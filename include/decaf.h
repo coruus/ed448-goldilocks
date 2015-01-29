@@ -29,6 +29,7 @@
 #define NONNULL2 __attribute__((nonnull(1,2)))
 #define NONNULL3 __attribute__((nonnull(1,2,3)))
 
+/** Types of internal words.  TODO: ARCH: make 32-bit clean */
 typedef uint64_t decaf_word_t, decaf_bool_t;
 
 /* TODO: prefix all these operations and factor to support multiple curves. */
@@ -49,21 +50,20 @@ typedef struct decaf_point_s {
     decaf_word_t x[DECAF_LIMBS],y[DECAF_LIMBS],z[DECAF_LIMBS],t[DECAF_LIMBS];
 } decaf_point_t[1];
 
+/** Scalar is stored packed, because we don't need the speed. */
 typedef struct decaf_scalar_s {
     decaf_word_t limb[DECAF_SCALAR_LIMBS];
 } decaf_scalar_t[1];
 
+/** DECAF_TRUE = -1 so that DECAF_TRUE & x = x */
 static const decaf_bool_t DECAF_TRUE = -(decaf_bool_t)1, DECAF_FALSE = 0;
 
 /** NB Success is -1, failure is 0.  TODO: see if people would rather the reverse. */
 static const decaf_bool_t DECAF_SUCCESS = -(decaf_bool_t)1 /*DECAF_TRUE*/,
 	DECAF_FAILURE = 0 /*DECAF_FALSE*/;
 
-/** The identity point on the curve. */
-const decaf_point_t decaf_identity API_VIS;
-
 /** The prime p, for debugging purposes.
- * FIXME: prevent this scalar from actually being used for non-debugging purposes?
+ * TODO: prevent this scalar from actually being used for non-debugging purposes?
  */
 const decaf_scalar_t decaf_scalar_p API_VIS;
 
@@ -73,17 +73,22 @@ const decaf_scalar_t decaf_scalar_one API_VIS;
 /** A scalar equal to 0. */
 const decaf_scalar_t decaf_scalar_zero API_VIS;
 
-/** An arbitrarily chosen base point on the curve.  TODO: define */
-const decaf_point_t decaf_basepoint API_VIS;
+/** The identity point on the curve. */
+const decaf_point_t decaf_point_identity API_VIS;
+
+/**
+ * An arbitrarily chosen base point on the curve.
+ * Equal to Ed448-Goldilocks base point defined by DJB, except of course that
+ * it's on the twist in this case.  TODO: choose a base point with nice encoding?
+ */
+const decaf_point_t decaf_point_base API_VIS;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+    
+/* TODO: scalar invert? */
 
-    // TODO: ser, deser, inv?.
-    // FIXME: scalar math is untested, and therefore probably wrong.
-
-        
 /**
  * @brief Read a scalar from wire format or from bytes.
  *
@@ -96,7 +101,7 @@ extern "C" {
  * @param [in] ser Serialized form of a scalar.
  * @param [out] out Deserialized form.
  */
-decaf_bool_t decaf_decode_scalar(
+decaf_bool_t decaf_scalar_decode (
     decaf_scalar_t s,
     const unsigned char ser[DECAF_SER_BYTES]
 ) API_VIS NONNULL2;
@@ -107,7 +112,7 @@ decaf_bool_t decaf_decode_scalar(
  * @param [out] ser Serialized form of a scalar.
  * @param [in] s Deserialized scalar.
  */
-void decaf_encode_scalar(
+void decaf_scalar_encode (
     unsigned char ser[DECAF_SER_BYTES],
     const decaf_scalar_t s
 ) API_VIS NONNULL2;
@@ -118,7 +123,7 @@ void decaf_encode_scalar(
  * @param [in] b Another scalar.
  * @param [out] out a+b.
  */
-void decaf_add_scalars (
+void decaf_scalar_add (
     decaf_scalar_t out,
     const decaf_scalar_t a,
     const decaf_scalar_t b
@@ -131,7 +136,7 @@ void decaf_add_scalars (
  * @retval DECAF_TRUE The scalars are equal.
  * @retval DECAF_FALSE The scalars are not equal.
  */    
-decaf_bool_t decaf_eq_scalars (
+decaf_bool_t decaf_scalar_eq (
     const decaf_scalar_t a,
     const decaf_scalar_t b
 ) API_VIS WARN_UNUSED NONNULL2;
@@ -142,7 +147,7 @@ decaf_bool_t decaf_eq_scalars (
  * @param [in] b Another scalar.
  * @param [out] out a-b.
  */  
-void decaf_sub_scalars (
+void decaf_scalar_sub (
     decaf_scalar_t out,
     const decaf_scalar_t a,
     const decaf_scalar_t b
@@ -154,7 +159,7 @@ void decaf_sub_scalars (
  * @param [in] b Another scalar.
  * @param [out] out a*b.
  */  
-void decaf_mul_scalars (
+void decaf_scalar_mul (
     decaf_scalar_t out,
     const decaf_scalar_t a,
     const decaf_scalar_t b
@@ -166,7 +171,7 @@ void decaf_mul_scalars (
  * @param [out] ser The byte representation of the point.
  * @param [in] pt The point to encode.
  */
-void decaf_encode (
+void decaf_point_encode (
     uint8_t ser[DECAF_SER_BYTES],
     const decaf_point_t pt
 ) API_VIS NONNULL2;
@@ -184,7 +189,7 @@ void decaf_encode (
  * @retval DECAF_FAILURE The decoding didn't succeed, because
  * ser does not represent a point.
  */
-decaf_bool_t decaf_decode (
+decaf_bool_t decaf_point_decode (
     decaf_point_t pt,
     const uint8_t ser[DECAF_SER_BYTES],
     decaf_bool_t allow_identity
@@ -197,7 +202,7 @@ decaf_bool_t decaf_decode (
  * @param [out] a A copy of the point.
  * @param [in] b Any point.
  */
-void decaf_copy (
+void decaf_point_copy (
     decaf_point_t a,
     const decaf_point_t b
 ) API_VIS NONNULL2;
@@ -211,7 +216,7 @@ void decaf_copy (
  * @retval DECAF_TRUE The points are equal.
  * @retval DECAF_FALSE The points are not equal.
  */
-decaf_bool_t decaf_eq (
+decaf_bool_t decaf_point_eq (
     const decaf_point_t a,
     const decaf_point_t b
 ) API_VIS WARN_UNUSED NONNULL2;
@@ -225,7 +230,7 @@ decaf_bool_t decaf_eq (
  * @param [in] a An addend.
  * @param [in] b An addend.
  */
-void decaf_add (
+void decaf_point_add (
     decaf_point_t sum,
     const decaf_point_t a,
     const decaf_point_t b
@@ -240,7 +245,7 @@ void decaf_add (
  * @param [in] a The minuend.
  * @param [in] b The subtrahend.
  */
-void decaf_sub (
+void decaf_point_sub (
     decaf_point_t diff,
     const decaf_point_t a,
     const decaf_point_t b
@@ -252,13 +257,11 @@ void decaf_sub (
  * @param [out] scaled The scaled point base*scalar
  * @param [in] base The point to be scaled.
  * @param [in] scalar The scalar to multilpy by.
- * @param [in] scalar_words The number of words in the scalar [TODO]
  */
-void decaf_scalarmul (
+void decaf_point_scalarmul (
     decaf_point_t scaled,
     const decaf_point_t base,
-    const decaf_word_t *scalar,
-    unsigned int scalar_words
+    const decaf_scalar_t scalar
 ) API_VIS NONNULL3;
 
 /**
@@ -268,7 +271,7 @@ void decaf_scalarmul (
  * @retval DECAF_TRUE The point is valid.
  * @retval DECAF_FALSE The point is invalid.
  */
-decaf_bool_t decaf_valid (
+decaf_bool_t decaf_point_valid (
     const decaf_point_t toTest
 ) API_VIS WARN_UNUSED NONNULL1;
 
@@ -299,7 +302,7 @@ decaf_bool_t decaf_valid (
  * @param [in] hashed_data Output of some hash function.
  * @param [out] pt The data hashed to the curve.
  */
-void decaf_nonuniform_map_to_curve (
+void decaf_point_from_hash_nonuniform (
     decaf_point_t pt,
     const unsigned char hashed_data[DECAF_SER_BYTES]
 ) API_VIS NONNULL2;
@@ -307,18 +310,21 @@ void decaf_nonuniform_map_to_curve (
 /**
  * @brief Indifferentiable hash function encoding to curve.
  *
- * Equivalent to calling decaf_nonuniform_map_to_curve twice and adding.
+ * Equivalent to calling decaf_point_from_hash_nonuniform twice and adding.
  *
  * @param [in] hashed_data Output of some hash function.
  * @param [out] pt The data hashed to the curve.
  */ 
-void decaf_uniform_map_to_curve (
+void decaf_point_from_hash_uniform (
     decaf_point_t pt,
     const unsigned char hashed_data[2*DECAF_SER_BYTES]
 ) API_VIS NONNULL2;
     
+/* TODO: functions to invert point_from_hash?? */
+    
 #undef API_VIS
 #undef WARN_UNUSED
+#undef NONNULL1
 #undef NONNULL2
 #undef NONNULL3
 
