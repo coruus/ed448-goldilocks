@@ -192,11 +192,24 @@ decaf_bool_t decaf_valid (
  * is indifferentiable from a random oracle.
  *
  * @param [in] hashed_data Output of some hash function.
- * @param [out] pt The hashed input
+ * @param [out] pt The data hashed to the curve.
  */
 void decaf_nonuniform_map_to_curve (
     decaf_point_t pt,
     const unsigned char hashed_data[DECAF_SER_BYTES]
+) API_VIS NONNULL2;
+
+/**
+ * @brief Indifferentiable hash function encoding to curve.
+ *
+ * Equivalent to calling decaf_nonuniform_map_to_curve twice and adding.
+ *
+ * @param [in] hashed_data Output of some hash function.
+ * @param [out] pt The data hashed to the curve.
+ */ 
+void decaf_uniform_map_to_curve (
+    decaf_point_t pt,
+    const unsigned char hashed_data[2*DECAF_SER_BYTES]
 ) API_VIS NONNULL2;
     
 #undef API_VIS

@@ -414,6 +414,17 @@ void decaf_nonuniform_map_to_curve (
     gf_mul(p->t,b,e);
 }
 
+
+void decaf_uniform_map_to_curve (
+    decaf_point_t pt,
+    const unsigned char hashed_data[2*DECAF_SER_BYTES]
+) {
+    decaf_point_t pt2;
+    decaf_nonuniform_map_to_curve(pt,hashed_data);
+    decaf_nonuniform_map_to_curve(pt2,&hashed_data[DECAF_SER_BYTES]);
+    decaf_add(pt,pt,pt2);
+}
+
 decaf_bool_t decaf_valid (
     const decaf_point_t p
 ) {
