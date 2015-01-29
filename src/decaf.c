@@ -397,10 +397,10 @@ void decaf_nonuniform_map_to_curve (
     mask_t square = gf_eq(e,ONE);
     gf_mul(a,b,r);
     cond_sel(b,a,b,square);
-    cond_neg(b,hibit(b));
     gf_mlw(a,b,EDWARDS_D+1);
     cond_swap(ur2_d,udr2_1,~square);
     gf_mul(e,ur2_d,a);
+    cond_neg(e,hibit(e)^square);
     gf_mul(b,udr2_1,a);
     gf_sqr(c,b);
     gf_sqr(a,e);
@@ -413,7 +413,6 @@ void decaf_nonuniform_map_to_curve (
     gf_mul(p->y,b,a);
     gf_mul(p->t,b,e);
 }
-
 
 void decaf_uniform_map_to_curve (
     decaf_point_t pt,

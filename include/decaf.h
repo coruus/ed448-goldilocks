@@ -24,6 +24,8 @@
 
 typedef uint64_t decaf_word_t, decaf_bool_t;
 
+/* TODO: prefix all these operations and factor to support multiple curves. */
+
 /* TODO: perfield, so when 25519 hits this will change */
 #define DECAF_FIELD_BITS 448
 #define DECAF_LIMBS (512/8/sizeof(decaf_word_t))
@@ -185,6 +187,9 @@ decaf_bool_t decaf_valid (
  *   A factor of 2 due to the isogeny.
  *   A factor of 2 because we quotient out the 2-torsion.
  * // TODO: check that it isn't more, especially for the identity point.
+ *
+ * Negating the input (mod q) results in the same point.  Inverting the input
+ * (mod q) results in the negative point.  This is the same as Elligator.
  *
  * This function isn't quite indifferentiable from a random oracle.
  * However, it is suitable for many protocols, including SPEKE and SPAKE2 EE. 

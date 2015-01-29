@@ -363,9 +363,27 @@ int test_decaf_evil (void) {
             mask_t succ_dec = decaf_decode(pt_dec2, ser_de, -1);
             field_serialize(ser_ed, out_ed);
             
-            decaf_point_t p;
+            decaf_point_t p,q,m;
+            uint8_t oo_base_ser[56], n_base_ser[56];
+            field_a_t oo_base,tmp,tmp2;
+            field_isr(tmp,base);
+            field_sqr(tmp2,tmp); // 1/+-s_base
+            field_sqr(tmp,tmp2); // = 1/s_base^2
+            field_mul(oo_base,tmp,base); // = 1/s_base
+            field_serialize(oo_base_ser,oo_base);
+            field_neg(tmp,base);
+            field_serialize(n_base_ser,tmp); // = -base
             decaf_nonuniform_map_to_curve (p,random_input);
+            decaf_nonuniform_map_to_curve (q,oo_base_ser);
+            decaf_nonuniform_map_to_curve (m,n_base_ser);
             mask_t succ_nur = decaf_valid(p);
+            succ_nur &= decaf_valid(q);
+            succ_nur &= decaf_valid(m);
+            
+            mask_t eq_neg, eq_pos;
+            eq_neg = decaf_eq(m,p);
+            decaf_add(m,p,q);
+            eq_pos = decaf_eq(m,decaf_identity);
             
             if ((care_should && should != s_m)
                 || ~s_base || s_e != s_te || s_m != s_te || s_ed != s_te
@@ -375,7 +393,9 @@ int test_decaf_evil (void) {
                 || (s_e & ~succ_dec)
                 || (s_e & ~decaf_eq(pt_dec, pt_dec2)
                 || (s_e & ~decaf_valid(pt_dec))
-                || ~succ_nur)
+                || ~succ_nur
+                || ~eq_neg
+                || ~eq_pos)
             ) {
                 youfail();
                 field_print("    base", base);
@@ -383,9 +403,9 @@ int test_decaf_evil (void) {
                 field_print("    oute", out_e);
                 field_print("    outE", out_ed);
                 field_print("    outm", out_m);
-                printf("    succ: m=%d, e=%d, t=%d, b=%d, T=%d, D=%d, nur=%d, should=%d[%d]\n",
+                printf("    succ: m=%d, e=%d, t=%d, b=%d, T=%d, D=%d, nur=%d, e+=%d, e-=%d, should=%d[%d]\n",
                     -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_base,-(int)s_ed,-(int)succ_dec,
-                    -(int)succ_nur,
+                    -(int)succ_nur, -(int)eq_neg, -(int)eq_pos,
                     -(int)should,-(int)care_should
                 );
                 ret = -1;
