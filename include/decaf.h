@@ -97,7 +97,7 @@ extern "C" {
  * function is not WARN_UNUSED because eg challenges in signatures
  * may need to be longer.
  *
- * TODO: create a decode long function.
+ * TODO: create a decode long function, and make this WARN_UNUSED.
  *
  * @param [in] ser Serialized form of a scalar.
  * @param [out] out Deserialized form.
@@ -265,7 +265,7 @@ void decaf_point_sub (
 ) API_VIS NONNULL3;
 
 /**
- * @brief Multiply a base point by a scalar.
+ * @brief Multiply a base point by a scalar: scaled = scalar*base.
  *
  * @param [out] scaled The scaled point base*scalar
  * @param [in] base The point to be scaled.
@@ -278,7 +278,11 @@ void decaf_point_scalarmul (
 ) API_VIS NONNULL3;
 
 /**
- * @brief Multiply two base points by two scalars.
+ * @brief Multiply two base points by two scalars:
+ * scaled = scalar1*base1 + scalar2*base2.
+ *
+ * Equivalent to two calls to decaf_point_scalarmul, but may be
+ * faster.
  *
  * @param [out] scaled The scaled point base*scalar
  * @param [in] base1 A first point to be scaled.
