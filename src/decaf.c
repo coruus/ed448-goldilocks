@@ -215,7 +215,7 @@ sv decaf_subx(
     }
 }
 
-static const decaf_scalar_t DECAF_SCALAR_P = {{{
+const decaf_scalar_t decaf_scalar_p = {{{
     0x2378c292ab5844f3ull,
     0x216cc2728dc58f55ull,
     0xc44edb49aed63690ull,
@@ -224,7 +224,9 @@ static const decaf_scalar_t DECAF_SCALAR_P = {{{
     0xffffffffffffffffull,
     0x3fffffffffffffffull
         // TODO 32-bit clean
-}}}, DECAF_SCALAR_R2 = {{{
+}}}, decaf_scalar_one = {{{1}}}, decaf_scalar_zero = {{{0}}};
+
+static const decaf_scalar_t decaf_scalar_r2 = {{{
     0xe3539257049b9b60ull,
     0x7af32c4bc1b195d9ull,
     0x0d66de2388ea1859ull,
@@ -235,7 +237,7 @@ static const decaf_scalar_t DECAF_SCALAR_P = {{{
         // TODO 32-bit clean
 }}};
 
-static const decaf_word_t DECAF_MONTGOMERY_FACTOR = 0xfc42bbf0516e743b;
+static const decaf_word_t DECAF_MONTGOMERY_FACTOR = 0x3bd440fae918bc5ull;
 
 sv decaf_montmul (
     decaf_scalar_t out,
@@ -254,7 +256,7 @@ sv decaf_montmul (
         
         decaf_dword_t chain = 0;
         for (j=0; j<DECAF_SCALAR_LIMBS; j++) {
-            chain += (decaf_dword_t)mand*mier[j] + accum[j];
+            chain += ((decaf_dword_t)mand)*mier[j] + accum[j];
             accum[j] = chain;
             chain >>= WBITS;
         }
@@ -282,8 +284,8 @@ void decaf_mul_scalars (
     const decaf_scalar_t a,
     const decaf_scalar_t b
 ) {
-    decaf_montmul(out,a,b,DECAF_SCALAR_P,DECAF_MONTGOMERY_FACTOR);
-    decaf_montmul(out,out,DECAF_SCALAR_R2,DECAF_SCALAR_P,DECAF_MONTGOMERY_FACTOR);
+    decaf_montmul(out,a,b,decaf_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    decaf_montmul(out,out,decaf_scalar_r2,decaf_scalar_p,DECAF_MONTGOMERY_FACTOR);
 }
 
 void decaf_sub_scalars (
@@ -291,7 +293,7 @@ void decaf_sub_scalars (
     const decaf_scalar_t a,
     const decaf_scalar_t b
 ) {
-    decaf_subx(out, a->limb, b, DECAF_SCALAR_P, 0);
+    decaf_subx(out, a->limb, b, decaf_scalar_p, 0);
 }
 
 void decaf_add_scalars (
@@ -306,7 +308,19 @@ void decaf_add_scalars (
         out->limb[i] = chain;
         chain >>= WBITS;
     }
-    decaf_subx(out, out->limb, b, DECAF_SCALAR_P, chain);
+    decaf_subx(out, out->limb, decaf_scalar_p, decaf_scalar_p, chain);
+}
+
+decaf_bool_t decaf_eq_scalars (
+    const decaf_scalar_t a,
+    const decaf_scalar_t b
+) {
+    decaf_word_t diff = 0;
+    unsigned int i;
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        diff |= a->limb[i] ^ b->limb[i];
+    }
+    return (((decaf_dword_t)diff)-1)>>WBITS;
 }
 
 /* *** API begins here *** */    
@@ -449,6 +463,41 @@ void decaf_copy (
     gf_cpy(a->y, b->y);
     gf_cpy(a->z, b->z);
     gf_cpy(a->t, b->t);
+}
+
+decaf_bool_t decaf_decode_scalar(
+    decaf_scalar_t s,
+    const unsigned char ser[DECAF_SER_BYTES]
+) {
+    unsigned int i,j,k=0;
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        decaf_word_t out = 0;
+        for (j=0; j<sizeof(decaf_word_t); j++,k++) {
+            out |= ((decaf_word_t)ser[k])<<(8*j);
+        }
+        s->limb[i] = out;
+    }
+    
+    decaf_sdword_t accum = 0;
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        accum = (accum + s->limb[i] - decaf_scalar_p->limb[i]) >> WBITS;
+    }
+    
+    //decaf_mul_scalars(s,s,decaf_scalar_one); /* ham-handed reduce */
+    
+    return accum;
+}
+
+void decaf_encode_scalar(
+    unsigned char ser[DECAF_SER_BYTES],
+    const decaf_scalar_t s
+) {
+    unsigned int i,j,k=0;
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        for (j=0; j<sizeof(decaf_word_t); j++,k++) {
+            ser[k] = s->limb[i] >> (8*j);
+        }
+    }
 }
 
 void decaf_scalarmul (

@@ -1,10 +1,24 @@
 #include "field.h"
 #include "test.h"
+#include "decaf.h"
 #include <gmp.h>
 #include <string.h>
 #include <stdio.h>
 
 mpz_t mp_field;
+mpz_t mp_scalar_field;
+
+void decaf_scalar_print (
+    const char *descr,
+    const decaf_scalar_t scalar
+) {
+    int j;
+    printf("%s = 0x", descr);
+    for (j=DECAF_SCALAR_LIMBS-1; j>=0; j--) {
+        printf(PRIxWORDfull, scalar->limb[j]);
+    }
+    printf("\n");
+}
 
 static mask_t mpz_to_field (
     field_a_t out,
@@ -18,6 +32,78 @@ static mask_t mpz_to_field (
     mpz_export(ser, NULL, -1, 1, -1, 0, modded);
     mask_t succ = field_deserialize(out, ser);
     return succ;
+}
+
+static mask_t mpz_to_scalar (
+    decaf_scalar_t out,
+    const mpz_t in
+) {
+    uint8_t ser[DECAF_SCALAR_BYTES];
+    mpz_t modded;
+    memset(ser,0,sizeof(ser));
+    mpz_init(modded);
+    mpz_mod(modded, in, mp_scalar_field);
+    mpz_export(ser, NULL, -1, 1, -1, 0, modded);
+    mask_t succ = decaf_decode_scalar(out, ser);
+    return succ;
+}
+
+static mask_t scalar_assert_eq_gmp(
+    const char *descr,
+    const decaf_scalar_t a,
+    const decaf_scalar_t b,
+    const decaf_scalar_t x,
+    const mpz_t ma,
+    const mpz_t mb,
+    const mpz_t y
+) {
+    uint8_t xser[FIELD_BYTES], yser[FIELD_BYTES];
+    mpz_t modded;
+    
+    memset(yser,0,sizeof(yser));
+    
+    decaf_encode_scalar(xser, x);
+    
+    mpz_init(modded);
+    mpz_mod(modded, y, mp_scalar_field);
+    mpz_export(yser, NULL, -1, 1, -1, 0, modded);
+    
+    if (memcmp(xser,yser,FIELD_BYTES)) {
+        youfail();
+        printf("    Failed arithmetic test %s\n", descr);
+        decaf_scalar_print("        a", a);
+        decaf_scalar_print("        b", b);
+        decaf_scalar_print("    decaf", x);
+        // printf("     gmpa = 0x");
+        
+        int j;
+        // mpz_export(yser, NULL, -1, 1, -1, 0, ma);
+        // for (j=FIELD_BYTES-1; j>=0; j--) {
+        //     printf("%02x", yser[j]);
+        // }
+        // printf("\n");
+        // printf("     gmpb = 0x");
+        //
+        //
+        // mpz_export(yser, NULL, -1, 1, -1, 0, mb);
+        // for (j=FIELD_BYTES-1; j>=0; j--) {
+        //     printf("%02x", yser[j]);
+        // }
+        // printf("\n");
+        (void)ma; (void)mb;
+        
+        printf("     gmpy = 0x");
+
+        mpz_export(yser, NULL, -1, 1, -1, 0, modded);
+        for (j=FIELD_BYTES-1; j>=0; j--) {
+            printf("%02x", yser[j]);
+        }
+        printf("\n");
+        return MASK_FAILURE;
+    }
+    
+    mpz_clear(modded);
+    return MASK_SUCCESS;
 }
 
 static inline int BRANCH_ON_CONSTANT(int x) {
@@ -127,6 +213,34 @@ static mask_t test_add_sub_RAW (
     return succ;
 }
 
+static mask_t test_scalar (
+    const mpz_t x,
+    const mpz_t y
+) {
+    decaf_scalar_t xx,yy,tt;
+    mpz_t t;
+    mask_t succ = MASK_SUCCESS;
+    succ  = mpz_to_scalar(xx,x);
+    succ &= mpz_to_scalar(yy,y);
+    mpz_init(t);
+    
+    decaf_add_scalars(tt,xx,yy);
+    mpz_add(t,x,y);
+    succ &= scalar_assert_eq_gmp("scalar add",xx,yy,tt,x,y,t);
+    
+    decaf_sub_scalars(tt,xx,yy);
+    mpz_sub(t,x,y);
+    succ &= scalar_assert_eq_gmp("scalar sub",xx,yy,tt,x,y,t);
+    
+    decaf_mul_scalars(tt,xx,yy);
+    mpz_mul(t,x,y);
+    succ &= scalar_assert_eq_gmp("scalar mul",xx,yy,tt,x,y,t);
+    
+    mpz_clear(t);
+    
+    return succ;
+}
+
 static mask_t test_mul_sqr (
     const mpz_t x,
     const mpz_t y,
@@ -208,6 +322,8 @@ int test_arithmetic (void) {
     mpz_init(mp_field);
     mpz_import(mp_field, FIELD_BYTES, -1, 1, -1, 0, FIELD_MODULUS);
     
+    mpz_import(mp_scalar_field, DECAF_SCALAR_LIMBS, -1, sizeof(decaf_word_t), -1, 0, decaf_scalar_p);
+    
     mpz_t x,y;
     mpz_init(x);
     mpz_init(y);
@@ -234,6 +350,7 @@ int test_arithmetic (void) {
         
         succ &= test_add_sub_RAW(x,y,word);
         succ &= test_mul_sqr(x,y,word);
+        succ &= test_scalar(x,y);
         
         if (j < 1000)
             succ &= test_isr(x);

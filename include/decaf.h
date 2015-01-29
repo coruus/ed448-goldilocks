@@ -22,6 +22,13 @@
 
 #include <stdint.h>
 
+/* Goldilocks' build flags default to hidden and stripping executables. */
+#define API_VIS __attribute__((visibility("default")))
+#define WARN_UNUSED __attribute__((warn_unused_result))
+#define NONNULL1 __attribute__((nonnull(1)))
+#define NONNULL2 __attribute__((nonnull(1,2)))
+#define NONNULL3 __attribute__((nonnull(1,2,3)))
+
 typedef uint64_t decaf_word_t, decaf_bool_t;
 
 /* TODO: prefix all these operations and factor to support multiple curves. */
@@ -33,6 +40,9 @@ typedef uint64_t decaf_word_t, decaf_bool_t;
 
 /** Number of bytes in a serialized point.  One less bit than you'd think. */
 #define DECAF_SER_BYTES ((DECAF_FIELD_BITS+6)/8)
+
+/** Number of bytes in a serialized scalar.  Two less bits than you'd think. */
+#define DECAF_SCALAR_BYTES ((DECAF_FIELD_BITS+5)/8)
 
 /** Twisted Edwards (-1,d-1) extended homogeneous coordinates */
 typedef struct decaf_point_s {
@@ -50,25 +60,58 @@ static const decaf_bool_t DECAF_SUCCESS = -(decaf_bool_t)1 /*DECAF_TRUE*/,
 	DECAF_FAILURE = 0 /*DECAF_FALSE*/;
 
 /** The identity point on the curve. */
-const decaf_point_t decaf_identity;
+const decaf_point_t decaf_identity API_VIS;
+
+/** The prime p, for debugging purposes.
+ * FIXME: prevent this scalar from actually being used for non-debugging purposes?
+ */
+const decaf_scalar_t decaf_scalar_p API_VIS;
+
+/** A scalar equal to 1. */
+const decaf_scalar_t decaf_scalar_one API_VIS;
+
+/** A scalar equal to 0. */
+const decaf_scalar_t decaf_scalar_zero API_VIS;
 
 /** An arbitrarily chosen base point on the curve.  TODO: define */
-const decaf_point_t decaf_basepoint;
+const decaf_point_t decaf_basepoint API_VIS;
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* Goldilocks' build flags default to hidden and stripping executables. */
-#define API_VIS __attribute__((visibility("default")))
-#define WARN_UNUSED __attribute__((warn_unused_result))
-#define NONNULL1 __attribute__((nonnull(1)))
-#define NONNULL2 __attribute__((nonnull(1,2)))
-#define NONNULL3 __attribute__((nonnull(1,2,3)))
-
     // TODO: ser, deser, inv?.
     // FIXME: scalar math is untested, and therefore probably wrong.
 
+        
+/**
+ * @brief Read a scalar from wire format or from bytes.
+ *
+ * Return DECAF_SUCCESS if the scalar was in reduced form.  This
+ * function is not WARN_UNUSED because eg challenges in signatures
+ * may need to be longer.
+ *
+ * TODO: create a decode long function.
+ *
+ * @param [in] ser Serialized form of a scalar.
+ * @param [out] out Deserialized form.
+ */
+decaf_bool_t decaf_decode_scalar(
+    decaf_scalar_t s,
+    const unsigned char ser[DECAF_SER_BYTES]
+) API_VIS NONNULL2;
+    
+/**
+ * @brief Serialize a scalar to wire format.
+ *
+ * @param [out] ser Serialized form of a scalar.
+ * @param [in] s Deserialized scalar.
+ */
+void decaf_encode_scalar(
+    unsigned char ser[DECAF_SER_BYTES],
+    const decaf_scalar_t s
+) API_VIS NONNULL2;
+        
 /**
  * @brief Add two scalars.  The scalars may use the same memory.
  * @param [in] a One scalar.
@@ -80,6 +123,18 @@ void decaf_add_scalars (
     const decaf_scalar_t a,
     const decaf_scalar_t b
 ) API_VIS NONNULL3;
+
+/**
+ * @brief Compare two scalars.
+ * @param [in] a One scalar.
+ * @param [in] b Another scalar.
+ * @retval DECAF_TRUE The scalars are equal.
+ * @retval DECAF_FALSE The scalars are not equal.
+ */    
+decaf_bool_t decaf_eq_scalars (
+    const decaf_scalar_t a,
+    const decaf_scalar_t b
+) API_VIS WARN_UNUSED NONNULL2;
 
 /**
  * @brief Subtract two scalars.  The scalars may use the same memory.

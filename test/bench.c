@@ -266,6 +266,16 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("barrett mac: %5.1fns\n", when * 1e9 / i);
     
+    decaf_scalar_t asc,bsc,csc;
+    memset(asc,0,sizeof(asc));
+    memset(bsc,0,sizeof(bsc));
+    when = now();
+    for (i=0; i<nbase*10; i++) {
+        decaf_mul_scalars(csc,asc,bsc);
+    }
+    when = now() - when;
+    printf("decaf mulsc: %5.1fns\n", when * 1e9 / i);
+    
     memset(&ext,0,sizeof(ext));
     memset(&niels,0,sizeof(niels)); /* avoid assertions in p521 even though this isn't a valid ext or niels */
 
