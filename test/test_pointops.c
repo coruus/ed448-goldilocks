@@ -363,13 +363,19 @@ int test_decaf_evil (void) {
             mask_t succ_dec = decaf_decode(pt_dec2, ser_de, -1);
             field_serialize(ser_ed, out_ed);
             
+            decaf_point_t p;
+            decaf_nonuniform_map_to_curve (p,random_input);
+            mask_t succ_nur = decaf_valid(p);
+            
             if ((care_should && should != s_m)
                 || ~s_base || s_e != s_te || s_m != s_te || s_ed != s_te
                 || (s_te && ~field_eq(out_e,out_m))
                 || (s_ed && ~field_eq(out_e,out_ed))
                 || memcmp(ser_de, ser_ed, 56)
                 || (s_e & ~succ_dec)
-                || (s_e & ~decaf_eq(pt_dec, pt_dec2))
+                || (s_e & ~decaf_eq(pt_dec, pt_dec2)
+                || (s_e & ~decaf_valid(pt_dec))
+                || ~succ_nur)
             ) {
                 youfail();
                 field_print("    base", base);
@@ -377,8 +383,9 @@ int test_decaf_evil (void) {
                 field_print("    oute", out_e);
                 field_print("    outE", out_ed);
                 field_print("    outm", out_m);
-                printf("    succ: m=%d, e=%d, t=%d, b=%d, T=%d, D=%d, should=%d[%d]\n",
+                printf("    succ: m=%d, e=%d, t=%d, b=%d, T=%d, D=%d, nur=%d, should=%d[%d]\n",
                     -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_base,-(int)s_ed,-(int)succ_dec,
+                    -(int)succ_nur,
                     -(int)should,-(int)care_should
                 );
                 ret = -1;
@@ -538,6 +545,7 @@ int test_decaf (void) {
         printf("   Fail: only %d successes in decaf_deser\n", hits);
         return -1;
     } else if (fails) {
+        printf("  %d fails\n", fails);
         return -1;
     } else {
         return 0;

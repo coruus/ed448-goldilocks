@@ -54,6 +54,7 @@ extern "C" {
 /* Goldilocks' build flags default to hidden and stripping executables. */
 #define API_VIS __attribute__((visibility("default")))
 #define WARN_UNUSED __attribute__((warn_unused_result))
+#define NONNULL1 __attribute__((nonnull(1)))
 #define NONNULL2 __attribute__((nonnull(1,2)))
 #define NONNULL3 __attribute__((nonnull(1,2,3)))
 
@@ -157,6 +158,31 @@ void decaf_scalarmul (
     const decaf_word_t *scalar,
     unsigned int scalar_words
 ) API_VIS NONNULL3;
+    
+/**
+ * @brief Test that a point is valid, for debugging purposes.
+ *
+ * @param [in] point The number to test.
+ * @retval DECAF_TRUE The point is valid.
+ * @retval DECAF_FALSE The point is invalid.
+ */
+decaf_bool_t decaf_valid (
+    const decaf_point_t toTest
+) API_VIS WARN_UNUSED NONNULL1;
+
+/**
+ * @brief Elligator-like hash to curve.
+ *
+ * May be up to 4:1 on [0,(p-1)/2]
+ * // TODO: check that it isn't more.
+ *
+ * @param [in] ser A serialized point.
+ * @param [out] pt The hashed input
+ */
+void decaf_nonuniform_map_to_curve (
+    decaf_point_t pt,
+    const unsigned char ser[DECAF_SER_BYTES]
+) API_VIS NONNULL2;
     
 #undef API_VIS
 #undef WARN_UNUSED
