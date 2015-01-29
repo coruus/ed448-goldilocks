@@ -378,34 +378,20 @@ void decaf_nonuniform_map_to_curve (
     decaf_point_t p,
     const unsigned char ser[DECAF_SER_BYTES]
 ) {
-    /*
-    sage: XXD = (u*r^2 + 1) * (d - u*r^2) * (1 - u*d*r^2) / (d+1)
-    sage: factor(XX / (1/XXD))
-    (u*r^2 - d)^2
-    sage: factor((ey-1)/(ey+1)/(1/d * 1/XXD))
-    (u*d*r^2 - 1)^2
-    sage: factor(XX2 / (u*r^2/XXD))
-    (u*d*r^2 - 1)^2
-    sage: factor((ey2-1)/(ey2+1)/(1/d * u*r^2/XXD))
-    (u*r^2 - d)^2
-    */
     gf r,urr,a,b,c,dee,e,ur2_d,udr2_1;
     (void)gf_deser(r,ser);
-    gf_canon(r); // just in case
+    gf_canon(r);
     gf_sqr(a,r);
-    
-    gf_mlw(urr,a,QUADRATIC_NONRESIDUE); // urr = u*r^2
+    gf_mlw(urr,a,QUADRATIC_NONRESIDUE);
     gf_mlw(dee,ONE,EDWARDS_D);
-    
     gf_add(a,urr,ONE);
-    gf_sub(ur2_d,dee,urr); // ur2_d = -(ur^2-d)
+    gf_sub(ur2_d,dee,urr);
     gf_mul(c,a,ur2_d);
     gf_mlw(b,urr,-EDWARDS_D);
-    gf_add(udr2_1,b,ONE); // udr2_1 = -(udr^2-1)
+    gf_add(udr2_1,b,ONE);
     gf_mul(a,c,udr2_1);
-    gf_mlw(c,a,EDWARDS_D+1); // c = (u*r^2 + 1) * (d - u*r^2) * (1 - u*d*r^2) * (d+1)
-    
-    gf_isqrt(b,c); // FIELD: if 5 mod 8, multiply result by u.
+    gf_mlw(c,a,EDWARDS_D+1);
+    gf_isqrt(b,c); /* FIELD: if 5 mod 8, multiply result by u. */
     gf_sqr(a,b);
     gf_mul(e,a,c);
     mask_t square = gf_eq(e,ONE);
@@ -413,29 +399,15 @@ void decaf_nonuniform_map_to_curve (
     cond_sel(b,a,b,square);
     cond_neg(b,hibit(b));
     gf_mlw(a,b,EDWARDS_D+1);
-    /* Here: a = sqrt( (d+1) / (ur^2?) * (u*r^2 + 1) * (d - u*r^2) * (1 - u*d*r^2)) */
-    
     cond_swap(ur2_d,udr2_1,~square);
     gf_mul(e,ur2_d,a);
     gf_mul(b,udr2_1,a);
     gf_sqr(c,b);
-    
-    /* Here:
-     * ed_x = 2e/(1-e^2)
-     * c =  * (ed_y-1)/(ed_y+1)
-     *
-     * Special cases:
-     *   e^2 = 1: impossible for cofactor-4 curves (would isogenize to order-4 point)
-     *   e = 0 <-> also c = 0: maps to (0,1), which is fine.
-     */
-    
     gf_sqr(a,e);
     gf_sub(a,ONE,a);
     gf_add(e,e,e);
-    
     gf_add(b,dee,c);
     gf_sub(c,dee,c);
-    
     gf_mul(p->x,e,c);
     gf_mul(p->z,a,c);
     gf_mul(p->y,b,a);
