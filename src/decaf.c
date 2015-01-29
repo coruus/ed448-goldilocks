@@ -10,16 +10,15 @@
 
 #include "decaf.h"
 
-typedef uint64_t word_t, mask_t; // TODO
-typedef __uint128_t dword_t;
-typedef __int128_t sdword_t;
+typedef __uint128_t decaf_dword_t;
+typedef __int128_t decaf_sdword_t;
 #define WBITS 64
 #define LBITS 56
 
 #define sv static void
 #define NLIMBS 8
 
-typedef word_t gf[NLIMBS];
+typedef decaf_word_t gf[NLIMBS];
 static const gf ZERO = {0}, ONE = {1}, TWO = {2};
 
 #define LMASK ((1ull<<LBITS)-1)
@@ -38,9 +37,9 @@ sv gf_mul (gf c, const gf a, const gf b) {
     gf aa;
     gf_cpy(aa,a);
     
-    dword_t accum[NLIMBS] = {0};
+    decaf_dword_t accum[NLIMBS] = {0};
     FOR_LIMB(i, {
-        FOR_LIMB(j,{ accum[(i+j)%NLIMBS] += (dword_t)b[i] * aa[j]; });
+        FOR_LIMB(j,{ accum[(i+j)%NLIMBS] += (decaf_dword_t)b[i] * aa[j]; });
         aa[(NLIMBS-1-i)^(NLIMBS/2)] += aa[NLIMBS-1-i];
     });
     
@@ -99,21 +98,21 @@ sv gf_sub ( gf x, const gf y, const gf z ) {
 }
 
 /** Constant time, x = is_z ? z : y */
-sv cond_sel(gf x, const gf y, const gf z, mask_t is_z) {
+sv cond_sel(gf x, const gf y, const gf z, decaf_bool_t is_z) {
     FOR_LIMB(i, x[i] = (y[i] & ~is_z) | (z[i] & is_z) );
 }
 
 /** Constant time, if (neg) x=-x; */
-sv cond_neg(gf x, mask_t neg) {
+sv cond_neg(gf x, decaf_bool_t neg) {
     gf y;
     gf_sub(y,ZERO,x);
     cond_sel(x,x,y,neg);
 }
 
 /** Constant time, if (swap) (x,y) = (y,x); */
-sv cond_swap(gf x, gf y, mask_t swap) {
+sv cond_swap(gf x, gf y, decaf_bool_t swap) {
     FOR_LIMB(i, {
-        word_t s = (x[i] ^ y[i]) & swap;
+        decaf_word_t s = (x[i] ^ y[i]) & swap;
         x[i] ^= s;
         y[i] ^= s;
     });
@@ -139,14 +138,14 @@ sv gf_canon ( gf a ) {
     gf_reduce(a);
 
     /* subtract p with borrow */
-    sdword_t carry = 0;
+    decaf_sdword_t carry = 0;
     FOR_LIMB(i, {
         carry = carry + a[i] - P[i];
         a[i] = carry & LMASK;
         carry >>= LBITS;
     });
     
-    mask_t addback = carry;
+    decaf_bool_t addback = carry;
     carry = 0;
 
     /* add it back */
@@ -158,18 +157,18 @@ sv gf_canon ( gf a ) {
 }
 
 /** Compare a==b */
-static word_t __attribute__((noinline)) gf_eq(const gf a, const gf b) {
+static decaf_word_t __attribute__((noinline)) gf_eq(const gf a, const gf b) {
     gf c;
     gf_sub(c,a,b);
     gf_canon(c);
-    word_t ret=0;
+    decaf_word_t ret=0;
     FOR_LIMB(i, ret |= c[i] );
     /* Hope the compiler is too dumb to optimize this, thus noinline */
-    return ((dword_t)ret - 1) >> WBITS;
+    return ((decaf_dword_t)ret - 1) >> WBITS;
 }
 
 /** Return high bit of x = low bit of 2x mod p */
-static word_t hibit(const gf x) {
+static decaf_word_t hibit(const gf x) {
     gf y;
     gf_add(y,x,x);
     gf_canon(y);
@@ -181,12 +180,133 @@ sv decaf_cond_sel (
     decaf_point_t a,
     const decaf_point_t b,
     const decaf_point_t c,
-    mask_t use_c
+    decaf_bool_t use_c
 ) {
     cond_sel(a->x, b->x, c->x, use_c);
     cond_sel(a->y, b->y, c->y, use_c);
     cond_sel(a->z, b->z, c->z, use_c);
     cond_sel(a->t, b->t, c->t, use_c);
+}
+
+/** {extra,accum} - sub +? p
+ * Must have extra <= 1
+ */
+sv decaf_subx(
+    decaf_scalar_t out,
+    const decaf_word_t accum[DECAF_SCALAR_LIMBS],
+    const decaf_scalar_t sub,
+    const decaf_scalar_t p,
+    decaf_word_t extra
+) {
+    decaf_sdword_t chain = 0;
+    unsigned int i;
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        chain = (chain + accum[i]) - sub->limb[i];
+        out->limb[i] = chain;
+        chain >>= WBITS;
+    }
+    decaf_bool_t borrow = chain+extra; /* = 0 or -1 */
+    
+    chain = 0;
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        chain = (chain + out->limb[i]) + (p->limb[i] & borrow);
+        out->limb[i] = chain;
+        chain >>= WBITS;
+    }
+}
+
+static const decaf_scalar_t DECAF_SCALAR_P = {{{
+    0x2378c292ab5844f3ull,
+    0x216cc2728dc58f55ull,
+    0xc44edb49aed63690ull,
+    0xffffffff7cca23e9ull,
+    0xffffffffffffffffull,
+    0xffffffffffffffffull,
+    0x3fffffffffffffffull
+        // TODO 32-bit clean
+}}}, DECAF_SCALAR_R2 = {{{
+    0xe3539257049b9b60ull,
+    0x7af32c4bc1b195d9ull,
+    0x0d66de2388ea1859ull,
+    0xae17cf725ee4d838ull,
+    0x1a9cc14ba3c47c44ull,
+    0x2052bcb7e4d070afull,
+    0x3402a939f823b729ull 
+        // TODO 32-bit clean
+}}};
+
+static const decaf_word_t DECAF_MONTGOMERY_FACTOR = 0xfc42bbf0516e743b;
+
+sv decaf_montmul (
+    decaf_scalar_t out,
+    const decaf_scalar_t a,
+    const decaf_scalar_t b,
+    const decaf_scalar_t p,
+    decaf_word_t montgomery_factor
+) {
+    unsigned int i,j;
+    decaf_word_t accum[DECAF_SCALAR_LIMBS+1] = {0};
+    decaf_word_t hi_carry = 0;
+    
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        decaf_word_t mand = a->limb[i];
+        const decaf_word_t *mier = b->limb;
+        
+        decaf_dword_t chain = 0;
+        for (j=0; j<DECAF_SCALAR_LIMBS; j++) {
+            chain += (decaf_dword_t)mand*mier[j] + accum[j];
+            accum[j] = chain;
+            chain >>= WBITS;
+        }
+        accum[j] = chain;
+        
+        mand = accum[0] * montgomery_factor;
+        chain = 0;
+        mier = p->limb;
+        for (j=0; j<DECAF_SCALAR_LIMBS; j++) {
+            chain += (decaf_dword_t)mand*mier[j] + accum[j];
+            if (j) accum[j-1] = chain;
+            chain >>= WBITS;
+        }
+        chain += accum[j];
+        chain += hi_carry;
+        accum[j-1] = chain;
+        hi_carry = chain >> WBITS;
+    }
+    
+    decaf_subx(out, accum, p, p, hi_carry);
+}
+
+void decaf_mul_scalars (
+    decaf_scalar_t out,
+    const decaf_scalar_t a,
+    const decaf_scalar_t b
+) {
+    decaf_montmul(out,a,b,DECAF_SCALAR_P,DECAF_MONTGOMERY_FACTOR);
+    decaf_montmul(out,out,DECAF_SCALAR_R2,DECAF_SCALAR_P,DECAF_MONTGOMERY_FACTOR);
+}
+
+void decaf_sub_scalars (
+    decaf_scalar_t out,
+    const decaf_scalar_t a,
+    const decaf_scalar_t b
+) {
+    decaf_subx(out, a->limb, b, DECAF_SCALAR_P, 0);
+}
+
+void decaf_add_scalars (
+    decaf_scalar_t out,
+    const decaf_scalar_t a,
+    const decaf_scalar_t b
+) {
+    decaf_dword_t chain = 0;
+    unsigned int i;
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        chain = (chain + a->limb[i]) + b->limb[i];
+        out->limb[i] = chain;
+        chain >>= WBITS;
+    }
+    decaf_subx(out, out->limb, b, DECAF_SCALAR_P, chain);
 }
 
 /* *** API begins here *** */    
@@ -233,14 +353,14 @@ static decaf_bool_t gf_deser(gf s, const unsigned char ser[DECAF_SER_BYTES]) {
     // FIXME arch
     int j;
     FOR_LIMB(i, {
-        word_t out = 0;
+        decaf_word_t out = 0;
         for (j=0; j<7; j++) {
-            out |= ((word_t)ser[7*i+j])<<(8*j);
+            out |= ((decaf_word_t)ser[7*i+j])<<(8*j);
         }
         s[i] = out;
     });
     
-    sdword_t accum = 0;
+    decaf_sdword_t accum = 0;
     FOR_LIMB(i, accum = (accum + s[i] - P[i]) >> WBITS );
     return accum;
 }
@@ -282,8 +402,8 @@ decaf_bool_t decaf_decode (
     decaf_bool_t allow_identity
 ) {
     gf s, a, b, c, d, e;
-    mask_t succ = gf_deser(s, ser);
-    mask_t zero = gf_eq(s, ZERO);
+    decaf_bool_t succ = gf_deser(s, ser);
+    decaf_bool_t zero = gf_eq(s, ZERO);
     succ &= allow_identity | ~zero;
     succ &= ~hibit(s);
     gf_sqr ( a, s );
@@ -394,7 +514,7 @@ void decaf_nonuniform_map_to_curve (
     gf_isqrt(b,c); /* FIELD: if 5 mod 8, multiply result by u. */
     gf_sqr(a,b);
     gf_mul(e,a,c);
-    mask_t square = gf_eq(e,ONE);
+    decaf_bool_t square = gf_eq(e,ONE);
     gf_mul(a,b,r);
     cond_sel(b,a,b,square);
     gf_mlw(a,b,EDWARDS_D+1);
@@ -430,7 +550,7 @@ decaf_bool_t decaf_valid (
     gf a,b,c;
     gf_mul(a,p->x,p->y);
     gf_mul(b,p->z,p->t);
-    mask_t out = gf_eq(a,b);
+    decaf_bool_t out = gf_eq(a,b);
     gf_sqr(a,p->x);
     gf_sqr(b,p->y);
     gf_sub(a,b,a);

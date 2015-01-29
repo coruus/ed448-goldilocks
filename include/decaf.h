@@ -28,7 +28,8 @@ typedef uint64_t decaf_word_t, decaf_bool_t;
 
 /* TODO: perfield, so when 25519 hits this will change */
 #define DECAF_FIELD_BITS 448
-#define DECAF_LIMBS (512/8/sizeof(decaf_word_t))
+#define DECAF_LIMBS (1 + (512-1)/8/sizeof(decaf_word_t))
+#define DECAF_SCALAR_LIMBS (1 + (448-3)/8/sizeof(decaf_word_t))
 
 /** Number of bytes in a serialized point.  One less bit than you'd think. */
 #define DECAF_SER_BYTES ((DECAF_FIELD_BITS+6)/8)
@@ -37,6 +38,10 @@ typedef uint64_t decaf_word_t, decaf_bool_t;
 typedef struct decaf_point_s {
     decaf_word_t x[DECAF_LIMBS],y[DECAF_LIMBS],z[DECAF_LIMBS],t[DECAF_LIMBS];
 } decaf_point_t[1];
+
+typedef struct decaf_scalar_s {
+    decaf_word_t limb[DECAF_SCALAR_LIMBS];
+} decaf_scalar_t[1];
 
 static const decaf_bool_t DECAF_TRUE = -(decaf_bool_t)1, DECAF_FALSE = 0;
 
@@ -59,6 +64,45 @@ extern "C" {
 #define NONNULL1 __attribute__((nonnull(1)))
 #define NONNULL2 __attribute__((nonnull(1,2)))
 #define NONNULL3 __attribute__((nonnull(1,2,3)))
+
+    // TODO: ser, deser, inv?.
+    // FIXME: scalar math is untested, and therefore probably wrong.
+
+/**
+ * @brief Add two scalars.  The scalars may use the same memory.
+ * @param [in] a One scalar.
+ * @param [in] b Another scalar.
+ * @param [out] out a+b.
+ */
+void decaf_add_scalars (
+    decaf_scalar_t out,
+    const decaf_scalar_t a,
+    const decaf_scalar_t b
+) API_VIS NONNULL3;
+
+/**
+ * @brief Subtract two scalars.  The scalars may use the same memory.
+ * @param [in] a One scalar.
+ * @param [in] b Another scalar.
+ * @param [out] out a-b.
+ */  
+void decaf_sub_scalars (
+    decaf_scalar_t out,
+    const decaf_scalar_t a,
+    const decaf_scalar_t b
+) API_VIS NONNULL3;
+
+/**
+ * @brief Multiply two scalars.  The scalars may use the same memory.
+ * @param [in] a One scalar.
+ * @param [in] b Another scalar.
+ * @param [out] out a*b.
+ */  
+void decaf_mul_scalars (
+    decaf_scalar_t out,
+    const decaf_scalar_t a,
+    const decaf_scalar_t b
+) API_VIS NONNULL3;
 
 /**
  * @brief Encode a point as a sequence of bytes.
@@ -160,7 +204,7 @@ void decaf_scalarmul (
     const decaf_word_t *scalar,
     unsigned int scalar_words
 ) API_VIS NONNULL3;
-    
+
 /**
  * @brief Test that a point is valid, for debugging purposes.
  *
