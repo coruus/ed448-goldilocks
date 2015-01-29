@@ -46,7 +46,8 @@ typedef struct decaf_scalar_s {
 static const decaf_bool_t DECAF_TRUE = -(decaf_bool_t)1, DECAF_FALSE = 0;
 
 /** NB Success is -1, failure is 0.  TODO: see if people would rather the reverse. */
-static const decaf_bool_t DECAF_SUCCESS = DECAF_TRUE, DECAF_FAILURE = DECAF_FALSE;
+static const decaf_bool_t DECAF_SUCCESS = -(decaf_bool_t)1 /*DECAF_TRUE*/,
+	DECAF_FAILURE = 0 /*DECAF_FALSE*/;
 
 /** The identity point on the curve. */
 const decaf_point_t decaf_identity;
