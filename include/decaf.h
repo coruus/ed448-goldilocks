@@ -28,6 +28,7 @@
 #define NONNULL1 __attribute__((nonnull(1)))
 #define NONNULL2 __attribute__((nonnull(1,2)))
 #define NONNULL3 __attribute__((nonnull(1,2,3)))
+#define NONNULL5 __attribute__((nonnull(1,2,3,4,5)))
 
 /** Types of internal words.  TODO: ARCH: make 32-bit clean */
 typedef uint64_t decaf_word_t, decaf_bool_t;
@@ -237,6 +238,18 @@ void decaf_point_add (
 ) API_VIS NONNULL3;
 
 /**
+ * @brief Double a point.  Equivalent to
+ * decaf_point_add(two_a,a,a), but potentially faster.
+ *
+ * @param [out] sum The sum a+a.
+ * @param [in] a A point.
+ */
+void decaf_point_double (
+    decaf_point_t two_a,
+    const decaf_point_t a
+) API_VIS NONNULL2;
+
+/**
  * @brief Subtract two points to produce a third point.  The
  * input points and output point can be pointers to the same
  * memory.
@@ -263,6 +276,24 @@ void decaf_point_scalarmul (
     const decaf_point_t base,
     const decaf_scalar_t scalar
 ) API_VIS NONNULL3;
+
+/**
+ * @brief Multiply two base points by two scalars.
+ *
+ * @param [out] scaled The scaled point base*scalar
+ * @param [in] base1 A first point to be scaled.
+ * @param [in] scalar1 A first scalar to multilpy by.
+ * @param [in] base2 A second point to be scaled.
+ * @param [in] scalar2 A second scalar to multilpy by.
+ * @TODO: test
+ */
+void decaf_point_double_scalarmul (
+    decaf_point_t combo,
+    const decaf_point_t base1,
+    const decaf_scalar_t scalar1,
+    const decaf_point_t base2,
+    const decaf_scalar_t scalar2
+) API_VIS NONNULL5;
 
 /**
  * @brief Test that a point is valid, for debugging purposes.
@@ -327,6 +358,7 @@ void decaf_point_from_hash_uniform (
 #undef NONNULL1
 #undef NONNULL2
 #undef NONNULL3
+#undef NONNULL5
 
 #ifdef __cplusplus
 }; /* extern "C" */

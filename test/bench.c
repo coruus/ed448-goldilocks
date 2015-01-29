@@ -372,6 +372,13 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("decaf slow:  %5.1fµs\n", when * 1e6 / i);
+   
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        decaf_point_double_scalarmul(Da,Db,bsc,Dc,asc);
+    }
+    when = now() - when;
+    printf("decaf slo2:  %5.1fµs\n", when * 1e6 / i);
 
     when = now();
     for (i=0; i<nbase/10; i++) {

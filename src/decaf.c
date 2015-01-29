@@ -463,8 +463,10 @@ void decaf_point_add(decaf_point_t a, const decaf_point_t b, const decaf_point_t
     decaf_point_add_sub(a,b,c,0);
 }
 
-/* No dedicated point double (PERF) */
-#define decaf_dbl(a,b) decaf_point_add(a,b,b)
+/* No dedicated point double yet (PERF) */
+void decaf_point_double(decaf_point_t a, const decaf_point_t b) {
+    decaf_point_add(a,b,b);
+}
 
 void decaf_copy (
     decaf_point_t a,
@@ -522,20 +524,59 @@ void decaf_point_scalarmul (
      * possibly-odd number of unmasked bits, may need to mask.
      */
     decaf_point_t w,b3,tmp;
-    decaf_dbl(w,b);
+    decaf_point_double(w,b);
     /* b3 = b*3 */
     decaf_point_add(b3,w,b);
     int i;
     for (i=DECAF_SCALAR_LIMBS*WBITS-2; i>0; i-=2) {
         decaf_word_t bits = scalar->limb[i/WBITS]>>(i%WBITS);
         decaf_cond_sel(tmp,b,b3,((bits^(bits>>1))&1)-1);
-        decaf_dbl(w,w);
+        decaf_point_double(w,w);
         decaf_point_add_sub(w,w,tmp,((bits>>1)&1)-1);
-        decaf_dbl(w,w);
+        decaf_point_double(w,w);
     }
     decaf_point_add_sub(w,w,b,((scalar->limb[0]>>1)&1)-1);
     /* low bit is special because fo signed window */
     decaf_cond_sel(tmp,b,decaf_point_identity,-(scalar->limb[0]&1));
+    decaf_point_sub(a,w,tmp);
+}
+
+void decaf_point_double_scalarmul (
+    decaf_point_t a,
+    const decaf_point_t b,
+    const decaf_scalar_t scalarb,
+    const decaf_point_t c,
+    const decaf_scalar_t scalarc
+) {
+    /* w=2 signed window uses about 1.5 adds per bit.
+     * I figured a few extra lines was worth the 25% speedup.
+     * NB: if adapting this function to scalarmul by a
+     * possibly-odd number of unmasked bits, may need to mask.
+     */
+    decaf_point_t w,b3,c3,tmp;
+    decaf_point_double(w,b);
+    decaf_point_double(tmp,c);
+    /* b3 = b*3 */
+    decaf_point_add(b3,w,b);
+    decaf_point_add(c3,tmp,c);
+    decaf_point_add(w,w,tmp);
+    int i;
+    for (i=DECAF_SCALAR_LIMBS*WBITS-2; i>0; i-=2) {
+        decaf_point_double(w,w);
+        decaf_word_t bits = scalarb->limb[i/WBITS]>>(i%WBITS);
+        decaf_cond_sel(tmp,b,b3,((bits^(bits>>1))&1)-1);
+        decaf_point_add_sub(w,w,tmp,((bits>>1)&1)-1);
+        bits = scalarc->limb[i/WBITS]>>(i%WBITS);
+        decaf_cond_sel(tmp,c,c3,((bits^(bits>>1))&1)-1);
+        decaf_point_add_sub(w,w,tmp,((bits>>1)&1)-1);
+        decaf_point_double(w,w);
+    }
+    decaf_point_add_sub(w,w,b,((scalarb->limb[0]>>1)&1)-1);
+    decaf_point_add_sub(w,w,c,((scalarc->limb[0]>>1)&1)-1);
+    /* low bit is special because of signed window */
+    decaf_cond_sel(tmp,b,decaf_point_identity,-(scalarb->limb[0]&1));
+    decaf_point_sub(w,w,tmp);
+    decaf_cond_sel(tmp,c,decaf_point_identity,-(scalarc->limb[0]&1));
     decaf_point_sub(a,w,tmp);
 }
 
