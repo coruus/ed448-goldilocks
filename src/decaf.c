@@ -316,6 +316,16 @@ void decaf_scalar_add (
     decaf_subx(out, out->limb, decaf_scalar_p, decaf_scalar_p, chain);
 }
 
+void decaf_scalar_copy (
+    decaf_scalar_t out,
+    const decaf_scalar_t a
+) {
+    unsigned int i;
+    for (i=0; i<DECAF_SCALAR_LIMBS; i++) {
+        out->limb[i] = a->limb[i];
+    }
+}
+
 decaf_bool_t decaf_scalar_eq (
     const decaf_scalar_t a,
     const decaf_scalar_t b

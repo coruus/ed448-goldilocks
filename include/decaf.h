@@ -167,6 +167,17 @@ void decaf_scalar_mul (
 ) API_VIS NONNULL3;
 
 /**
+ * @brief Copy a scalar.  The scalars may use the same memory, in which
+ * case this function does nothing.
+ * @param [in] a A scalar.
+ * @param [out] out Will become a copy of a.
+ */  
+void decaf_scalar_copy (
+    decaf_scalar_t out,
+    const decaf_scalar_t a
+) API_VIS NONNULL2;
+
+/**
  * @brief Encode a point as a sequence of bytes.
  *
  * @param [out] ser The byte representation of the point.
