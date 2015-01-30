@@ -8,7 +8,7 @@
 mpz_t mp_field;
 mpz_t mp_scalar_field;
 
-void decaf_scalar_print (
+static void decaf_scalar_print (
     const char *descr,
     const decaf_scalar_t scalar
 ) {

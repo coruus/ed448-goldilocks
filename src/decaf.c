@@ -468,7 +468,7 @@ void decaf_point_double(decaf_point_t a, const decaf_point_t b) {
     decaf_point_add(a,b,b);
 }
 
-void decaf_copy (
+void decaf_point_copy (
     decaf_point_t a,
     const decaf_point_t b
 ) {
