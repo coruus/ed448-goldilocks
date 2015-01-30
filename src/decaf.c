@@ -23,9 +23,14 @@ static const gf ZERO = {0}, ONE = {1}, TWO = {2};
 
 #define LMASK ((1ull<<LBITS)-1)
 static const gf P = { LMASK, LMASK, LMASK, LMASK, LMASK-1, LMASK, LMASK, LMASK };
+
+#if (defined(__OPTIMIZE__) && !defined(__OPTIMIZE_SIZE__)) || defined(DECAF_FORCE_UNROLL)
 #define FOR_LIMB(i,op) { unsigned int i=0; \
    op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
 }
+#else
+#define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<NLIMBS; i++)  { op; }}
+#endif
 
 static const int EDWARDS_D = -39081;
 
