@@ -104,7 +104,7 @@ extern "C" {
  */
 decaf_bool_t decaf_scalar_decode (
     decaf_scalar_t s,
-    const unsigned char ser[DECAF_SER_BYTES]
+    const unsigned char ser[DECAF_SCALAR_BYTES]
 ) API_VIS NONNULL2;
     
 /**
@@ -114,7 +114,7 @@ decaf_bool_t decaf_scalar_decode (
  * @param [in] s Deserialized scalar.
  */
 void decaf_scalar_encode (
-    unsigned char ser[DECAF_SER_BYTES],
+    unsigned char ser[DECAF_SCALAR_BYTES],
     const decaf_scalar_t s
 ) API_VIS NONNULL2;
         

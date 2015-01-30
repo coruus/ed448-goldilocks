@@ -125,7 +125,7 @@ doc/timestamp:
 	mkdir -p doc
 	touch $@
 
-doc: Doxyfile doc/timestamp src/*.c src/include/*.h src/$(ARCH)/*.c src/$(ARCH)/*.h
+doc: Doxyfile doc/timestamp include/*.h src/*.c src/include/*.h src/$(FIELD)/$(ARCH)/*.c src/$(FIELD)/$(ARCH)/*.h
 	doxygen
 
 bat: $(BATNAME)
