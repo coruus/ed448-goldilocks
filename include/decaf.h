@@ -23,12 +23,17 @@
 #include <stdint.h>
 
 /* Goldilocks' build flags default to hidden and stripping executables. */
+/** @cond internal */
+#if defined(DOXYGEN) && !defined(__attribute__)
+#define __attribute__((x))
+#endif
 #define API_VIS __attribute__((visibility("default")))
 #define WARN_UNUSED __attribute__((warn_unused_result))
 #define NONNULL1 __attribute__((nonnull(1)))
 #define NONNULL2 __attribute__((nonnull(1,2)))
 #define NONNULL3 __attribute__((nonnull(1,2,3)))
 #define NONNULL5 __attribute__((nonnull(1,2,3,4,5)))
+/** @endcond */
 
 /** Types of internal words.  TODO: ARCH: make 32-bit clean */
 typedef uint64_t decaf_word_t, decaf_bool_t;
@@ -37,8 +42,9 @@ typedef uint64_t decaf_word_t, decaf_bool_t;
 
 /* TODO: perfield, so when 25519 hits this will change */
 #define DECAF_FIELD_BITS 448
-#define DECAF_LIMBS (1 + (512-1)/8/sizeof(decaf_word_t))
-#define DECAF_SCALAR_LIMBS (1 + (448-3)/8/sizeof(decaf_word_t))
+#define DECAF_LIMBS 8
+#define DECAF_SCALAR_BITS 446
+#define DECAF_SCALAR_LIMBS (1 + (DECAF_SCALAR_BITS-1)/8/sizeof(decaf_word_t))
 
 /** Number of bytes in a serialized point.  One less bit than you'd think. */
 #define DECAF_SER_BYTES ((DECAF_FIELD_BITS+6)/8)
