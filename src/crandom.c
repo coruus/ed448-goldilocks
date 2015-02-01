@@ -319,7 +319,7 @@ crandom_init_from_file(
 
     ssize_t offset = 0, red;
     do {
-        red = read(state->randomfd, state->seed + offset, 32 - offset);
+        red = read(state->randomfd, state->seedBuffer + offset, 32 - offset);
         if (red > 0) offset += red;
     } while (red > 0 && offset < 32);
 
@@ -328,7 +328,7 @@ crandom_init_from_file(
         return err ? err : -1;
     }
 
-    memset(state->buffer, 0, 96);
+    memset(state->seedBuffer+32, 0, 96);
 
     state->magic = CRANDOM_MAGIC;
     state->reseeds_mandatory = reseeds_mandatory;
@@ -341,8 +341,8 @@ crandom_init_from_buffer(
     crandom_state_a_t state,
     const char initial_seed[32]
 ) {
-    memcpy(state->seed, initial_seed, 32);
-    memset(state->buffer, 0, 96);
+    memcpy(state->seedBuffer, initial_seed, 32);
+    memset(state->seedBuffer+32, 0, 96);
     state->reseed_countdown = state->reseed_interval = state->fill = state->ctr = state->reseeds_mandatory = 0;
     state->randomfd = -1;
     state->magic = CRANDOM_MAGIC;
@@ -425,7 +425,7 @@ crandom_generate(
                     state->reseed_countdown = state->reseed_interval;
                     ssize_t offset = 0, red;
                     do {
-                        red = read(state->randomfd, state->buffer + offset, 32 - offset);
+                        red = read(state->randomfd, state->seedBuffer + 32 + offset, 32 - offset);
                         if (red > 0) offset += red;
                     } while (red > 0 && offset < 32);
 
@@ -454,19 +454,19 @@ crandom_generate(
                     int i;
                     for (i=0; i<32; i++) {
                         /* Stir in the buffer.  If somehow the read failed, it'll be zeros. */
-                        state->seed[i] ^= state->buffer[i];
+                        state->seedBuffer[i] ^= state->seedBuffer[i+32];
                     }
                 }
             }
-            crandom_chacha_expand(iv,state->ctr,20,128,state->seed,state->seed);
+            crandom_chacha_expand(iv,state->ctr,20,128,state->seedBuffer,state->seedBuffer);
             state->ctr++;
-            state->fill = sizeof(state->buffer);
+            state->fill = sizeof(state->seedBuffer)-32;
         }
 
         unsigned long long copy = (length > state->fill) ? state->fill : length;
         state->fill -= copy;
-        memcpy(output, state->buffer + state->fill, copy);
-        really_memset(state->buffer + state->fill, 0, copy);
+        memcpy(output, state->seedBuffer + 32 + state->fill, copy);
+        really_memset(state->seedBuffer + 32 + state->fill, 0, copy);
         output += copy; length -= copy;
     }
 

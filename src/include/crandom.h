@@ -1,5 +1,5 @@
 /* Copyright (c) 2011 Stanford University.
- * Copyright (c) 2014 Cryptography Research, Inc.
+ * Copyright (c) 2014-2015 Cryptography Research, Inc.
  * Released under the MIT License.  See LICENSE.txt for license information.
  */
 
@@ -29,8 +29,9 @@
  */
 struct crandom_state_t {
     /** @privatesection */
-    unsigned char seed[32];
-    unsigned char buffer[96];
+    /* unsigned char seed[32]; */
+    /* unsigned char buffer[96]; */
+    unsigned char seedBuffer[32+96];
     uint64_t ctr;
     uint64_t magic;
     unsigned int fill;
