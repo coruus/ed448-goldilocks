@@ -286,7 +286,7 @@ void decaf_point_sub (
  *
  * @param [out] scaled The scaled point base*scalar
  * @param [in] base The point to be scaled.
- * @param [in] scalar The scalar to multilpy by.
+ * @param [in] scalar The scalar to multiply by.
  */
 void decaf_point_scalarmul (
     decaf_point_t scaled,
@@ -303,9 +303,9 @@ void decaf_point_scalarmul (
  *
  * @param [out] scaled The scaled point base*scalar
  * @param [in] base1 A first point to be scaled.
- * @param [in] scalar1 A first scalar to multilpy by.
+ * @param [in] scalar1 A first scalar to multiply by.
  * @param [in] base2 A second point to be scaled.
- * @param [in] scalar2 A second scalar to multilpy by.
+ * @param [in] scalar2 A second scalar to multiply by.
  * @TODO: test
  */
 void decaf_point_double_scalarmul (
