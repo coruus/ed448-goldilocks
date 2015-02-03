@@ -381,6 +381,7 @@ decaf_bool_t decaf_scalar_eq (
 const decaf_point_t decaf_point_identity = {{{0},{1},{1},{0}}};
 
 void decaf_point_encode( unsigned char ser[DECAF_SER_BYTES], const decaf_point_t p ) {
+    /* Can shave off one mul here; not important but makes consistent with paper */
     gf a, b, c, d;
     gf_mlw ( a, p->y, 1-EDWARDS_D ); 
     gf_mul ( c, a, p->t ); 
@@ -468,8 +469,7 @@ decaf_bool_t decaf_point_decode (
 ) {
     gf s, a, b, c, d, e;
     decaf_bool_t succ = gf_deser(s, ser);
-    decaf_bool_t zero = gf_eq(s, ZERO);
-    succ &= allow_identity | ~zero;
+    succ &= allow_identity | ~gf_eq(s, ZERO);
     succ &= ~hibit(s);
     gf_sqr ( a, s );
     gf_sub ( p->z, ONE, a );
@@ -490,8 +490,9 @@ decaf_bool_t decaf_point_decode (
     gf_mul ( a, b, c );
     gf_mul ( p->y,a,p->z );
     gf_mul ( p->t,p->x,a );
-    p->y[0] -= zero;
-    /* TODO: do something safe if ~succ? */
+    /* TODO: do something safe if ~succ?
+     * TODO: double-check that this works on identity...
+     */
     return succ;
 }
 
