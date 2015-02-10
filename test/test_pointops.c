@@ -393,6 +393,7 @@ int test_decaf_evil (void) {
                 || (s_e & ~succ_dec)
                 || (s_e & ~decaf_point_eq(pt_dec, pt_dec2)
                 || (s_e & ~decaf_point_valid(pt_dec))
+                || (succ_dec & ~decaf_point_valid(pt_dec2))
                 || ~succ_nur
                 || ~eq_neg
                 || ~eq_pos)

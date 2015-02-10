@@ -468,8 +468,8 @@ decaf_bool_t decaf_point_decode (
     decaf_bool_t allow_identity
 ) {
     gf s, a, b, c, d, e;
-    decaf_bool_t succ = gf_deser(s, ser);
-    succ &= allow_identity | ~gf_eq(s, ZERO);
+    decaf_bool_t succ = gf_deser(s, ser), zero = gf_eq(s, ZERO);
+    succ &= allow_identity | ~zero;
     succ &= ~hibit(s);
     gf_sqr ( a, s );
     gf_sub ( p->z, ONE, a );
@@ -490,9 +490,8 @@ decaf_bool_t decaf_point_decode (
     gf_mul ( a, b, c );
     gf_mul ( p->y,a,p->z );
     gf_mul ( p->t,p->x,a );
-    /* TODO: do something safe if ~succ?
-     * TODO: double-check that this works on identity...
-     */
+    p->y[0] -= zero;
+    /* TODO: do something safe if ~succ? */
     return succ;
 }
 
@@ -692,5 +691,6 @@ decaf_bool_t decaf_point_valid (
     gf_sqr(b,p->z);
     gf_sub(b,b,c);
     out &= gf_eq(a,b);
+    out &= ~gf_eq(p->z,ZERO);
     return out;
 }
