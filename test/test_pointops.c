@@ -157,14 +157,14 @@ add_double_test (
     copy_tw_extensible(&textb, &text1);
     add_tw_pniels_to_tw_extensible(&textb, &pn);
 
-    decaf_point_t ted3;
+    decaf_448_point_t ted3;
     convert_tw_extensible_to_tw_extended(&ted1, &text1);
     convert_tw_extensible_to_tw_extended(&ted2, &text2);
-    decaf_point_add(ted3, (struct decaf_point_s*)&ted1, (struct decaf_point_s*)&ted2);
+    decaf_448_point_add(ted3, (struct decaf_448_point_s*)&ted1, (struct decaf_448_point_s*)&ted2);
     add_tw_extended(&ted1, &ted2);
     convert_tw_extensible_to_tw_extended(&ted2, &textb);
     
-    if (~decaf_eq_tw_extended(&ted1, &ted2) | ~decaf_point_eq((struct decaf_point_s*)&ted1, ted3)) {
+    if (~decaf_eq_tw_extended(&ted1, &ted2) | ~decaf_448_point_eq((struct decaf_448_point_s*)&ted1, ted3)) {
         youfail();
         succ = 0;
         printf("    Tw extended simple compat:\n");
@@ -362,13 +362,13 @@ int test_decaf_evil (void) {
             decaf_serialize_tw_extended(out_ed, pt_ed);
             
             uint8_t ser_de[56], ser_ed[56];
-            decaf_point_t pt_dec, pt_dec2;
+            decaf_448_point_t pt_dec, pt_dec2;
             memcpy(pt_dec, pt_ed, sizeof(pt_dec));
-            decaf_point_encode(ser_de, pt_dec);
-            mask_t succ_dec = decaf_point_decode(pt_dec2, ser_de, -1);
+            decaf_448_point_encode(ser_de, pt_dec);
+            mask_t succ_dec = decaf_448_point_decode(pt_dec2, ser_de, -1);
             field_serialize(ser_ed, out_ed);
             
-            decaf_point_t p,q,m;
+            decaf_448_point_t p,q,m;
             uint8_t oo_base_ser[56], n_base_ser[56];
             field_a_t oo_base,tmp,tmp2;
             field_isr(tmp,base);
@@ -378,17 +378,17 @@ int test_decaf_evil (void) {
             field_serialize(oo_base_ser,oo_base);
             field_neg(tmp,base);
             field_serialize(n_base_ser,tmp); // = -base
-            decaf_point_from_hash_nonuniform (p,random_input);
-            decaf_point_from_hash_nonuniform (q,oo_base_ser);
-            decaf_point_from_hash_nonuniform (m,n_base_ser);
-            mask_t succ_nur = decaf_point_valid(p);
-            succ_nur &= decaf_point_valid(q);
-            succ_nur &= decaf_point_valid(m);
+            decaf_448_point_from_hash_nonuniform (p,random_input);
+            decaf_448_point_from_hash_nonuniform (q,oo_base_ser);
+            decaf_448_point_from_hash_nonuniform (m,n_base_ser);
+            mask_t succ_nur = decaf_448_point_valid(p);
+            succ_nur &= decaf_448_point_valid(q);
+            succ_nur &= decaf_448_point_valid(m);
             
             mask_t eq_neg, eq_pos;
-            eq_neg = decaf_point_eq(m,p);
-            decaf_point_add(m,p,q);
-            eq_pos = decaf_point_eq(m,decaf_point_identity);
+            eq_neg = decaf_448_point_eq(m,p);
+            decaf_448_point_add(m,p,q);
+            eq_pos = decaf_448_point_eq(m,decaf_448_point_identity);
             
             if ((care_should && should != s_m)
                 || ~s_base || s_e != s_te || s_m != s_te || s_ed != s_te
@@ -396,9 +396,9 @@ int test_decaf_evil (void) {
                 || (s_ed && ~field_eq(out_e,out_ed))
                 || memcmp(ser_de, ser_ed, 56)
                 || (s_e & ~succ_dec)
-                || (s_e & ~decaf_point_eq(pt_dec, pt_dec2)
-                || (s_e & ~decaf_point_valid(pt_dec))
-                || (succ_dec & ~decaf_point_valid(pt_dec2))
+                || (s_e & ~decaf_448_point_eq(pt_dec, pt_dec2)
+                || (s_e & ~decaf_448_point_valid(pt_dec))
+                || (succ_dec & ~decaf_448_point_valid(pt_dec2))
                 || ~succ_nur
                 || ~eq_neg
                 || ~eq_pos)
@@ -436,13 +436,13 @@ int test_decaf (void) {
     
     int i, hits = 0, fails = 0;
     
-    if (~decaf_point_valid(decaf_point_base)) {
+    if (~decaf_448_point_valid(decaf_448_point_base)) {
         youfail();
         printf("   Decaf base point invalid\n");
         fails++;
     }
     
-    if (~decaf_point_valid(decaf_point_identity)) {
+    if (~decaf_448_point_valid(decaf_448_point_identity)) {
         youfail();
         printf("   Decaf identity point invalid\n");
         fails++;

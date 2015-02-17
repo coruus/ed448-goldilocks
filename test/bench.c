@@ -266,12 +266,12 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("barrett mac: %5.1fns\n", when * 1e9 / i);
     
-    decaf_scalar_t asc,bsc,csc;
+    decaf_448_scalar_t asc,bsc,csc;
     memset(asc,0,sizeof(asc));
     memset(bsc,0,sizeof(bsc));
     when = now();
     for (i=0; i<nbase*10; i++) {
-        decaf_scalar_mul(csc,asc,bsc);
+        decaf_448_scalar_mul(csc,asc,bsc);
     }
     when = now() - when;
     printf("decaf mulsc: %5.1fns\n", when * 1e9 / i);
@@ -296,13 +296,13 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("txt + txt :  %5.1fns\n", when * 1e9 / i);
 
-    decaf_point_t Da,Db,Dc;
+    decaf_448_point_t Da,Db,Dc;
     memset(Da,0,sizeof(Da));
     memset(Db,0,sizeof(Db));
     memset(Dc,0,sizeof(Dc));
     when = now();
     for (i=0; i<nbase*100; i++) {
-        decaf_point_add(Da,Db,Dc);
+        decaf_448_point_add(Da,Db,Dc);
     }
     when = now() - when;
     printf("dec + dec:   %5.1fns\n", when * 1e9 / i);
@@ -368,14 +368,14 @@ int main(int argc, char **argv) {
    
     when = now();
     for (i=0; i<nbase/10; i++) {
-        decaf_point_scalarmul(Da,Db,asc);
+        decaf_448_point_scalarmul(Da,Db,asc);
     }
     when = now() - when;
     printf("decaf slow:  %5.1fµs\n", when * 1e6 / i);
    
     when = now();
     for (i=0; i<nbase/10; i++) {
-        decaf_point_double_scalarmul(Da,Db,bsc,Dc,asc);
+        decaf_448_point_double_scalarmul(Da,Db,bsc,Dc,asc);
     }
     when = now() - when;
     printf("decaf slo2:  %5.1fµs\n", when * 1e6 / i);

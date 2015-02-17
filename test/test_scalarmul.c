@@ -111,10 +111,10 @@ single_scalarmul_compatibility_test (
         scalarmul_vt(&work, scalar, nbits);
         untwist_and_double_and_serialize(vt, &work);
         
-        decaf_point_t ed2;
+        decaf_448_point_t ed2;
     	tw_extended_a_t ed;
         convert_tw_extensible_to_tw_extended(ed, &text);
-        decaf_point_scalarmul(ed2, (struct decaf_point_s *)ed, (struct decaf_scalar_s *)scalar);
+        decaf_448_point_scalarmul(ed2, (struct decaf_448_point_s *)ed, (struct decaf_448_scalar_s *)scalar);
 
         scalarmul_ed(ed, scalar);
         field_copy(work.x, ed->x);
@@ -125,8 +125,8 @@ single_scalarmul_compatibility_test (
         untwist_and_double_and_serialize(sced, &work);
 
         uint8_t ser1[(FIELD_BITS+6)/8], ser2[(FIELD_BITS+6)/8];
-        decaf_point_encode(ser1, (struct decaf_point_s *)ed);
-        decaf_point_encode(ser2, ed2);
+        decaf_448_point_encode(ser1, (struct decaf_448_point_s *)ed);
+        decaf_448_point_encode(ser2, ed2);
 
         /* check consistency mont vs window */
         consistent &= field_eq(mont, ct);
