@@ -10,8 +10,7 @@
 
 #include "decaf.h"
 
-/* TODO arch */
-#define WBITS 64
+#define WBITS DECAF_WORD_BITS
 
 #if WBITS == 64
 #define LBITS 56
@@ -36,7 +35,12 @@ typedef decaf_word_t gf[DECAF_LIMBS];
 static const gf ZERO = {0}, ONE = {1}, TWO = {2};
 
 #define LMASK ((((decaf_word_t)1)<<LBITS)-1)
+#if WBITS == 64
 static const gf P = { LMASK, LMASK, LMASK, LMASK, LMASK-1, LMASK, LMASK, LMASK };
+#else
+static const gf P = { LMASK,   LMASK, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK,
+		      LMASK-1, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK };
+#endif
 static const int EDWARDS_D = -39081;
 
 const decaf_scalar_t decaf_scalar_p = {{{

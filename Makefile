@@ -54,9 +54,10 @@ ifeq (,$(findstring 64,$(ARCH))$(findstring gcc,$(CC)))
 XCFLAGS += -DGOLDI_FORCE_32_BIT=1
 endif
 
+ARCHFLAGS += $(XARCHFLAGS)
 CFLAGS  = $(LANGFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCFLAGS)
 LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS)
-ASFLAGS = $(ARCHFLAGS)
+ASFLAGS = $(ARCHFLAGS) $(XASFLAGS)
 
 .PHONY: clean all test bench todo doc lib bat
 .PRECIOUS: build/%.s
@@ -97,7 +98,7 @@ ifeq ($(UNAME),Darwin)
 	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
 		  $(LIBCOMPONENTS)
 else
-	$(LD) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
+	$(LD) $(LDFLAGS) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
 	strip --discard-all $@
 	ln -sf `basename $@` build/goldilocks.so.1
 endif

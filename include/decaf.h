@@ -33,24 +33,28 @@
 #define NONNULL2 __attribute__((nonnull(1,2)))
 #define NONNULL3 __attribute__((nonnull(1,2,3)))
 #define NONNULL5 __attribute__((nonnull(1,2,3,4,5)))
+
+/* Internal word types */
+#if (defined(__ILP64__) || defined(__amd64__) || defined(__x86_64__) || (((__UINT_FAST32_MAX__)>>30)>>30)) \
+	&& !defined(DECAF_FORCE_32_BIT)
+#define DECAF_WORD_BITS 64
+typedef uint64_t decaf_word_t, decaf_bool_t;
+#else
+#define DECAF_WORD_BITS 32
+typedef uint32_t decaf_word_t, decaf_bool_t;
+#endif
 /** @endcond */
 
-/** Types of internal words.  TODO: ARCH: make 32-bit clean */
-typedef uint64_t decaf_word_t, decaf_bool_t;
-
 /* TODO: prefix all these operations and factor to support multiple curves. */
-
-/* TODO: perfield, so when 25519 hits this will change */
-#define DECAF_FIELD_BITS 448
-#define DECAF_LIMBS 8
+#define DECAF_LIMBS (512/DECAF_WORD_BITS)
 #define DECAF_SCALAR_BITS 446
-#define DECAF_SCALAR_LIMBS (1 + (DECAF_SCALAR_BITS-1)/8/sizeof(decaf_word_t))
+#define DECAF_SCALAR_LIMBS (448/DECAF_WORD_BITS)
 
-/** Number of bytes in a serialized point.  One less bit than you'd think. */
-#define DECAF_SER_BYTES ((DECAF_FIELD_BITS+6)/8)
+/** Number of bytes in a serialized point. */
+#define DECAF_SER_BYTES 56
 
-/** Number of bytes in a serialized scalar.  Two less bits than you'd think. */
-#define DECAF_SCALAR_BYTES ((DECAF_FIELD_BITS+5)/8)
+/** Number of bytes in a serialized scalar. */
+#define DECAF_SCALAR_BYTES 56
 
 /** Twisted Edwards (-1,d-1) extended homogeneous coordinates */
 typedef struct decaf_point_s {

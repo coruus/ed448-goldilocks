@@ -231,9 +231,7 @@ scalarmul_ed (
     }
 
     i = nbits - WINDOW;
-    int bits = scalar2[i/WORD_BITS] >> (i%WORD_BITS) & WINDOW_MASK,
-        inv = (bits>>(WINDOW-1))-1;
-    bits ^= inv;
+    int bits, inv;
     
     set_identity_tw_extended(working);
 

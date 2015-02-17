@@ -282,24 +282,29 @@ single_twisting_test (
 
 int test_decaf_evil (void) {
     
-#if FIELD_BITS != 448 || WORD_BITS != 64
-    
+#if FIELD_BITS != 448
     printf(" [ UNIMP ] ");
     return 0;
 #else
-    
-    word_t evil_scalars[5][7] = {
+
+#if WORD_BITS==64
+#define SC_WORD(x) x##ull
+#elif WORD_BITS==32
+#define SC_WORD(x) (uint32_t)(x##ull), (x##ull)>>32
+#endif
+
+    word_t evil_scalars[5][448/WORD_BITS] = {
         {0},
-        {0x2378c292ab5844f3,0x216cc2728dc58f55,0xc44edb49aed63690,0xffffffff7cca23e9,
-         0xffffffffffffffff,0xffffffffffffffff,0x3fffffffffffffff}, /* q */
-        {0xdc873d6d54a7bb0d,0xde933d8d723a70aa,0x3bb124b65129c96f,
-         0x335dc16,0x0,0x0,0x4000000000000000}, /* qtwist */
-        {0x46f1852556b089e6,0x42d984e51b8b1eaa,0x889db6935dac6d20,0xfffffffef99447d3,
-         0xffffffffffffffff,0xffffffffffffffff,0x7fffffffffffffff}, /* 2q */
-        {0xb90e7adaa94f761a,0xbd267b1ae474e155,0x7762496ca25392df,0x66bb82c,
-             0x0,0x0,0x8000000000000000} /* 2*qtwist */
+        {SC_WORD(0x2378c292ab5844f3),SC_WORD(0x216cc2728dc58f55),SC_WORD(0xc44edb49aed63690),SC_WORD(0xffffffff7cca23e9),
+         SC_WORD(0xffffffffffffffff),SC_WORD(0xffffffffffffffff),SC_WORD(0x3fffffffffffffff)}, /* q */
+        {SC_WORD(0xdc873d6d54a7bb0d),SC_WORD(0xde933d8d723a70aa),SC_WORD(0x3bb124b65129c96f),
+         SC_WORD(0x335dc16),SC_WORD(0x0),SC_WORD(0x0),SC_WORD(0x4000000000000000)}, /* qtwist */
+        {SC_WORD(0x46f1852556b089e6),SC_WORD(0x42d984e51b8b1eaa),SC_WORD(0x889db6935dac6d20),SC_WORD(0xfffffffef99447d3),
+         SC_WORD(0xffffffffffffffff),SC_WORD(0xffffffffffffffff),SC_WORD(0x7fffffffffffffff)}, /* 2q */
+        {SC_WORD(0xb90e7adaa94f761a),SC_WORD(0xbd267b1ae474e155),SC_WORD(0x7762496ca25392df),SC_WORD(0x66bb82c),
+             SC_WORD(0x0),SC_WORD(0x0),SC_WORD(0x8000000000000000)} /* 2*qtwist */
     };
-    word_t random_scalar[7];
+    word_t random_scalar[448/WORD_BITS];
     
     unsigned char evil_inputs[3][56];
     memset(evil_inputs[0],0,56);
