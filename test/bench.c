@@ -17,6 +17,7 @@
 #include "goldilocks.h"
 #include "sha512.h"
 #include "decaf.h"
+#include "shake.h"
 
 static __inline__ void
 ignore_result ( int result ) {
@@ -163,6 +164,13 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("sha512 blk:  %5.1fns (%0.2f MB/s)\n", when * 1e9 / i, 128*i/when/1e6);
+    
+    when = now();
+    for (i=0; i<nbase; i++) {
+        shake256_hash(hashout,128,hashout,128);
+    }
+    when = now() - when;
+    printf("shake  1blk: %5.1fns\n", when * 1e9 / i);
     
     when = now();
     for (i=0; i<nbase; i++) {

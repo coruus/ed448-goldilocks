@@ -14,6 +14,8 @@
 
 #include <stdint.h>
 
+#define API_VIS __attribute__((visibility("default")))
+
 #ifndef INTERNAL_SPONGE_STRUCT
     typedef struct keccak_sponge_s {
         uint64_t opaque[26];
@@ -29,7 +31,7 @@
 void sponge_init (
     keccak_sponge_t sponge,
     const struct kparams_s *params
-);
+) API_VIS;
 
 /**
  * @brief Absorb data into a SHA3 or SHAKE hash context.
@@ -41,7 +43,7 @@ void sha3_update (
     struct keccak_sponge_s * __restrict__ sponge,
     const uint8_t *in,
     size_t len
-);
+) API_VIS;
 
 /**
  * @brief Squeeze output data from a SHA3 or SHAKE hash context.
@@ -56,7 +58,7 @@ void sha3_output (
     keccak_sponge_t sponge,
     uint8_t * __restrict__ out,
     size_t len
-);
+) API_VIS;
 
 /**
  * @brief Destroy a SHA3 or SHAKE sponge context by overwriting it with 0.
@@ -64,8 +66,7 @@ void sha3_output (
  */  
 void sponge_destroy (
     keccak_sponge_t sponge
-);
-
+) API_VIS;
 
 /**
  * @brief Hash (in) to (out)
@@ -80,12 +81,12 @@ void sponge_hash (
     uint8_t *out,
     size_t outlen,
     const struct kparams_s *params
-);
+) API_VIS;
 
 /* TODO: expand/doxygenate individual SHAKE/SHA3 instances? */
 
 #define DECSHAKE(n) \
-    extern const struct kparams_s *SHAKE##n##_params; \
+    extern const struct kparams_s *SHAKE##n##_params API_VIS; \
     static inline void shake##n##_init(keccak_sponge_t sponge) { \
         sponge_init(sponge, SHAKE##n##_params); \
     } \
@@ -104,7 +105,7 @@ void sponge_hash (
     }
     
 #define DECSHA3(n) \
-    extern const struct kparams_s *SHA3_##n##_params; \
+    extern const struct kparams_s *SHA3_##n##_params API_VIS; \
     static inline void sha3_##n##_init(keccak_sponge_t sponge) { \
         sponge_init(sponge, SHA3_##n##_params); \
     } \
@@ -128,5 +129,7 @@ DECSHA3(224)
 DECSHA3(256)
 DECSHA3(384)
 DECSHA3(512)
+    
+#undef API_VIS
     
 #endif /* __SHAKE_H__ */
