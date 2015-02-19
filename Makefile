@@ -76,7 +76,7 @@ BENCHCOMPONENTS=build/bench.o
 BATBASE=ed448goldilocks-bats-$(TODAY)
 BATNAME=build/$(BATBASE)
 
-all: lib build/test build/bench
+all: lib build/test build/bench build/shakesum
 
 scan: clean
 	scan-build --use-analyzer=`which clang` \
@@ -89,6 +89,9 @@ build/bench: $(LIBCOMPONENTS) $(BENCHCOMPONENTS)
 
 build/test: $(LIBCOMPONENTS) $(TESTCOMPONENTS)
 	$(LD) $(LDFLAGS) -o $@ $^ -lgmp
+	
+build/shakesum: build/shakesum.o build/shake.o
+	$(LD) $(LDFLAGS) -o $@ $^
 
 lib: build/goldilocks.so
 
