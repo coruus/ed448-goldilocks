@@ -12,6 +12,7 @@
  */
 
 #define __STDC_WANT_LIB_EXT1__ 1 /* for memset_s */
+#define _BSD_SOURCE 1 /* for endian */
 #include <assert.h>
 #include <stdint.h>
 #include <string.h>
