@@ -74,6 +74,7 @@ void sponge_destroy (
  * @param [in] inlen The length of the input data.
  * @param [out] out A buffer for the output data.
  * @param [in] outlen The length of the output data.
+ * @param [in] params The parameters of the sponge hash.
  */  
 void sponge_hash (
     const uint8_t *in,
