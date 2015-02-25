@@ -66,7 +66,8 @@ static const decaf_448_scalar_t decaf_448_scalar_r2 = {{{
 static const decaf_word_t DECAF_MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae918bc5ull);
 
 /** base = twist of Goldilocks base point (~,19). */
-const decaf_448_point_t decaf_448_point_base = {{
+
+const decaf_448_precomputed_t decaf_448_precomputed_base = {{{{{
     { LIMB(0xb39a2d57e08c7b),LIMB(0xb38639c75ff281),
       LIMB(0x2ec981082b3288),LIMB(0x99fe8607e5237c),
       LIMB(0x0e33fbb1fadd1f),LIMB(0xe714f67055eb4a),
@@ -80,7 +81,9 @@ const decaf_448_point_t decaf_448_point_base = {{
       LIMB(0x0d79c0a7729a69),LIMB(0xc18d3f24aebc1c),
       LIMB(0x1fbb5389b3fda5),LIMB(0xbb24f674635948),
       LIMB(0x723a55709a3983),LIMB(0xe1c0107a823dd4) }
-}};
+}}}}};
+
+const struct decaf_448_point_s *decaf_448_point_base = decaf_448_precomputed_base->p[0];
 
 #if (defined(__OPTIMIZE__) && !defined(__OPTIMIZE_SIZE__)) || defined(DECAF_FORCE_UNROLL)
     #if DECAF_448_LIMBS==8
@@ -697,4 +700,19 @@ decaf_bool_t decaf_448_point_valid (
     out &= gf_eq(a,b);
     out &= ~gf_eq(p->z,ZERO);
     return out;
+}
+
+void decaf_448_precompute (
+    decaf_448_precomputed_t a,
+    const decaf_448_point_t b
+) {
+    decaf_448_point_copy(a->p[0],b);
+}
+
+void decaf_448_precomputed_scalarmul (
+    decaf_448_point_t a,
+    const decaf_448_precomputed_t b,
+    const decaf_448_scalar_t scalar
+) {
+    decaf_448_point_scalarmul(a,b->p[0],scalar);
 }

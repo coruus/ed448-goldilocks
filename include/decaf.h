@@ -63,6 +63,11 @@ typedef struct decaf_448_point_s {
     decaf_word_t x[DECAF_448_LIMBS],y[DECAF_448_LIMBS],z[DECAF_448_LIMBS],t[DECAF_448_LIMBS];
 } decaf_448_point_t[1];
 
+/** Precomputed table based on a point.  Can be trivial implementation. */
+typedef struct decaf_448_precomputed_s {
+    decaf_448_point_t p[1];
+} decaf_448_precomputed_t[1];
+
 /** Scalar is stored packed, because we don't need the speed. */
 typedef struct decaf_448_scalar_s {
     decaf_word_t limb[DECAF_448_SCALAR_LIMBS];
@@ -78,23 +83,26 @@ static const decaf_bool_t DECAF_SUCCESS = -(decaf_bool_t)1 /*DECAF_TRUE*/,
 /** The prime p, for debugging purposes.
  * TODO: prevent this scalar from actually being used for non-debugging purposes?
  */
-const decaf_448_scalar_t decaf_448_scalar_p API_VIS;
+extern const decaf_448_scalar_t decaf_448_scalar_p API_VIS;
 
 /** A scalar equal to 1. */
-const decaf_448_scalar_t decaf_448_scalar_one API_VIS;
+extern const decaf_448_scalar_t decaf_448_scalar_one API_VIS;
 
 /** A scalar equal to 0. */
-const decaf_448_scalar_t decaf_448_scalar_zero API_VIS;
+extern const decaf_448_scalar_t decaf_448_scalar_zero API_VIS;
 
 /** The identity point on the curve. */
-const decaf_448_point_t decaf_448_point_identity API_VIS;
+extern const decaf_448_point_t decaf_448_point_identity API_VIS;
 
 /**
  * An arbitrarily chosen base point on the curve.
  * Equal to Ed448-Goldilocks base point defined by DJB, except of course that
  * it's on the twist in this case.  TODO: choose a base point with nice encoding?
  */
-const decaf_448_point_t decaf_448_point_base API_VIS;
+extern const struct decaf_448_point_s *decaf_448_point_base API_VIS;
+
+/** Precomputed table for the base point on the curve. */
+extern const decaf_448_precomputed_t decaf_448_precomputed_base API_VIS;
 
 #ifdef __cplusplus
 extern "C" {
@@ -297,6 +305,37 @@ void decaf_448_point_sub (
 void decaf_448_point_scalarmul (
     decaf_448_point_t scaled,
     const decaf_448_point_t base,
+    const decaf_448_scalar_t scalar
+) API_VIS NONNULL3;
+
+/**
+ * @brief Precompute a table for fast scalar multiplication.
+ * Some implementations do not include precomputed points; for
+ * those implementations, this implementation simply copies the
+ * point.
+ *
+ * @param [out] a A precomputed table of multiples of the point.
+ * @param [in] b Any point.
+ */
+void decaf_448_precompute (
+    decaf_448_precomputed_t a,
+    const decaf_448_point_t b
+) API_VIS NONNULL2;
+
+/**
+ * @brief Multiply a precomputed base point by a scalar:
+ * scaled = scalar*base.
+ * Some implementations do not include precomputed points; for
+ * those implementations, this function is the same as
+ * decaf_448_point_scalarmul
+ *
+ * @param [out] scaled The scaled point base*scalar
+ * @param [in] base The point to be scaled.
+ * @param [in] scalar The scalar to multiply by.
+ */
+void decaf_448_precomputed_scalarmul (
+    decaf_448_point_t scaled,
+    const decaf_448_precomputed_t base,
     const decaf_448_scalar_t scalar
 ) API_VIS NONNULL3;
 
