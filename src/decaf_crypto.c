@@ -184,7 +184,7 @@ decaf_448_verify_shake (
     shake256_destroy(ctx);
     decaf_448_scalar_decode_long(challenge, overkill, sizeof(overkill));
 
-    /* Decode points.  PERF: avoid decode of point? */
+    /* Decode points. */
     ret  = decaf_448_point_decode(point, sig, DECAF_TRUE);
     ret &= decaf_448_point_decode(pubpoint, pub, DECAF_FALSE);
     ret &= decaf_448_scalar_decode(response, &sig[DECAF_448_SER_BYTES]);
@@ -194,8 +194,7 @@ decaf_448_verify_shake (
         decaf_448_point_identity, response,
         pubpoint, challenge
     );
-    
-    /* TODO: avoid the decode here? */
+
     ret &= decaf_448_point_eq(pubpoint, point);
     
     return ret;
