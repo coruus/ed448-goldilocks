@@ -712,5 +712,30 @@ int main(int argc, char **argv) {
         printf("BUG: mismatched shared secrets\n");
     }
     
+    decaf_448_signature_t dsig;
+    const char *dmessage = "hello world";
+    const char *dnessage = "Jello world";
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        decaf_448_sign(dsig, dpriv[0], (const unsigned char *)dmessage, 11);
+    }
+    when = now() - when;
+    printf("sign:        %5.1fµs\n", when * 1e6 / i);
+    
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        decaf_bool_t ret = decaf_448_verify(dsig, dpub[0],
+            (const unsigned char *)((i&1) ? dmessage : dnessage), 11);
+        if ((i&1) && ~ret) {
+            printf("BUG: verify failed\n");
+            break;
+        } else if (!(i&1) && ret) {
+            printf("BUG: unverify succeeded\n");
+            break;
+        }
+    }
+    when = now() - when;
+    printf("verify:      %5.1fµs\n", when * 1e6 / i);
+    
     return 0;
 }

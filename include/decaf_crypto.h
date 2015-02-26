@@ -31,6 +31,9 @@ typedef unsigned char decaf_448_symmetric_key_t[DECAF_448_SYMMETRIC_KEY_BYTES];
 /** An encoded public key. */
 typedef unsigned char decaf_448_public_key_t[DECAF_448_SER_BYTES];
 
+/** A signature. */
+typedef unsigned char decaf_448_signature_t[DECAF_448_SER_BYTES + DECAF_448_SCALAR_BYTES];
+
 /** A private key. */
 typedef struct {
     decaf_448_symmetric_key_t sym;
@@ -90,6 +93,66 @@ decaf_448_shared_secret (
     const decaf_448_private_key_t my_privkey,
     const decaf_448_public_key_t your_pubkey
 ) NONNULL134 WARN_UNUSED API_VIS;
+   
+/**
+ * @brief Sign a message from its SHAKE context.
+ *
+ * @param [out] sig The signature.
+ * @param [in] priv Your private key.
+ * @param [in] shake A SHAKE256 context with the message.
+ */ 
+void
+decaf_448_sign_shake (
+    decaf_448_signature_t sig,
+    const decaf_448_private_key_t priv,
+    const keccak_sponge_t shake
+) NONNULL3 API_VIS;
+
+/**
+ * @brief Sign a message from its SHAKE context.
+ *
+ * @param [out] sig The signature.
+ * @param [in] priv Your private key.
+ * @param [in] message The message.
+ * @param [in] message_len The message's length.
+ */ 
+void
+decaf_448_sign (
+    decaf_448_signature_t sig,
+    const decaf_448_private_key_t priv,
+    const unsigned char *message,
+    size_t message_len
+) NONNULL3 API_VIS;
+
+/**
+ * @brief Verify a signed message from its SHAKE context.
+ *
+ * @param [in] sig The signature.
+ * @param [in] pub The public key.
+ * @param [in] shake A SHAKE256 context with the message.
+ */    
+decaf_bool_t
+decaf_448_verify_shake (
+    const decaf_448_signature_t sig,
+    const decaf_448_public_key_t pub,
+    const keccak_sponge_t shake
+) NONNULL3 API_VIS WARN_UNUSED;
+
+/**
+ * @brief Verify a signed message.
+ *
+ * @param [in] sig The signature.
+ * @param [in] pub The public key.
+ * @param [in] message The message.
+ * @param [in] message_len The message's length.
+ */    
+decaf_bool_t
+decaf_448_verify (
+    const decaf_448_signature_t sig,
+    const decaf_448_public_key_t pub,
+    const unsigned char *message,
+    size_t message_len
+) NONNULL3 API_VIS WARN_UNUSED;
     
 #undef API_VIS
 #undef WARN_UNUSED

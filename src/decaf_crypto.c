@@ -11,13 +11,15 @@
 #include "decaf_crypto.h"
 #include <string.h>
 
+static const unsigned int DECAF_448_SCALAR_OVERKILL_BYTES = DECAF_448_SCALAR_BYTES + 8;
+
 void decaf_448_derive_private_key (
     decaf_448_private_key_t priv,
     const decaf_448_symmetric_key_t proto
 ) {
     const char *magic = "decaf_448_derive_private_key";
     keccak_sponge_t sponge;
-    uint8_t encoded_scalar[64];
+    uint8_t encoded_scalar[DECAF_448_SCALAR_OVERKILL_BYTES];
     decaf_448_point_t pub;
     shake256_init(sponge);
     shake256_update(sponge, proto, sizeof(decaf_448_symmetric_key_t));
@@ -112,5 +114,118 @@ decaf_448_shared_secret (
     
     decaf_bzero(ss_ser, sizeof(ss_ser));
     
+    return ret;
+}
+
+void
+decaf_448_sign_shake (
+    decaf_448_signature_t sig,
+    const decaf_448_private_key_t priv,
+    const keccak_sponge_t shake
+) {
+    const char *magic = "decaf_448_sign_shake";
+
+    uint8_t overkill[DECAF_448_SCALAR_OVERKILL_BYTES], encoded[DECAF_448_SER_BYTES];
+    decaf_448_point_t point;
+    decaf_448_scalar_t nonce, challenge;
+    
+    /* Derive nonce */
+    keccak_sponge_t ctx;
+    memcpy(ctx, shake, sizeof(ctx));
+    shake256_update(ctx, priv->sym, sizeof(priv->sym));
+    shake256_update(ctx, (const unsigned char *)magic, strlen(magic));
+    shake256_final(ctx, overkill, sizeof(overkill));
+    
+    decaf_448_scalar_decode_long(nonce, overkill, sizeof(overkill));
+    decaf_448_precomputed_scalarmul(point, decaf_448_precomputed_base, nonce);
+    decaf_448_point_encode(encoded, point);
+
+    /* Derive challenge */
+    memcpy(ctx, shake, sizeof(ctx));
+    shake256_update(ctx, priv->pub, sizeof(priv->pub));
+    shake256_update(ctx, encoded, sizeof(encoded));
+    shake256_final(ctx, overkill, sizeof(overkill));
+    shake256_destroy(ctx);
+    decaf_448_scalar_decode_long(challenge, overkill, sizeof(overkill));
+    
+    /* Respond */
+    decaf_448_scalar_mul(challenge, challenge, priv->secret_scalar);
+    decaf_448_scalar_sub(nonce, nonce, challenge);
+    
+    /* Save results */
+    memcpy(sig, encoded, sizeof(encoded));
+    decaf_448_scalar_encode(&sig[sizeof(encoded)], nonce);
+    
+    /* Clean up */
+    decaf_448_scalar_destroy(nonce);
+    decaf_448_scalar_destroy(challenge);
+    decaf_bzero(overkill,sizeof(overkill));
+    decaf_bzero(encoded,sizeof(encoded));
+}
+
+decaf_bool_t
+decaf_448_verify_shake (
+    const decaf_448_signature_t sig,
+    const decaf_448_public_key_t pub,
+    const keccak_sponge_t shake
+) {
+    decaf_bool_t ret;
+
+    uint8_t overkill[DECAF_448_SCALAR_OVERKILL_BYTES];
+    decaf_448_point_t point, pubpoint;
+    decaf_448_scalar_t challenge, response;
+    
+    /* Derive challenge */
+    keccak_sponge_t ctx;
+    memcpy(ctx, shake, sizeof(ctx));
+    shake256_update(ctx, pub, sizeof(decaf_448_public_key_t));
+    shake256_update(ctx, sig, DECAF_448_SER_BYTES);
+    shake256_final(ctx, overkill, sizeof(overkill));
+    shake256_destroy(ctx);
+    decaf_448_scalar_decode_long(challenge, overkill, sizeof(overkill));
+
+    /* Decode points.  PERF: avoid decode of point? */
+    ret  = decaf_448_point_decode(point, sig, DECAF_TRUE);
+    ret &= decaf_448_point_decode(pubpoint, pub, DECAF_FALSE);
+    ret &= decaf_448_scalar_decode(response, &sig[DECAF_448_SER_BYTES]);
+
+    decaf_448_point_double_scalarmul (
+        pubpoint,
+        decaf_448_point_identity, response,
+        pubpoint, challenge
+    );
+    
+    /* TODO: avoid the decode here? */
+    ret &= decaf_448_point_eq(pubpoint, point);
+    
+    return ret;
+}
+
+void
+decaf_448_sign (
+    decaf_448_signature_t sig,
+    const decaf_448_private_key_t priv,
+    const unsigned char *message,
+    size_t message_len
+) {
+    keccak_sponge_t ctx;
+    shake256_init(ctx);
+    shake256_update(ctx, message, message_len);
+    decaf_448_sign_shake(sig, priv, ctx);
+    shake256_destroy(ctx);
+}
+
+decaf_bool_t
+decaf_448_verify (
+    const decaf_448_signature_t sig,
+    const decaf_448_public_key_t pub,
+    const unsigned char *message,
+    size_t message_len
+) {
+    keccak_sponge_t ctx;
+    shake256_init(ctx);
+    shake256_update(ctx, message, message_len);
+    decaf_bool_t ret = decaf_448_verify_shake(sig, pub, ctx);
+    shake256_destroy(ctx);
     return ret;
 }
