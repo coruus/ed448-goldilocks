@@ -191,7 +191,7 @@ decaf_448_verify_shake (
 
     decaf_448_point_double_scalarmul (
         pubpoint,
-        decaf_448_point_identity, response,
+        decaf_448_point_base, response,
         pubpoint, challenge
     );
 
