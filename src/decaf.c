@@ -8,7 +8,9 @@
  * @brief Decaf high-level functions.
  */
 
+#define __STDC_WANT_LIB_EXT1__ 1 /* for memset_s */
 #include "decaf.h"
+#include <string.h>
 
 #define WBITS DECAF_WORD_BITS
 
@@ -546,6 +548,65 @@ decaf_bool_t decaf_448_scalar_decode(
     decaf_448_scalar_mul(s,s,decaf_448_scalar_one); /* ham-handed reduce */
     
     return accum;
+}
+
+void decaf_bzero (
+    void *s,
+    size_t size
+) {
+#ifdef __STDC_LIB_EXT1__
+    memset_s(s, size, 0, size);
+#else
+    volatile uint8_t *destroy = (volatile uint8_t *)s;
+    unsigned i;
+    for (i=0; i<size; i++) {
+        destroy[i] = 0;
+    }
+#endif
+}
+
+
+void decaf_448_scalar_destroy (
+    decaf_448_scalar_t scalar
+) {
+    decaf_bzero(scalar, sizeof(decaf_448_scalar_t));
+}
+
+static inline void ignore_result ( decaf_bool_t boo ) {
+    (void)boo;
+}
+
+void decaf_448_scalar_decode_long(
+    decaf_448_scalar_t s,
+    const unsigned char *ser,
+    size_t ser_len
+) {
+    if (ser_len == 0) {
+        decaf_448_scalar_copy(s, decaf_448_scalar_zero);
+        return;
+    }
+    
+    size_t i;
+    unsigned char tmp[DECAF_448_SER_BYTES] = {0};
+    decaf_448_scalar_t t1, t2;
+
+    i = ser_len - (ser_len%DECAF_448_SER_BYTES);
+    if (i==ser_len) i -= DECAF_448_SER_BYTES;
+        
+    memcpy(tmp, ser+i, ser_len - i);
+    ignore_result( decaf_448_scalar_decode(t1, tmp) );
+    decaf_bzero(tmp, sizeof(tmp));
+    
+    while (i) {
+        i -= DECAF_448_SER_BYTES;
+        decaf_448_montmul(t1,t1,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+        ignore_result( decaf_448_scalar_decode(t2, ser+i) );
+        decaf_448_scalar_add(t1, t1, t2);
+    }
+
+    decaf_448_scalar_copy(s, t1);
+    decaf_448_scalar_destroy(t1);
+    decaf_448_scalar_destroy(t2);
 }
 
 void decaf_448_scalar_encode(

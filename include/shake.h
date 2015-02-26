@@ -13,6 +13,7 @@
 #define __SHAKE_H__
 
 #include <stdint.h>
+#include <sys/types.h>
 
 #define API_VIS __attribute__((visibility("default")))
 
@@ -98,7 +99,7 @@ void sponge_hash (
         sha3_output(sponge, out, outlen); \
         sponge_init(sponge, SHAKE##n##_params); \
     } \
-    static inline void shake##n##_hash(const uint8_t *in, size_t inlen, uint8_t *out, size_t outlen ) { \
+    static inline void shake##n##_hash(uint8_t *out, size_t outlen, const uint8_t *in, size_t inlen) { \
         sponge_hash(in,inlen,out,outlen,SHAKE##n##_params); \
     } \
     static inline void shake##n##_destroy( keccak_sponge_t sponge ) { \
@@ -117,7 +118,7 @@ void sponge_hash (
         sha3_output(sponge, out, outlen); \
         sponge_init(sponge, SHA3_##n##_params); \
     } \
-    static inline void sha3_##n##_hash(const uint8_t *in, size_t inlen, uint8_t *out, size_t outlen ) { \
+    static inline void sha3_##n##_hash(uint8_t *out, size_t outlen, const uint8_t *in, size_t inlen) { \
         sponge_hash(in,inlen,out,outlen,SHA3_##n##_params); \
     } \
     static inline void sha3_##n##_destroy( keccak_sponge_t sponge ) { \

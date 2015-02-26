@@ -1,10 +1,11 @@
-/* Copyright (c) 2015 Cryptography Research, Inc.
- * Released under the MIT License.  See LICENSE.txt for license information.
- */
-
 /**
  * @file decaf.h
  * @author Mike Hamburg
+ *
+ * @copyright
+ *   Copyright (c) 2015 Cryptography Research, Inc.  \n
+ *   Released under the MIT License.  See LICENSE.txt for license information.
+ *
  * @brief A group of prime order p.
  *
  * The Decaf library implements cryptographic operations on a an elliptic curve
@@ -24,6 +25,7 @@
 #define __DECAF_448_H__ 1
 
 #include <stdint.h>
+#include <sys/types.h>
 
 /* Goldilocks' build flags default to hidden and stripping executables. */
 /** @cond internal */
@@ -113,18 +115,30 @@ extern "C" {
 /**
  * @brief Read a scalar from wire format or from bytes.
  *
- * Return DECAF_SUCCESS if the scalar was in reduced form.  This
- * function is not WARN_UNUSED because eg challenges in signatures
- * may need to be longer.
- *
- * TODO: create a decode long function, and make this WARN_UNUSED.
- *
  * @param [in] ser Serialized form of a scalar.
  * @param [out] out Deserialized form.
+ *
+ * @retval DECAF_SUCCESS The scalar was correctly encoded.
+ * @retval DECAF_FAILURE The scalar was greater than the modulus,
+ * and has been reduced modulo that modulus.
  */
 decaf_bool_t decaf_448_scalar_decode (
     decaf_448_scalar_t s,
     const unsigned char ser[DECAF_448_SCALAR_BYTES]
+) API_VIS WARN_UNUSED NONNULL2;
+
+/**
+ * @brief Read a scalar from wire format or from bytes.  Reduces mod
+ * scalar prime.
+ *
+ * @param [in] ser Serialized form of a scalar.
+ * @param [in] ser_len Length of serialized form.
+ * @param [out] out Deserialized form.
+ */
+void decaf_448_scalar_decode_long (
+    decaf_448_scalar_t s,
+    const unsigned char *ser,
+    size_t ser_len
 ) API_VIS NONNULL2;
     
 /**
@@ -416,9 +430,24 @@ void decaf_448_point_from_hash_uniform (
     decaf_448_point_t pt,
     const unsigned char hashed_data[2*DECAF_448_SER_BYTES]
 ) API_VIS NONNULL2;
-    
+
+/**
+ * @brief Overwrite data with zeros.  Use memset_s if available.
+ */
+void decaf_bzero (
+   void *data,
+   size_t size
+) NONNULL1 API_VIS;
+
+/**
+ * @brief Overwrite scalar with zeros.
+ */
+void decaf_448_scalar_destroy (
+  decaf_448_scalar_t scalar
+) NONNULL1 API_VIS;
+
 /* TODO: functions to invert point_from_hash?? */
-    
+
 #undef API_VIS
 #undef WARN_UNUSED
 #undef NONNULL1

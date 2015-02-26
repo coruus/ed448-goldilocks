@@ -17,6 +17,7 @@
 #include "goldilocks.h"
 #include "sha512.h"
 #include "decaf.h"
+#include "decaf_crypto.h"
 #include "shake.h"
 
 static __inline__ void
@@ -61,15 +62,6 @@ field_print_full (
     for (j=15; j>=0; j--) {
         printf("%02" PRIxWORD "_" PRIxWORD56 " ",
             a->limb[j]>>28, a->limb[j]&((1<<28)-1));
-    }
-    printf("\n");
-}
-
-static void q448_print( const char *descr, const word_t secret[SCALAR_WORDS] ) {
-    int j;
-    printf("%s = 0x", descr);
-    for (j=SCALAR_WORDS-1; j>=0; j--) {
-        printf(PRIxWORDfull, secret[j]);
     }
     printf("\n");
 }
@@ -687,135 +679,37 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("ecdh pre:    %5.1fµs\n", when * 1e6 / i);
     
-    printf("\nTesting...\n");
+    printf("\nDecaf slow:\n");
     
+    decaf_448_symmetric_key_t sym[2] = {{0},{1}};
+    decaf_448_private_key_t dpriv[2];
+    decaf_448_public_key_t dpub[2];
     
-    int failures=0, successes = 0;
+    unsigned char dshared[2][32];
+    
+    when = now();
     for (i=0; i<nbase/10; i++) {
-        ignore_result(goldilocks_keygen(&gsk,&gpk));
-        goldilocks_sign(sout,(const unsigned char *)message,message_len,&gsk);
-        res = goldilocks_verify(sout,(const unsigned char *)message,message_len,&gpk);
-        if (res) failures++;
+        decaf_448_derive_private_key(dpriv[i&1], sym[i&1]);
     }
-    if (failures) {
-        printf("FAIL %d/%d signature checks!\n", failures, i);
-    }
+    when = now() - when;
+    printf("derive priv: %5.1fµs\n", when * 1e6 / i);
     
-    failures=0; successes = 0;
-    for (i=0; i<nbase/10; i++) {
-        field_randomize(&crand, a);
-		word_t two = 2;
-        mask_t good = montgomery_ladder(b,a,&two,2,0);
-		if (!good) continue;
-		
-		word_t x,y;
-        crandom_generate(&crand, (unsigned char *)&x, sizeof(x));
-        crandom_generate(&crand, (unsigned char *)&y, sizeof(y));
-        x = (hword_t)x;
-        y = (hword_t)y;
-        word_t z=x*y;
-        
-    	ignore_result(montgomery_ladder(b,a,&x,WORD_BITS,0));
-        ignore_result(montgomery_ladder(c,b,&y,WORD_BITS,0));
-        ignore_result(montgomery_ladder(b,a,&z,WORD_BITS,0));
-        
-        field_sub(d,b,c);
-		if (!field_is_zero(d)) {
-            printf("Odd ladder validation failure %d!\n", ++failures);
-            field_print("a", a);
-            printf("x=%"PRIxWORD", y=%"PRIxWORD", z=%"PRIxWORD"\n", x,y,z);
-            field_print("c", c);
-            field_print("b", b);
-			printf("\n");
-		}
-	}
+    decaf_448_private_to_public(dpub[0], dpriv[0]);
+    decaf_448_private_to_public(dpub[1], dpriv[1]);
     
-    failures = 0;
+    when = now();
     for (i=0; i<nbase/10; i++) {
-        mask_t good;
-        do {
-            field_randomize(&crand, a);
-            good = deserialize_affine(&affine, a);
-        } while (!good);
-        
-        convert_affine_to_extensible(&exta,&affine);
-        twist_and_double(&ext,&exta);
-        untwist_and_double(&exta,&ext);
-        serialize_extensible(b, &exta);
-        untwist_and_double_and_serialize(c, &ext);
-        
-        field_sub(d,b,c);
-        
-        if (good && !field_is_zero(d)){
-            printf("Iso+serial validation failure %d!\n", ++failures);
-            field_print("a", a);
-            field_print("b", b);
-            field_print("c", c);
-            printf("\n");
-        } else if (good) {
-            successes ++;
+        decaf_bool_t ret = decaf_448_shared_secret(dshared[i&1], 32, dpriv[i&1], dpub[(i+1)&1]);
+        if (ret != DECAF_SUCCESS) {
+            printf("BUG: shared secret returns failure on %d.\n", i);
+            break;
         }
     }
-    if (successes < i/3) {
-        printf("Iso+serial variation: only %d/%d successful.\n", successes, i);
-    }
+    when = now() - when;
+    printf("ecdh:        %5.1fµs\n", when * 1e6 / i);
     
-    successes = failures = 0;
-    for (i=0; i<nbase/10; i++) {
-        field_a_t aa;
-        struct tw_extensible_t exu,exv,exw;
-        
-        mask_t good;
-        do {
-            field_randomize(&crand, a);
-            good = deserialize_affine(&affine, a);
-            convert_affine_to_extensible(&exta,&affine);
-            twist_and_double(&ext,&exta);
-        } while (!good);
-        do {
-            field_randomize(&crand, aa);
-            good = deserialize_affine(&affine, aa);
-            convert_affine_to_extensible(&exta,&affine);
-            twist_and_double(&exu,&exta);
-        } while (!good);
-        field_randomize(&crand, aa);
-        
-        q448_randomize(&crand, sk);
-		if (i==0 || i==2) memset(&sk, 0, sizeof(sk));
-        q448_randomize(&crand, tk);
-		if (i==0 || i==1) memset(&tk, 0, sizeof(tk));
-        
-        copy_tw_extensible(&exv, &ext);
-        copy_tw_extensible(&exw, &exu);
-        scalarmul(&exv,sk);
-        scalarmul(&exw,tk);
-        convert_tw_extensible_to_tw_pniels(&pniels, &exw);
-        add_tw_pniels_to_tw_extensible(&exv,&pniels);
-        untwist_and_double(&exta,&exv);
-        serialize_extensible(b, &exta);
-
-        ignore_result(precompute_fixed_base_wnaf(wnaft,&exu,5));
-        linear_combo_var_fixed_vt(&ext,sk,FIELD_BITS,tk,FIELD_BITS,(const tw_niels_a_t*)wnaft,5);
-        untwist_and_double(&exta,&exv);
-        serialize_extensible(c, &exta);
-        
-        field_sub(d,b,c);
-        
-        if (!field_is_zero(d)){
-            printf("PreWNAF combo validation failure %d!\n", ++failures);
-            field_print("a", a);
-            field_print("A", aa);
-            q448_print("s", sk);
-            q448_print("t", tk);
-            field_print("c", c);
-            field_print("b", b);
-            printf("\n\n");
-        } else if (good) {
-            successes ++;
-        }
-    }
-    if (successes < i) {
-        printf("PreWNAF combo variation: only %d/%d successful.\n", successes, i);
+    if (memcmp(dshared[0], dshared[1], 32)) {
+        printf("BUG: mismatched shared secrets\n");
     }
     
     return 0;

@@ -66,18 +66,20 @@ HEADERS= Makefile $(shell find . -name "*.h") build/timestamp
 
 LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
   build/$(FIELD).o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o \
-	build/f_arithmetic.o build/arithmetic.o build/decaf.o build/shake.o
+	build/f_arithmetic.o build/arithmetic.o
+
+DECAFCOMPONENTS= build/decaf.o build/shake.o build/decaf_crypto.o
 
 TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o \
 	build/shake.o
 
-BENCHCOMPONENTS=build/bench.o build/shake.o
+BENCHCOMPONENTS = build/bench.o build/shake.o
 
 BATBASE=ed448goldilocks-bats-$(TODAY)
 BATNAME=build/$(BATBASE)
 
-all: lib build/test build/bench build/shakesum
+all: lib decaf_lib build/test build/bench build/shakesum
 
 scan: clean
 	scan-build --use-analyzer=`which clang` \
@@ -85,16 +87,18 @@ scan: clean
 		 -enable-checker osx -enable-checker security -enable-checker unix \
 		make build/bench build/test build/goldilocks.so
 
-build/bench: $(LIBCOMPONENTS) $(BENCHCOMPONENTS)
+build/bench: $(LIBCOMPONENTS) $(BENCHCOMPONENTS) $(DECAFCOMPONENTS)
 	$(LD) $(LDFLAGS) -o $@ $^
 
-build/test: $(LIBCOMPONENTS) $(TESTCOMPONENTS)
+build/test: $(LIBCOMPONENTS) $(TESTCOMPONENTS) $(DECAFCOMPONENTS)
 	$(LD) $(LDFLAGS) -o $@ $^ -lgmp
 	
 build/shakesum: build/shakesum.o build/shake.o
 	$(LD) $(LDFLAGS) -o $@ $^
 
 lib: build/goldilocks.so
+
+decaf_lib: build/decaf.so
 
 build/goldilocks.so: $(LIBCOMPONENTS)
 	rm -f $@
@@ -103,6 +107,17 @@ ifeq ($(UNAME),Darwin)
 		  $(LIBCOMPONENTS)
 else
 	$(LD) $(LDFLAGS) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
+	strip --discard-all $@
+	ln -sf `basename $@` build/goldilocks.so.1
+endif
+
+build/decaf.so: $(DECAFCOMPONENTS)
+	rm -f $@
+ifeq ($(UNAME),Darwin)
+	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
+		  $(DECAFCOMPONENTS)
+else
+	$(LD) $(LDFLAGS) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(DECAFCOMPONENTS)
 	strip --discard-all $@
 	ln -sf `basename $@` build/goldilocks.so.1
 endif

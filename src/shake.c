@@ -197,6 +197,7 @@ void sha3_output (
     }
 }
 
+/** TODO: unify with decaf_bzero? */
 void sponge_destroy (
     keccak_sponge_t sponge
 ) {
