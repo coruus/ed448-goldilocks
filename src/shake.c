@@ -17,6 +17,13 @@
 #include <stdint.h>
 #include <string.h>
 
+/* to open and read from /dev/urandom */
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <errno.h>
+#include <unistd.h>
+
 /* Subset of Mathias Panzenböck's portable endian code, public domain */
 #if defined(__linux__) || defined(__CYGWIN__)
 #	include <endian.h>
@@ -64,6 +71,12 @@ typedef struct keccak_sponge_s {
 
 #define FLAG_ABSORBING 'A'
 #define FLAG_SQUEEZING 'Z'
+#define FLAG_RNG_SQU   'R'
+#define FLAG_DET_SQU   'D'
+#define FLAG_RNG_ABS   'r'
+#define FLAG_DET_ABS   'd'
+#define FLAG_RNG_UNI   'u'
+#define FLAG_DET_UNI   'g'
 
 /** Constants. **/
 static const uint8_t pi[24] = {
@@ -96,7 +109,9 @@ static inline uint64_t rol(uint64_t x, int s) {
 #endif
 
 /*** The Keccak-f[1600] permutation ***/
-static void keccakf(kdomain_t state, uint8_t startRound) {
+static void
+__attribute__((noinline))
+keccakf(kdomain_t state, uint8_t startRound) {
     uint64_t* a = state->w;
     uint64_t b[5] = {0}, t, u;
     uint8_t x, y, i;
@@ -139,14 +154,14 @@ void sha3_update (
     assert(sponge->params->rate < sizeof(sponge->state));
     assert(sponge->params->flags == FLAG_ABSORBING);
     while (len) {
-        size_t cando = sponge->params->rate - sponge->params->position;
+        size_t cando = sponge->params->rate - sponge->params->position, i;
         uint8_t* state = &sponge->state->b[sponge->params->position];
         if (cando > len) {
-            for (size_t i = 0; i < len; i += 1) state[i] ^= in[i];
+            for (i = 0; i < len; i += 1) state[i] ^= in[i];
             sponge->params->position += len;
             return;
         } else {
-            for (size_t i = 0; i < cando; i += 1) state[i] ^= in[i];
+            for (i = 0; i < cando; i += 1) state[i] ^= in[i];
             dokeccak(sponge);
             len -= cando;
             in += cando;
@@ -250,5 +265,179 @@ DEFSHA3(224)
 DEFSHA3(256)
 DEFSHA3(384)
 DEFSHA3(512)
+
+/** Get entropy from a CPU, preferably in the form of RDRAND, but possibly instead from RDTSC. */
+static void get_cpu_entropy(uint8_t *entropy, size_t len) {
+# if (defined(__i386__) || defined(__x86_64__))
+    static char tested = 0, have_rdrand = 0;
+    if (!tested) {
+        u_int32_t a,b,c,d;
+        a=0x80000001; __asm__("cpuid" : "+a"(a), "=b"(b), "=c"(c), "=d"(d));
+        have_rdrand = (c>>30)&1;
+        tested = 1;
+    }
+
+    if (have_rdrand) {
+        # if defined(__x86_64__)
+            uint64_t out, a=0, *eo = (uint64_t *)entropy;
+        # elif defined(__i386__)
+            uint32_t out, a=0, *eo = (uint64_t *)entropy;
+        #endif
+        len /= sizeof(out);
+
+        uint32_t tries;
+        for (tries = 100+len; tries && len; len--, eo++) {
+            for (a = 0; tries && !a; tries--) {
+                __asm__ __volatile__ ("rdrand %0\n\tsetc %%al" : "=r"(out), "+a"(a) :: "cc" );
+            }
+            *eo ^= out;
+        }
+    } else if (len>8) {
+        uint64_t out;
+        __asm__ __volatile__ ("rdtsc" : "=A"(out));
+        *(uint64_t*) entropy ^= out;
+    }
+
+#else
+    (void) entropy;
+    (void) len;
+#endif
+}
+
+void spongerng_next (
+    keccak_sponge_t sponge,
+    uint8_t * __restrict__ out,
+    size_t len
+) {
+    assert(sponge->params->position < sponge->params->rate);
+    assert(sponge->params->rate < sizeof(sponge->state));
+
+    switch(sponge->params->flags) {
+    case FLAG_DET_SQU: case FLAG_RNG_SQU: break;
+    case FLAG_DET_ABS: case FLAG_RNG_ABS:
+        {
+            uint8_t* state = sponge->state->b;
+            state[sponge->params->position] ^= sponge->params->pad;
+            state[sponge->params->rate - 1] ^= sponge->params->ratePad;
+            dokeccak(sponge);
+            sponge->params->flags = (sponge->params->flags == FLAG_DET_ABS) ? FLAG_DET_SQU : FLAG_RNG_SQU;
+            break;
+        }
+    default: assert(0);
+    };
+
+    while (len) {
+        size_t cando = sponge->params->rate - sponge->params->position;
+        uint8_t* state = &sponge->state->b[sponge->params->position];
+        if (cando > len) {
+            memcpy(out, state, len);
+            memset(state, 0, len);
+            sponge->params->position += len;
+            return;
+        } else {
+            memcpy(out, state, cando);
+            memset(state, 0, cando);
+            if (sponge->params->flags == FLAG_RNG_SQU)
+                get_cpu_entropy(sponge->state->b, 32);
+            dokeccak(sponge);
+            len -= cando;
+            out += cando;
+        }
+    }
+
+    /* Anti-rollback */
+    if (sponge->params->position < 32) {
+        memset(&sponge->state->b, 0, 32);
+        sponge->params->position = 32;
+    }
+}
+
+void spongerng_stir (
+    keccak_sponge_t sponge,
+    const uint8_t * __restrict__ in,
+    size_t len
+) {
+    assert(sponge->params->position < sponge->params->rate);
+    assert(sponge->params->rate < sizeof(sponge->state));
+
+    switch(sponge->params->flags) {
+    case FLAG_RNG_SQU:
+        get_cpu_entropy(sponge->state->b, 32);
+        /* fall through */
+    case FLAG_DET_SQU: 
+        sponge->params->flags = (sponge->params->flags == FLAG_DET_SQU) ? FLAG_DET_ABS : FLAG_RNG_ABS;
+        dokeccak(sponge);
+        break;
+    case FLAG_DET_ABS: case FLAG_RNG_ABS: break;
+    case FLAG_DET_UNI: case FLAG_RNG_UNI: break;
+    default: assert(0);
+    };
+
+    while (len) {
+        size_t i;
+        size_t cando = sponge->params->rate - sponge->params->position;
+        uint8_t* state = &sponge->state->b[sponge->params->position];
+        if (cando > len) {
+            for (i = 0; i < len; i += 1) state[i] ^= in[i];
+            sponge->params->position += len;
+            return;
+        } else {
+            for (i = 0; i < cando; i += 1) state[i] ^= in[i];
+            dokeccak(sponge);
+            len -= cando;
+            in += cando;
+        }
+    }
+}
+
+static const struct kparams_s spongerng_params = {
+    0, FLAG_RNG_UNI, 200-256/4, 0, 0x06, 0x80, 0xFF, 0
+};
+
+void spongerng_init_from_buffer (
+    keccak_sponge_t sponge,
+    const uint8_t * __restrict__ in,
+    size_t len,
+    int deterministic
+) {
+    sponge_init(sponge, &spongerng_params);
+    sponge->params->flags = deterministic ? FLAG_DET_ABS : FLAG_RNG_ABS;
+    spongerng_stir(sponge, in, len);
+}
+
+int spongerng_init_from_file (
+    keccak_sponge_t sponge,
+    const char *file,
+    size_t len,
+    int deterministic
+) {
+    sponge_init(sponge, &spongerng_params);
+    sponge->params->flags = deterministic ? FLAG_DET_UNI : FLAG_RNG_UNI;
+    if (!len) return -2;
+
+    int fd = open(file, O_RDONLY);
+    if (fd < 0) return errno ? errno : -1;
+    
+    uint8_t buffer[128];
+    while (len) {
+        ssize_t red = read(fd, buffer, (len > sizeof(buffer)) ? sizeof(buffer) : len);
+        if (red <= 0) {
+            close(fd);
+            return errno ? errno : -1;
+        }
+        spongerng_stir(sponge,buffer,red);
+        len -= red;
+    };
+    close(fd);
+
+    sponge->params->flags = deterministic ? FLAG_DET_ABS : FLAG_RNG_ABS;
+    return 0;
+}
+
+int spongerng_init_from_dev_urandom (
+    keccak_sponge_t sponge
+) {
+    return spongerng_init_from_file(sponge, "/dev/urandom", 64, 0);
+}
 
 /* TODO: Keyak instances, etc */

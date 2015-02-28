@@ -15,8 +15,11 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+/* TODO: unify with other headers (maybe all into one??); add nonnull attributes */
 #define API_VIS __attribute__((visibility("default")))
+#define WARN_UNUSED __attribute__((warn_unused_result))
 
+/* TODO: different containing structs for each primitive? */
 #ifndef INTERNAL_SPONGE_STRUCT
     typedef struct keccak_sponge_s {
         uint64_t opaque[26];
@@ -131,7 +134,93 @@ DECSHA3(224)
 DECSHA3(256)
 DECSHA3(384)
 DECSHA3(512)
-    
+
+/**
+ * @brief Initialize a sponge-based CSPRNG from a buffer.
+ *
+ * @param [out] sponge The sponge object.
+ * @param [in] in The initial data.
+ * @param [in] len The length of the initial data.
+ * @param [in] deterministic If zero, allow RNG to stir in nondeterministic
+ * data from RDRAND or RDTSC.
+ */
+void spongerng_init_from_buffer (
+    keccak_sponge_t sponge,
+    const uint8_t * __restrict__ in,
+    size_t len,
+    int deterministic
+) API_VIS;
+
+/* FIXME!! This interface has the opposite retval convention from other functions
+ * in the library.  (0=success).  Should they be harmonized?
+ */
+
+/**
+ * @brief Initialize a sponge-based CSPRNG from a file.
+ *
+ * @param [out] sponge The sponge object.
+ * @param [in] file A name of a file containing initial data.
+ * @param [in] len The length of the initial data.  Must be positive.
+ * @param [in] deterministic If zero, allow RNG to stir in nondeterministic
+ * data from RDRAND or RDTSC.
+ *
+ * @retval 0 Success.
+ * @retval positive An error has occurred, and this was the errno.
+ * @retval -1 An unknown error has occurred.
+ * @retval -2 len was 0.
+ */
+int spongerng_init_from_file (
+    keccak_sponge_t sponge,
+    const char *file,
+    size_t len,
+    int deterministic
+) API_VIS WARN_UNUSED;
+
+
+/* FIXME!! This interface has the opposite retval convention from other functions
+ * in the library.  (0=success).  Should they be harmonized?
+ */
+
+/**
+ * @brief Initialize a nondeterministic sponge-based CSPRNG from /dev/urandom.
+ *
+ * @param [out] sponge The sponge object.
+ *
+ * @retval 0 Success.
+ * @retval positive An error has occurred, and this was the errno.
+ * @retval -1 An unknown error has occurred.
+ */
+int spongerng_init_from_dev_urandom (
+    keccak_sponge_t sponge
+) API_VIS WARN_UNUSED;
+
+/**
+ * @brief Output bytes from a sponge-based CSPRNG.
+ *
+ * @param [inout] sponge The sponge object.
+ * @param [out] out The output buffer.
+ * @param [in] out The output buffer's length.
+ */
+void spongerng_next (
+    keccak_sponge_t sponge,
+    uint8_t * __restrict__ out,
+    size_t len
+) API_VIS;
+
+/**
+ * @brief Stir entropy data into a sponge-based CSPRNG from a buffer.
+ *
+ * @param [out] sponge The sponge object.
+ * @param [in] in The entropy data.
+ * @param [in] len The length of the initial data.
+ */
+void spongerng_stir (
+    keccak_sponge_t sponge,
+    const uint8_t * __restrict__ in,
+    size_t len
+) API_VIS;
+
 #undef API_VIS
+#undef WARN_UNUSED
     
 #endif /* __SHAKE_H__ */
