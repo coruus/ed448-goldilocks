@@ -272,7 +272,7 @@ static void get_cpu_entropy(uint8_t *entropy, size_t len) {
     static char tested = 0, have_rdrand = 0;
     if (!tested) {
         u_int32_t a,b,c,d;
-        a=0x80000001; __asm__("cpuid" : "+a"(a), "=b"(b), "=c"(c), "=d"(d));
+        a=1; __asm__("cpuid" : "+a"(a), "=b"(b), "=c"(c), "=d"(d));
         have_rdrand = (c>>30)&1;
         tested = 1;
     }
