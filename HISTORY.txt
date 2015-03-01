@@ -1,3 +1,7 @@
+March 1, 2015:
+    Not much to report.  Most of the fixes since Oct 27 last year have
+    been bug fixes or simplifications, or in the Decaf branch.
+
 October 27, 2014:
     Added more support for >512-bit primes.  Changed shared secret
     to not overflow the buffer in this case.  Changed hashing to
