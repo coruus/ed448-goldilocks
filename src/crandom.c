@@ -27,10 +27,10 @@ unsigned int crandom_detect_features(void) {
     if (c & 1<<25) out |= AESNI;
     if (c & 1<<28) out |= AVX;
     if (b & 1<<5) out  |= AVX2;
+    if (c & 1<<30) out |= RDRAND;
     
     a=0x80000001; __asm__("cpuid" : "+a"(a), "=b"(b), "=c"(c), "=d"(d));
     if (c & 1<<11) out |= XOP;
-    if (c & 1<<30) out |= RDRAND;
 # endif
   
   return out;
