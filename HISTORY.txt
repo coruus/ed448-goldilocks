@@ -1,3 +1,28 @@
+March 1, 2015:
+    While by no means complete or stable, I've done most of the ground
+    work to implement the "Decaf" point encoding.  This point encoding
+    essentially divides the cofactor by 4, turning Goldilocks (or
+    Ridinghood or E-521) into a prime-order group.  Furthermore, like
+    the Goldilocks encoding, this encoding avoids incompleteness in
+    the twisted Edwards formulas with a=-1 by sticking to the order-2q
+    subgroup.
+
+    Because the group is prime order, and because the "isogeny strategy"
+    is not needed, the decaf API can be very simple.  I'm still working
+    on exactly what it should be though.  The goal is to have a single-
+    file (or a few files) for a "ref" version, which is designed for
+    auditability.  The ref version won't be quite so simple as TweetNaCl,
+    but nearly so simple and much better commented.  Then there can also
+    be an optimized version, perhaps per-platform, which is as fast as
+    the original Goldilocks code but hopefully still simpler.
+
+    I'm experimenting with SHAKE as the hash function here.  Possibly I
+    will also add Keyak as an encryption primitive, so that everything
+    can be based on Keccak-f, but I'm open to suggestions.  For example,
+    if there's a way to make BLAKE2 as simple and useful as SHAKE
+    (including in oversized curves like E-521), then the extra speed
+    would certainly be welcome.
+
 October 27, 2014:
     Added more support for >512-bit primes.  Changed shared secret
     to not overflow the buffer in this case.  Changed hashing to
