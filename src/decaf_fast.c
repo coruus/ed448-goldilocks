@@ -11,6 +11,7 @@
 #define __STDC_WANT_LIB_EXT1__ 1 /* for memset_s */
 #include "decaf.h"
 #include <string.h>
+#include "field.h"
 
 #define WBITS DECAF_WORD_BITS
 
@@ -33,7 +34,7 @@ typedef int64_t decaf_sdword_t;
 static const int QUADRATIC_NONRESIDUE = -1;
 
 #define sv static void
-typedef decaf_word_t gf[DECAF_448_LIMBS];
+typedef decaf_word_t gf[DECAF_448_LIMBS] __attribute__((aligned(32)));
 static const gf ZERO = {0}, ONE = {1}, TWO = {2};
 
 #define LMASK ((((decaf_word_t)1)<<LBITS)-1)
@@ -116,68 +117,28 @@ const size_t alignof_decaf_448_precomputed_s = 32;
 sv gf_cpy(gf x, const gf y) { FOR_LIMB(i, x[i] = y[i]); }
 
 /** Mostly-unoptimized multiply (PERF), but at least it's unrolled. */
-sv gf_mul (gf c, const gf a, const gf b) {
-    gf aa;
-    gf_cpy(aa,a);
-    
-    decaf_dword_t accum[DECAF_448_LIMBS] = {0};
-    FOR_LIMB(i, {
-        FOR_LIMB(j,{ accum[(i+j)%DECAF_448_LIMBS] += (decaf_dword_t)b[i] * aa[j]; });
-        aa[(DECAF_448_LIMBS-1-i)^(DECAF_448_LIMBS/2)] += aa[DECAF_448_LIMBS-1-i];
-    });
-    
-    accum[DECAF_448_LIMBS-1] += accum[DECAF_448_LIMBS-2] >> LBITS;
-    accum[DECAF_448_LIMBS-2] &= LMASK;
-    accum[DECAF_448_LIMBS/2] += accum[DECAF_448_LIMBS-1] >> LBITS;
-    FOR_LIMB(j,{
-        accum[j] += accum[(j-1)%DECAF_448_LIMBS] >> LBITS;
-        accum[(j-1)%DECAF_448_LIMBS] &= LMASK;
-    });
-    FOR_LIMB(j, c[j] = accum[j] );
+static inline void gf_mul (gf c, const gf a, const gf b) {
+    field_mul((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
 
 /** No dedicated square (PERF) */
-#define gf_sqr(c,a) gf_mul(c,a,a)
+static inline void gf_sqr (gf c, const gf a) {
+    field_sqr((field_t *)c, (const field_t *)a);
+}
 
 /** Inverse square root using addition chain. */
 sv gf_isqrt(gf y, const gf x) {
-    int i;
-#define STEP(s,m,n) gf_mul(s,m,c); gf_cpy(c,s); for (i=0;i<n;i++) gf_sqr(c,c);
-    gf a, b, c;
-    gf_sqr ( c,   x );
-    STEP(b,x,1);
-    STEP(b,x,3);
-    STEP(a,b,3);
-    STEP(a,b,9);
-    STEP(b,a,1);
-    STEP(a,x,18);
-    STEP(a,b,37);
-    STEP(b,a,37);
-    STEP(b,a,111);
-    STEP(a,b,1);
-    STEP(b,x,223);
-    gf_mul(y,a,c);
-}
-
-/** Weak reduce mod p. */
-sv gf_reduce(gf x) {
-    x[DECAF_448_LIMBS/2] += x[DECAF_448_LIMBS-1] >> LBITS;
-    FOR_LIMB(j,{
-        x[j] += x[(j-1)%DECAF_448_LIMBS] >> LBITS;
-        x[(j-1)%DECAF_448_LIMBS] &= LMASK;
-    });
+    field_isr((field_t *)y, (const field_t *)x);
 }
 
 /** Add mod p.  Conservatively always weak-reduce. (PERF) */
-sv gf_add ( gf x, const gf y, const gf z ) {
-    FOR_LIMB(i, x[i] = y[i] + z[i] );
-    gf_reduce(x);
+static inline void gf_add ( gf c, const gf a, const gf b ) {
+    field_add((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
 
 /** Subtract mod p.  Conservatively always weak-reduce. (PERF) */
-sv gf_sub ( gf x, const gf y, const gf z ) {
-    FOR_LIMB(i, x[i] = y[i] - z[i] + 2*P[i] );
-    gf_reduce(x);
+static inline void gf_sub ( gf c, const gf a, const gf b ) {
+    field_sub((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
 
 /** Constant time, x = is_z ? z : y */
@@ -205,38 +166,18 @@ sv cond_swap(gf x, gf y, decaf_bool_t swap) {
  * Mul by signed int.  Not constant-time WRT the sign of that int.
  * Just uses a full mul (PERF)
  */
-sv gf_mlw(gf a, const gf b, int w) {
+static inline void gf_mlw(gf c, const gf a, int w) {
     if (w>0) {
-        gf ww = {w};
-        gf_mul(a,b,ww);
+        field_mulw((field_t *)c, (const field_t *)a, w);
     } else {
-        gf ww = {-w};
-        gf_mul(a,b,ww);
-        gf_sub(a,ZERO,a);
+        field_mulw((field_t *)c, (const field_t *)a, -w);
+        gf_sub(c,ZERO,c);
     }
 }
 
 /** Canonicalize */
-sv gf_canon ( gf a ) {
-    gf_reduce(a);
-
-    /* subtract p with borrow */
-    decaf_sdword_t carry = 0;
-    FOR_LIMB(i, {
-        carry = carry + a[i] - P[i];
-        a[i] = carry & LMASK;
-        carry >>= LBITS;
-    });
-    
-    decaf_bool_t addback = carry;
-    carry = 0;
-
-    /* add it back */
-    FOR_LIMB(i, {
-        carry = carry + a[i] + (P[i] & addback);
-        a[i] = carry & LMASK;
-        carry >>= LBITS;
-    });
+static inline void gf_canon ( gf a ) {
+    field_strong_reduce((field_t *)a);
 }
 
 /** Compare a==b */
@@ -512,12 +453,56 @@ decaf_bool_t decaf_448_point_decode (
     return succ;
 }
 
-void decaf_448_point_sub(decaf_448_point_t a, const decaf_448_point_t b, const decaf_448_point_t c) {
-    decaf_448_point_add_sub(a,b,c,-1);
+void decaf_448_point_sub (
+    decaf_448_point_t p,
+    const decaf_448_point_t q,
+    const decaf_448_point_t r
+) {
+    gf a, b, c, d;
+    gf_sub ( b, q->y, q->x );
+    gf_sub ( d, r->y, r->x );
+    gf_add ( c, r->y, r->x );
+    gf_mul ( a, c, b );
+    gf_add ( b, q->y, q->x );
+    gf_mul ( p->y, d, b );
+    gf_mul ( b, r->t, q->t );
+    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
+    gf_add ( b, a, p->y );
+    gf_sub ( c, p->y, a );
+    gf_mul ( a, q->z, r->z );
+    gf_add ( a, a, a );
+    gf_sub ( p->y, a, p->x );
+    gf_add ( a, a, p->x );
+    gf_mul ( p->z, a, p->y );
+    gf_mul ( p->x, p->y, c );
+    gf_mul ( p->y, a, b );
+    gf_mul ( p->t, b, c );
 }
     
-void decaf_448_point_add(decaf_448_point_t a, const decaf_448_point_t b, const decaf_448_point_t c) {
-    decaf_448_point_add_sub(a,b,c,0);
+void decaf_448_point_add (
+    decaf_448_point_t p,
+    const decaf_448_point_t q,
+    const decaf_448_point_t r
+) {
+    gf a, b, c, d;
+    gf_sub ( b, q->y, q->x );
+    gf_sub ( c, r->y, r->x );
+    gf_add ( d, r->y, r->x );
+    gf_mul ( a, c, b );
+    gf_add ( b, q->y, q->x );
+    gf_mul ( p->y, d, b );
+    gf_mul ( b, r->t, q->t );
+    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
+    gf_add ( b, a, p->y );
+    gf_sub ( c, p->y, a );
+    gf_mul ( a, q->z, r->z );
+    gf_add ( a, a, a );
+    gf_add ( p->y, a, p->x );
+    gf_sub ( a, a, p->x );
+    gf_mul ( p->z, a, p->y );
+    gf_mul ( p->x, p->y, c );
+    gf_mul ( p->y, a, b );
+    gf_mul ( p->t, b, c );
 }
 
 /* No dedicated point double yet (PERF) */

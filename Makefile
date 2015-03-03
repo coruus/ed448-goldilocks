@@ -13,6 +13,8 @@ endif
 LD = $(CC)
 ASM ?= $(CC)
 
+DECAF ?= decaf
+
 ifneq (,$(findstring x86_64,$(MACHINE)))
 ARCH ?= arch_x86_64
 else
@@ -68,7 +70,7 @@ LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
   build/$(FIELD).o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o \
 	build/f_arithmetic.o build/arithmetic.o
 
-DECAFCOMPONENTS= build/decaf.o build/shake.o build/decaf_crypto.o
+DECAFCOMPONENTS= build/$(DECAF).o build/shake.o build/decaf_crypto.o
 
 TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o \

@@ -63,12 +63,14 @@ typedef uint32_t decaf_word_t, decaf_bool_t;
 /** Twisted Edwards (-1,d-1) extended homogeneous coordinates */
 typedef struct decaf_448_point_s {
     decaf_word_t x[DECAF_448_LIMBS],y[DECAF_448_LIMBS],z[DECAF_448_LIMBS],t[DECAF_448_LIMBS];
-} decaf_448_point_t[1];
+} __attribute__((aligned(32))) decaf_448_point_t[1];
 
 /** Precomputed table based on a point.  Can be trivial implementation. */
-typedef struct decaf_448_precomputed_s {
-    decaf_448_point_t p[1];
-} decaf_448_precomputed_t[1];
+struct decaf_448_precomputed_s;
+typedef struct decaf_448_precomputed_s decaf_448_precomputed_s; 
+
+/** Size and alignment of precomputed point tables. */
+extern const size_t sizeof_decaf_448_precomputed_s, alignof_decaf_448_precomputed_s;
 
 /** Scalar is stored packed, because we don't need the speed. */
 typedef struct decaf_448_scalar_s {
@@ -101,10 +103,10 @@ extern const decaf_448_point_t decaf_448_point_identity API_VIS;
  * Equal to Ed448-Goldilocks base point defined by DJB, except of course that
  * it's on the twist in this case.  TODO: choose a base point with nice encoding?
  */
-extern const struct decaf_448_point_s *decaf_448_point_base API_VIS;
+extern const decaf_448_point_t decaf_448_point_base API_VIS;
 
 /** Precomputed table for the base point on the curve. */
-extern const decaf_448_precomputed_t decaf_448_precomputed_base API_VIS;
+extern const struct decaf_448_precomputed_s *decaf_448_precomputed_base API_VIS;
 
 #ifdef __cplusplus
 extern "C" {
@@ -332,7 +334,7 @@ void decaf_448_point_scalarmul (
  * @param [in] b Any point.
  */
 void decaf_448_precompute (
-    decaf_448_precomputed_t a,
+    struct decaf_448_precomputed_s *a,
     const decaf_448_point_t b
 ) API_VIS NONNULL2;
 
@@ -349,7 +351,7 @@ void decaf_448_precompute (
  */
 void decaf_448_precomputed_scalarmul (
     decaf_448_point_t scaled,
-    const decaf_448_precomputed_t base,
+    const struct decaf_448_precomputed_s *base,
     const decaf_448_scalar_t scalar
 ) API_VIS NONNULL3;
 

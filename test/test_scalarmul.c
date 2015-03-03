@@ -112,7 +112,8 @@ single_scalarmul_compatibility_test (
         untwist_and_double_and_serialize(vt, &work);
         
         decaf_448_point_t ed2, ed3;
-        decaf_448_precomputed_t dpre;
+        struct decaf_448_precomputed_s *dpre;
+        posix_memalign((void**)&dpre, alignof_decaf_448_precomputed_s, sizeof_decaf_448_precomputed_s);
     	tw_extended_a_t ed;
         convert_tw_extensible_to_tw_extended(ed, &text);
         decaf_448_point_scalarmul(
@@ -126,7 +127,7 @@ single_scalarmul_compatibility_test (
             dpre,
             (struct decaf_448_scalar_s *)scalar
         );
-        
+        free(dpre);
 
         scalarmul_ed(ed, scalar);
         field_copy(work.x, ed->x);
