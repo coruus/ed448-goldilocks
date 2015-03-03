@@ -109,31 +109,3 @@ sqrt_d_minus_1 = {{{
     U58LE(0x0a9ea3ac10d6aed)
 #endif
 }}};
-
-const field_a_t
-sqrt_minus_d = {{{
-#ifdef USE_P521_3x3_TRANSPOSE
-    U58LE(0x375d668ef98910e),
-    U58LE(0x2e033a89e955dfc),
-    U58LE(0x11539170515b2da),
-    0,
-    U58LE(0x1d88a078877dc00),
-    U58LE(0x38dac4db4b0312c),
-    U58LE(0x009993c0e8ee528),
-    0,
-    U58LE(0x34829cd5d7c1584),
-    U58LE(0x2c688534aa9c317),
-    U58LE(0x0d07656ee612ae6),
-    0
-#else
-    U58LE(0x375d668ef98910e),
-    U58LE(0x1d88a078877dc00),
-    U58LE(0x34829cd5d7c1584),
-    U58LE(0x2e033a89e955dfc),
-    U58LE(0x38dac4db4b0312c),
-    U58LE(0x2c688534aa9c317),
-    U58LE(0x11539170515b2da),
-    U58LE(0x009993c0e8ee528),
-    U58LE(0x0d07656ee612ae6)
-#endif
-}}};

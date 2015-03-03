@@ -66,15 +66,3 @@ const field_a_t
 sqrt_d_minus_1 = {{{
     232 /* Whoa, it comes out even. */
 }}};
-
-const field_a_t
-sqrt_minus_d = {{{
-    U60LE(0xf098fba8d880ec0),
-    U60LE(0x9d6ea1b2774d3e9),
-    U60LE(0x1a52c44c0154b38),
-    U60LE(0x9a7d2310c583efd),
-    U60LE(0xb548ed7aec18f2d),
-    U60LE(0xb9d4b5edcfee721),
-    U60LE(0x65275d687c7215d),
-    U60LE(0x3458ffa5bbfdea5)
-}}};
