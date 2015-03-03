@@ -506,8 +506,22 @@ void decaf_448_point_add (
 }
 
 /* No dedicated point double yet (PERF) */
-void decaf_448_point_double(decaf_448_point_t a, const decaf_448_point_t b) {
-    decaf_448_point_add(a,b,b);
+void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
+    gf a, b, c, d;
+    gf_sqr ( c, q->x );
+    gf_sqr ( a, q->y );
+    gf_add ( d, c, a );
+    gf_add ( p->t, q->y, q->x );
+    gf_sqr ( b, p->t );
+    gf_sub ( b, b, d );
+    gf_sub ( p->t, a, c );
+    gf_sqr ( p->x, q->z );
+    gf_add ( p->z, p->x, p->x );
+    gf_sub ( a, p->z, p->t );
+    gf_mul ( p->x, a, b );
+    gf_mul ( p->z, p->t, a );
+    gf_mul ( p->y, p->t, d );
+    gf_mul ( p->t, b, d );
 }
 
 void decaf_448_point_copy (
