@@ -13,6 +13,8 @@
 #include <string.h>
 #include "field.h"
 
+#include "ec_point.h" // REMOVE!
+
 #define WBITS DECAF_WORD_BITS
 
 #if WBITS == 64
@@ -817,18 +819,21 @@ decaf_bool_t decaf_448_direct_scalarmul (
     decaf_bool_t allow_identity,
     decaf_bool_t short_circuit
 ) {
-    gf s0, xa, za, xd, zd, xs, zs;
+    (void)short_circuit;
+    gf s0, x0, xa, za, xd, zd, xs, zs;
     decaf_bool_t succ = gf_deser ( s0, base );
-    succ &= allow_identity |~ gf_eq(s0, ZERO);
-    (void) short_circuit;
+    succ &= allow_identity |~ gf_eq( s0, ZERO);
+    succ &= ~hibit(s0);
+
     gf_sqr ( xa, s0 );
+    gf_cpy ( x0, xa );
     gf_cpy ( za, ONE );
     gf_cpy ( xd, ONE );
     gf_cpy ( zd, ZERO );
     
-    int j;
+    int i,j;
     decaf_bool_t pflip = 0;
-    for (j=DECAF_448_SCALAR_BITS-1; j>=0; j--) {
+    for (j=448-1; j>=0; j--) { /* TODO: DECAF_SCALAR_BITS */
         decaf_bool_t flip = -((scalar->limb[j/WORD_BITS]>>(j%WORD_BITS))&1);;
         cond_swap(xa,xd,flip^pflip);
         cond_swap(za,zd,flip^pflip);
@@ -848,7 +853,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
         gf_mlw ( zd, za, 1-EDWARDS_D );
         gf_add_nr ( xa, xa, zd );
         gf_mul ( zd, xa, za );
-        gf_sqr ( xa, xs );         
+        gf_sqr ( xa, xs );
         gf_sqr ( za, zs );
         pflip = flip;
     }
@@ -856,7 +861,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     cond_swap(za,zd,pflip);
     
     /* OK, time to reserialize! */
-    gf xz_d, xz_a, x0, den, L0, L1, L2, L3, out; /* TODO: simplify */
+    gf xz_d, xz_a, den, L0, L1, L2, L3, out; /* TODO: simplify */
     mask_t zcase, output_zero, sflip, za_zero;
     gf_mul(xz_d, xd, zd);
     gf_mul(xz_a, xa, za);
@@ -864,9 +869,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     za_zero = gf_eq(za, ZERO);
     cond_sel(xz_d, xz_d, ONE, output_zero); /* make xz_d always nonzero */
     zcase = output_zero | gf_eq(xz_a, ZERO);
-    
-    gf_sqr(x0, s0);
-    
+
     /* Curve test in zcase */
     gf_cpy(L0,x0);
     gf_add(L0,L0,ONE);
@@ -874,7 +877,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_mlw(L0,x0,-4*EDWARDS_D);
     gf_add(L1,L1,L0);
     cond_sel(xz_a,xz_a,L1,zcase);
-    
+
     /* Compute denominator */
     gf_mul(L0, x0, xz_d);
     gf_mlw(L2, L0, 4);
@@ -912,20 +915,20 @@ decaf_bool_t decaf_448_direct_scalarmul (
 
     /* compute the output */
     gf_mul(L1,L0,den);
-    
+
     cond_sel(L2,zs,s0,zcase); /* zs, but s0 in zcase */
     gf_mul(L0,L1,L2);
-    
+
     cond_sel(L3,xd,zd,za_zero);
     cond_sel(L2,xs,L3,zcase); /* xs, but zq or qq in zcase */
     gf_mul(out,L0,L2);
-    
+
     cond_sel(out,out,ZERO,output_zero);
     cond_neg(out,hibit(out));
-    
-    /* TODO: resubroutineize? */
+    //
+    // /* TODO: resubroutineize? */
     gf_canon(out);
-    int i, k=0, bits=0;
+    int k=0, bits=0;
     decaf_dword_t buf=0;
     for (i=0; i<DECAF_448_LIMBS; i++) {
         buf |= (decaf_dword_t)out[i]<<bits;
@@ -933,7 +936,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
             scaled[k++]=buf;
         }
     }
-    
+
     return succ;
 }
 
