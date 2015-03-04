@@ -538,7 +538,7 @@ void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
     gf_add_nr ( d, c, a );
     gf_add_nr ( p->t, q->y, q->x );
     gf_sqr ( b, p->t );
-    gf_sub_nr_x ( b, b, d, 4 );
+    gf_sub_nr_x ( b, b, d, 3 );
     gf_sub_nr ( p->t, a, c );
     gf_sqr ( p->x, q->z );
     gf_add_nr ( p->z, p->x, p->x );
