@@ -373,6 +373,15 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("decaf slow:  %5.1fµs\n", when * 1e6 / i);
    
+    uint8_t enc[DECAF_448_SER_BYTES];
+    memset(enc,4,sizeof(enc));
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        ignore_result(decaf_448_direct_scalarmul(enc,enc,asc,-1,0));
+    }
+    when = now() - when;
+    printf("decaf dir:   %5.1fµs\n", when * 1e6 / i);
+   
     when = now();
     for (i=0; i<nbase/10; i++) {
         decaf_448_point_double_scalarmul(Da,Db,bsc,Dc,asc);

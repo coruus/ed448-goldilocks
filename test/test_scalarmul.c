@@ -144,7 +144,7 @@ single_scalarmul_compatibility_test (
         decaf_448_point_encode(ser1, (struct decaf_448_point_s *)ed);
         decaf_448_point_encode(ser2, ed2);
         decaf_448_point_encode(ser3, ed3);
-        (void)decaf_448_direct_scalarmul(ser4, ser4, (struct decaf_448_scalar_s *)scalar, -1, -1);
+        consistent &= decaf_448_direct_scalarmul(ser4, ser4, (struct decaf_448_scalar_s *)scalar, -1, -1);
 
         /* check consistency mont vs window */
         consistent &= field_eq(mont, ct);
