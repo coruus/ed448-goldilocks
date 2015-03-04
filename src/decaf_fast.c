@@ -181,12 +181,15 @@ sv cond_neg(gf x, decaf_bool_t neg) {
 }
 
 /** Constant time, if (swap) (x,y) = (y,x); */
-sv cond_swap(gf x, gf y, decaf_bool_t swap) {
-    FOR_LIMB(i, {
+static inline void cond_swap(gf x, gf y, decaf_bool_t swap) {
+    int i;
+    /* PERF */
+    //_Pragma("clang loop unroll(disable) vectorize(enable) vectorize_width(4) interleave_count(2)")
+    for (i=0; i<DECAF_448_LIMBS; i++) {
         decaf_word_t s = (x[i] ^ y[i]) & swap;
         x[i] ^= s;
         y[i] ^= s;
-    });
+    }
 }
 
 /**
