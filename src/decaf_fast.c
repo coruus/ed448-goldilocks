@@ -141,6 +141,31 @@ static inline void gf_sub ( gf c, const gf a, const gf b ) {
     field_sub((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
 
+/** Add mod p.  Conservatively always weak-reduce. (PERF) */
+static inline void gf_bias ( gf c, int amt) {
+    field_bias((field_t *)c, amt);
+}
+
+/** Subtract mod p.  Bias by 2 and don't reduce  */
+static inline void gf_sub_nr ( gf c, const gf a, const gf b ) {
+    ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
+    field_sub_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
+    gf_bias(c, 2);
+}
+
+/** Subtract mod p. Bias by 3 but don't reduce.  */
+static inline void gf_sub_nr_nr ( gf c, const gf a, const gf b ) {
+    ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
+    field_sub_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
+    gf_bias(c, 3);
+}
+
+/** Add mod p.  Don't reduce. */
+static inline void gf_add_nr ( gf c, const gf a, const gf b ) {
+    ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
+    field_add_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
+}
+
 /** Constant time, x = is_z ? z : y */
 sv cond_sel(gf x, const gf y, const gf z, decaf_bool_t is_z) {
     FOR_LIMB(i, x[i] = (y[i] & ~is_z) | (z[i] & is_z) );
@@ -398,21 +423,21 @@ sv decaf_448_point_add_sub (
 ) {
     /* Twisted Edward formulas, complete when 4-torsion isn't involved */
     gf a, b, c, d;
-    gf_sub ( b, q->y, q->x );
-    gf_sub ( c, r->y, r->x );
-    gf_add ( d, r->y, r->x );
+    gf_sub_nr ( b, q->y, q->x );
+    gf_sub_nr ( c, r->y, r->x );
+    gf_add_nr ( d, r->y, r->x );
     cond_swap(c,d,do_sub);
     gf_mul ( a, c, b );
-    gf_add ( b, q->y, q->x );
+    gf_add_nr ( b, q->y, q->x );
     gf_mul ( p->y, d, b );
     gf_mul ( b, r->t, q->t );
     gf_mlw ( p->x, b, 2-2*EDWARDS_D );
-    gf_add ( b, a, p->y );
-    gf_sub ( c, p->y, a );
+    gf_add_nr ( b, a, p->y );
+    gf_sub_nr ( c, p->y, a );
     gf_mul ( a, q->z, r->z );
-    gf_add ( a, a, a );
-    gf_add ( p->y, a, p->x );
-    gf_sub ( a, a, p->x );
+    gf_add_nr ( a, a, a );
+    gf_add_nr ( p->y, a, p->x );
+    gf_sub_nr ( a, a, p->x );
     cond_swap(a,p->y,do_sub);
     gf_mul ( p->z, a, p->y );
     gf_mul ( p->x, p->y, c );
@@ -459,20 +484,20 @@ void decaf_448_point_sub (
     const decaf_448_point_t r
 ) {
     gf a, b, c, d;
-    gf_sub ( b, q->y, q->x );
-    gf_sub ( d, r->y, r->x );
-    gf_add ( c, r->y, r->x );
+    gf_sub_nr ( b, q->y, q->x );
+    gf_sub_nr ( d, r->y, r->x );
+    gf_add_nr ( c, r->y, r->x );
     gf_mul ( a, c, b );
-    gf_add ( b, q->y, q->x );
+    gf_add_nr ( b, q->y, q->x );
     gf_mul ( p->y, d, b );
     gf_mul ( b, r->t, q->t );
     gf_mlw ( p->x, b, 2-2*EDWARDS_D );
-    gf_add ( b, a, p->y );
-    gf_sub ( c, p->y, a );
+    gf_add_nr ( b, a, p->y );
+    gf_sub_nr ( c, p->y, a );
     gf_mul ( a, q->z, r->z );
-    gf_add ( a, a, a );
-    gf_sub ( p->y, a, p->x );
-    gf_add ( a, a, p->x );
+    gf_add_nr ( a, a, a );
+    gf_sub_nr ( p->y, a, p->x );
+    gf_add_nr ( a, a, p->x );
     gf_mul ( p->z, a, p->y );
     gf_mul ( p->x, p->y, c );
     gf_mul ( p->y, a, b );
@@ -485,20 +510,20 @@ void decaf_448_point_add (
     const decaf_448_point_t r
 ) {
     gf a, b, c, d;
-    gf_sub ( b, q->y, q->x );
-    gf_sub ( c, r->y, r->x );
-    gf_add ( d, r->y, r->x );
+    gf_sub_nr ( b, q->y, q->x );
+    gf_sub_nr ( c, r->y, r->x );
+    gf_add_nr ( d, r->y, r->x );
     gf_mul ( a, c, b );
-    gf_add ( b, q->y, q->x );
+    gf_add_nr ( b, q->y, q->x );
     gf_mul ( p->y, d, b );
     gf_mul ( b, r->t, q->t );
     gf_mlw ( p->x, b, 2-2*EDWARDS_D );
-    gf_add ( b, a, p->y );
-    gf_sub ( c, p->y, a );
+    gf_add_nr ( b, a, p->y );
+    gf_sub_nr ( c, p->y, a );
     gf_mul ( a, q->z, r->z );
-    gf_add ( a, a, a );
-    gf_add ( p->y, a, p->x );
-    gf_sub ( a, a, p->x );
+    gf_add_nr ( a, a, a );
+    gf_add_nr ( p->y, a, p->x );
+    gf_sub_nr ( a, a, p->x );
     gf_mul ( p->z, a, p->y );
     gf_mul ( p->x, p->y, c );
     gf_mul ( p->y, a, b );
@@ -510,14 +535,14 @@ void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
     gf a, b, c, d;
     gf_sqr ( c, q->x );
     gf_sqr ( a, q->y );
-    gf_add ( d, c, a );
-    gf_add ( p->t, q->y, q->x );
+    gf_add_nr ( d, c, a );
+    gf_add_nr ( p->t, q->y, q->x );
     gf_sqr ( b, p->t );
-    gf_sub ( b, b, d );
-    gf_sub ( p->t, a, c );
+    gf_sub_nr_nr ( b, b, d );
+    gf_sub_nr ( p->t, a, c );
     gf_sqr ( p->x, q->z );
-    gf_add ( p->z, p->x, p->x );
-    gf_sub ( a, p->z, p->t );
+    gf_add_nr ( p->z, p->x, p->x );
+    gf_sub_nr_nr ( a, p->z, p->t );
     gf_mul ( p->x, a, b );
     gf_mul ( p->z, p->t, a );
     gf_mul ( p->y, p->t, d );
