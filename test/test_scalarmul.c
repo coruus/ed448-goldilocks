@@ -116,6 +116,8 @@ single_scalarmul_compatibility_test (
         posix_memalign((void**)&dpre, alignof_decaf_448_precomputed_s, sizeof_decaf_448_precomputed_s);
     	tw_extended_a_t ed;
         convert_tw_extensible_to_tw_extended(ed, &text);
+        uint8_t ser4[DECAF_448_SER_BYTES];
+        decaf_448_point_encode(ser4, (struct decaf_448_point_s *)ed);
         decaf_448_point_scalarmul(
             ed2,
             (struct decaf_448_point_s *)ed,
@@ -142,6 +144,7 @@ single_scalarmul_compatibility_test (
         decaf_448_point_encode(ser1, (struct decaf_448_point_s *)ed);
         decaf_448_point_encode(ser2, ed2);
         decaf_448_point_encode(ser3, ed3);
+        (void)decaf_448_direct_scalarmul(ser4, ser4, (struct decaf_448_scalar_s *)scalar, -1, -1);
 
         /* check consistency mont vs window */
         consistent &= field_eq(mont, ct);
@@ -150,6 +153,7 @@ single_scalarmul_compatibility_test (
         consistent &= field_eq(mont, sced);
         consistent &= memcmp(ser1,ser2,sizeof(ser1)) ? 0 : -1;
         consistent &= memcmp(ser1,ser3,sizeof(ser1)) ? 0 : -1;
+        consistent &= memcmp(ser1,ser4,sizeof(ser1)) ? 0 : -1;
     }
     
     /* check consistency mont vs combs */

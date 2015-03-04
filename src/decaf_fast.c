@@ -809,3 +809,22 @@ void decaf_448_precomputed_scalarmul (
 ) {
     decaf_448_point_scalarmul(a,b->p[0],scalar);
 }
+
+decaf_bool_t decaf_448_direct_scalarmul (
+    uint8_t scaled[DECAF_448_SER_BYTES],
+    const uint8_t base[DECAF_448_SER_BYTES],
+    const decaf_448_scalar_t scalar,
+    decaf_bool_t allow_identity,
+    decaf_bool_t short_circuit
+) {
+    decaf_448_point_t basep;
+    decaf_bool_t succ = decaf_448_point_decode(basep, base, allow_identity);
+    /* FIXME: compiler can probably reorder this to something non-consttime even if
+     * !short_circuit.
+     */
+    if (short_circuit && ~succ) return succ;
+    decaf_448_point_scalarmul(basep, basep, scalar);
+    decaf_448_point_encode(scaled, basep);
+    return succ;
+}
+

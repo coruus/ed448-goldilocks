@@ -325,6 +325,31 @@ void decaf_448_point_scalarmul (
 ) API_VIS NONNULL3;
 
 /**
+ * @brief Multiply a base point by a scalar: scaled = scalar*base.
+ * This function operates directly on serialized forms.
+ *
+ * @warning This function is experimental.  It may not be supported
+ * long-term.
+ *
+ * @param [out] scaled The scaled point base*scalar
+ * @param [in] base The point to be scaled.
+ * @param [in] scalar The scalar to multiply by.
+ * @param [in] allow_identity Allow the input to be the identity.
+ * @param [in] short_circuit Allow a fast return if the input is illegal.
+ *
+ * @retval DECAF_SUCCESS The scalarmul succeeded.
+ * @retval DECAF_FAILURE The scalarmul didn't succeed, because
+ * base does not represent a point.
+ */
+decaf_bool_t decaf_448_direct_scalarmul (
+    uint8_t scaled[DECAF_448_SER_BYTES],
+    const uint8_t base[DECAF_448_SER_BYTES],
+    const decaf_448_scalar_t scalar,
+    decaf_bool_t allow_identity,
+    decaf_bool_t short_circuit
+) API_VIS NONNULL3 WARN_UNUSED;
+
+/**
  * @brief Precompute a table for fast scalar multiplication.
  * Some implementations do not include precomputed points; for
  * those implementations, this implementation simply copies the
@@ -367,7 +392,9 @@ void decaf_448_precomputed_scalarmul (
  * @param [in] scalar1 A first scalar to multiply by.
  * @param [in] base2 A second point to be scaled.
  * @param [in] scalar2 A second scalar to multiply by.
+ *
  * @TODO: test
+ * @TODO: define vartime/precomp version of this for performance??
  */
 void decaf_448_point_double_scalarmul (
     decaf_448_point_t combo,
