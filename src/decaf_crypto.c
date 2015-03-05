@@ -57,11 +57,8 @@ decaf_448_shared_secret (
     const decaf_448_private_key_t my_privkey,
     const decaf_448_public_key_t your_pubkey
 ) {
-    decaf_448_point_t point;
     uint8_t ss_ser[DECAF_448_SER_BYTES];
     const char *nope = "decaf_448_ss_invalid";
-    decaf_bool_t ret = decaf_448_point_decode(point, your_pubkey, DECAF_FALSE);
-    decaf_448_point_scalarmul(point, point, my_privkey->secret_scalar);
     
     unsigned i;
     /* Lexsort keys.  Less will be -1 if mine is less, and 0 otherwise. */
@@ -94,9 +91,7 @@ decaf_448_shared_secret (
     }
     shake256_update(sponge, ss_ser, sizeof(ss_ser));
     
-    /* encode the shared secret but mask with secret key */
-    decaf_448_point_encode(ss_ser, point);
-    
+    decaf_bool_t ret = decaf_448_direct_scalarmul(ss_ser, your_pubkey, my_privkey->secret_scalar, DECAF_FALSE, DECAF_TRUE);
     /* If invalid, then replace ... */
     for (i=0; i<sizeof(ss_ser); i++) {
         ss_ser[i] &= ret;

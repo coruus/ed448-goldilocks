@@ -217,8 +217,7 @@ letoh64 (uint64_t x) { return x; }
  * @param c The char to set it to (probably zero).
  * @param s The size of the object.
  */
-#if (defined(__DARWIN_C_LEVEL) \
-    || (defined(__STDC_WANT_LIB_EXT1__) && __STDC_WANT_LIB_EXT1__ == 1))
+#if defined(__DARWIN_C_LEVEL) || defined(__STDC_LIB_EXT1__)
 #define HAS_MEMSET_S
 #endif
 

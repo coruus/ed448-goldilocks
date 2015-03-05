@@ -368,6 +368,18 @@ decaf_bool_t decaf_448_scalar_eq (
 /** identity = (0,1) */
 const decaf_448_point_t decaf_448_point_identity = {{{0},{1},{1},{0}}};
 
+static void gf_encode ( unsigned char ser[DECAF_448_SER_BYTES], gf a ) {
+    gf_canon(a);
+    int i, k=0, bits=0;
+    decaf_dword_t buf=0;
+    for (i=0; i<DECAF_448_LIMBS; i++) {
+        buf |= (decaf_dword_t)a[i]<<bits;
+        for (bits += LBITS; (bits>=8 || i==DECAF_448_LIMBS-1) && k<DECAF_448_SER_BYTES; bits-=8, buf>>=8) {
+            ser[k++]=buf;
+        }
+    }
+}
+
 void decaf_448_point_encode( unsigned char ser[DECAF_448_SER_BYTES], const decaf_448_point_t p ) {
     /* Can shave off one mul here; not important but makes consistent with paper */
     gf a, b, c, d;
@@ -389,16 +401,7 @@ void decaf_448_point_encode( unsigned char ser[DECAF_448_SER_BYTES], const decaf
     gf_mul ( c, b, p->y ); 
     gf_add ( a, a, c );
     cond_neg ( a, hibit(a) );
-    
-    gf_canon(a);
-    int i, k=0, bits=0;
-    decaf_dword_t buf=0;
-    for (i=0; i<DECAF_448_LIMBS; i++) {
-        buf |= (decaf_dword_t)a[i]<<bits;
-        for (bits += LBITS; (bits>=8 || i==DECAF_448_LIMBS-1) && k<DECAF_448_SER_BYTES; bits-=8, buf>>=8) {
-            ser[k++]=buf;
-        }
-    }
+    gf_encode(ser, a);
 }
 
 /**
@@ -834,7 +837,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_cpy ( xd, ONE );
     gf_cpy ( zd, ZERO );
     
-    int i,j;
+    int j;
     decaf_bool_t pflip = 0;
     for (j=448-1; j>=0; j--) { /* TODO: DECAF_SCALAR_BITS */
         decaf_bool_t flip = -((scalar->limb[j/WORD_BITS]>>(j%WORD_BITS))&1);;
@@ -869,9 +872,14 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_mul(xz_d, xd, zd);
     gf_mul(xz_a, xa, za);
     output_zero = gf_eq(xz_d, ZERO);
-    za_zero = gf_eq(za, ZERO);
     cond_sel(xz_d, xz_d, ONE, output_zero); /* make xz_d always nonzero */
     zcase = output_zero | gf_eq(xz_a, ZERO);
+
+    za_zero = gf_eq(za, ZERO);
+    cond_sel(zs,zs,s0,zcase); /* zs, but s0 in zcase */
+    cond_sel(L3,xd,zd,za_zero);
+    cond_sel(xs,xs,L3,zcase); /* xs, but zq or qq in zcase */
+    
 
     /* Curve test in zcase */
     gf_cpy(L0,x0);
@@ -918,27 +926,12 @@ decaf_bool_t decaf_448_direct_scalarmul (
 
     /* compute the output */
     gf_mul(L1,L0,den);
+    gf_mul(L0,xs,zs);
+    gf_mul(out,L0,L1);
 
-    cond_sel(L2,zs,s0,zcase); /* zs, but s0 in zcase */
-    gf_mul(L0,L1,L2);
-
-    cond_sel(L3,xd,zd,za_zero);
-    cond_sel(L2,xs,L3,zcase); /* xs, but zq or qq in zcase */
-    gf_mul(out,L0,L2);
-
-    cond_sel(out,out,ZERO,output_zero);
     cond_neg(out,hibit(out));
-    //
-    // /* TODO: resubroutineize? */
-    gf_canon(out);
-    int k=0, bits=0;
-    decaf_dword_t buf=0;
-    for (i=0; i<DECAF_448_LIMBS; i++) {
-        buf |= (decaf_dword_t)out[i]<<bits;
-        for (bits += LBITS; (bits>=8 || i==DECAF_448_LIMBS-1) && k<DECAF_448_SER_BYTES; bits-=8, buf>>=8) {
-            scaled[k++]=buf;
-        }
-    }
+    cond_sel(out,out,ZERO,output_zero);\
+    gf_encode(scaled, out);
 
     return succ;
 }
