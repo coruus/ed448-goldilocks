@@ -229,6 +229,14 @@ static decaf_word_t hibit(const gf x) {
     return -(y[0]&1);
 }
 
+/** Return high bit of x/2 = low bit of x mod p */
+static decaf_word_t lobit(const gf x) {
+    gf y;
+    gf_cpy(y,x);
+    gf_canon(y);
+    return -(y[0]&1);
+}
+
 /* a = use_c ? c : b */
 sv decaf_448_cond_sel (
     decaf_448_point_t a,
@@ -871,7 +879,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_mul(xz_d, xd, zd);
     gf_mul(xz_a, xa, za);
     output_zero = gf_eq(xz_d, ZERO);
-    cond_sel(xz_d, xz_d, ONE, output_zero); /* make xz_d always nonzero */
+    xz_d[0] -= output_zero; /* make xz_d always nonzero */
     zcase = output_zero | gf_eq(xz_a, ZERO);
     za_zero = gf_eq(za, ZERO);
 
@@ -882,14 +890,14 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_add(L1,L1,L0);
     cond_sel(xz_a,xz_a,L1,zcase);
 
-    /* Compute denominator */
-    gf_mul(L0, x0, xz_d);
-    gf_mlw(L2, L0, 4);
-    gf_mul(L1, L2, xz_a);
+    /* Compute denominator = x0 xa za xd zd */
+    gf_mul(L0, x0, xz_a);
+    gf_mul(L1, L0, xz_d);
     gf_isqrt(den, L1);
 
     /* Check squareness */
     gf_sqr(L2, den);
+    gf_mul(L3, L0, L2); /* x0 xa za den^2 = 1/xz_d, for later */
     gf_mul(L0, L1, L2);
     gf_add(L0, L0, ONE);
     succ &= ~hibit(s0) & ~gf_eq(L0, ZERO);
@@ -901,25 +909,29 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_mul(L1, x0, zd);
     gf_sub(L1, L1, xd);
     gf_mul(L2, xa, L1); /* L2 = "pqr" */
-
     gf_sub(L1, L0, L2);
     gf_add(L0, L0, L2);
     gf_mul(L2, L1, den); /* L2 = y0 / x0 */
     gf_mul(L1, L0, den); /* L1 = yO / xO */
-    sflip = hibit(L1) ^ hibit(L2) ^ za_zero;
-    cond_swap(xd, zd, sflip); /* L0 = "times" */
+    sflip = (lobit(L1) ^ lobit(L2)) | za_zero;
     /* OK, done with y-coordinates */
-
-    gf_add(den,den,den);
     
-    /* OK, now correct for swappage, if last was flip, or in zcase */
-    /* Possibly den = (den*s0)^2 * xa * za */
+    
+    /* If zd==0 or za ==0:
+     *   return 0
+     * Else if za == 0:
+     *   return s0           * (sflip ? zd : xd)^2 * L3
+     * Else if zd == 0:
+     *   return s0           * (sflip ? zd : xd)^2 * L3
+     * Else if pflip:
+     *   return      xs * zs * (sflip ? zd : xd) * L3
+     * Else:
+     *   return s0 * xs * zs * (sflip ? zd : xd) * den
+     */
+    cond_sel(xd, xd, zd, sflip); /* xd = actual xd we care about */
     gf_mul(L1,den,s0);
-    gf_sqr(L2,L1);
-    gf_mul(L3,L2,xz_a);
     cond_sel(den,L1,L3,pflip|zcase);
-    
-    /* zs*xs, but s0*(xd or zd) in zcase */
+    cond_sel(den,den,ZERO,output_zero);
     cond_sel(zs,zs,s0,zcase);
     cond_sel(xs,xs,xd,zcase);
 
@@ -929,9 +941,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_mul(L1,xd,den);
     gf_mul(L0,xs,zs);
     gf_mul(out,L0,L1);
-
     cond_neg(out,hibit(out));
-    cond_sel(out,out,ZERO,output_zero);\
     gf_encode(scaled, out);
 
     return succ;
