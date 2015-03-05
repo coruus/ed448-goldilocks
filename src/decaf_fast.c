@@ -13,8 +13,6 @@
 #include <string.h>
 #include "field.h"
 
-#include "ec_point.h" // REMOVE!
-
 #define WBITS DECAF_WORD_BITS
 
 #if WBITS == 64
@@ -833,11 +831,16 @@ decaf_bool_t decaf_448_direct_scalarmul (
     decaf_bool_t allow_identity,
     decaf_bool_t short_circuit
 ) {
+    /* The Montgomery ladder does not short-circuit return on invalid points,
+     * since it detects them during recompress.
+     */
     (void)short_circuit;
-    gf s0, x0, xa, za, xd, zd, xs, zs;
+    
+    gf s0, x0, xa, za, xd, zd, xs, zs, L0, L1;
     decaf_bool_t succ = gf_deser ( s0, base );
     succ &= allow_identity |~ gf_eq( s0, ZERO);
 
+    /* Prepare the Montgomery ladder: Q = 1:0, P+Q = P */
     gf_sqr ( xa, s0 );
     gf_cpy ( x0, xa );
     gf_cpy ( za, ONE );
@@ -846,26 +849,38 @@ decaf_bool_t decaf_448_direct_scalarmul (
     
     int j;
     decaf_bool_t pflip = 0;
-    for (j=448-1; j>=0; j--) { /* TODO: DECAF_SCALAR_BITS */
-        decaf_bool_t flip = -((scalar->limb[j/WORD_BITS]>>(j%WORD_BITS))&1);;
-        cond_swap(xa,xd,flip^pflip);
-        cond_swap(za,zd,flip^pflip);
+    for (j=DECAF_448_SCALAR_BITS+1; j>=0; j--) {
+        /* FIXME: -1, but the test cases use too many bits */
+        /* TODO PERF: consider a selection-based ladder.  It uses more memory but is probably faster. */
+        
+        /* Augmented Montgomery ladder */
+        decaf_bool_t flip = -((scalar->limb[j/WORD_BITS]>>(j%WORD_BITS))&1);
+        
+        /* Differential add first... */
         gf_add_nr ( xs, xa, za );
         gf_sub_nr ( zs, xa, za );
         gf_add_nr ( xa, xd, zd );
         gf_sub_nr ( za, xd, zd );
+        
+        cond_sel(L0,xa,xs,flip^pflip);
+        cond_sel(L1,za,zs,flip^pflip);
+        
         gf_mul ( xd, xa, zs );
         gf_mul ( zd, xs, za );
         gf_add_nr ( xs, xd, zd );
         gf_sub_nr ( zd, xd, zd );
         gf_mul ( zs, zd, s0 );
-        gf_sqr ( zd, xa );
-        gf_sqr ( xa, za );
+        
+        /* ... and then double */
+        gf_sqr ( zd, L0 );
+        gf_sqr ( xa, L1 );
         gf_sub_nr ( za, zd, xa );
         gf_mul ( xd, xa, zd );
         gf_mlw ( zd, za, 1-EDWARDS_D );
         gf_add_nr ( xa, xa, zd );
         gf_mul ( zd, xa, za );
+        
+        /* OK, finish the dadd */
         gf_sqr ( xa, xs );
         gf_sqr ( za, zs );
         pflip = flip;
@@ -874,7 +889,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     cond_swap(za,zd,pflip);
     
     /* OK, time to reserialize! Should be easy (heh, but seriously, TODO: simplify) */
-    gf xz_d, xz_a, xz_s, den, L0, L1, L2, L3;
+    gf xz_d, xz_a, xz_s, den, L2, L3;
     mask_t zcase, output_zero, sflip, za_zero;
     gf_mul(xz_s, xs, zs);
     gf_mul(xz_d, xd, zd);
@@ -884,7 +899,9 @@ decaf_bool_t decaf_448_direct_scalarmul (
     zcase = output_zero | gf_eq(xz_a, ZERO);
     za_zero = gf_eq(za, ZERO);
 
-    /* Curve test in zcase */
+    /* Curve test in zcase, compute x0^2 + (2d-4)x0 + 1
+     * (we know that x0 = s0^2 is square).
+     */
     gf_add(L0,x0,ONE);
     gf_sqr(L1,L0);
     gf_mlw(L0,x0,-4*EDWARDS_D);
@@ -896,14 +913,14 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_mul(L1, L0, xz_d);
     gf_isqrt(den, L1);
 
-    /* Check squareness */
+    /* Check that the square root came out OK. */
     gf_sqr(L2, den);
     gf_mul(L3, L0, L2); /* x0 xa za den^2 = 1/xz_d, for later */
     gf_mul(L0, L1, L2);
     gf_add(L0, L0, ONE);
     succ &= ~hibit(s0) & ~gf_eq(L0, ZERO);
 
-    /* Compute y/x */
+    /* Compute y/x for input and output point. */
     gf_mul(L1, x0, xd);
     gf_sub(L1, zd, L1);
     gf_mul(L0, za, L1); /* L0 = "opq" */
@@ -917,30 +934,22 @@ decaf_bool_t decaf_448_direct_scalarmul (
     sflip = (lobit(L1) ^ lobit(L2)) | za_zero;
     /* OK, done with y-coordinates */
     
-    
-    /* If xa==0 or za ==0:
-     *   return 0
-     * Else if za == 0:
-     *   return s0           * (sflip ? zd : xd)^2 * L3
-     * Else if zd == 0:
-     *   return s0           * (sflip ? zd : xd)^2 * L3
-     * Else if pflip:
-     *   return      xs * zs * (sflip ? zd : xd)   * L3
-     * Else:
-     *   return s0 * xs * zs * (sflip ? zd : xd)   * den
+    /* If xa==0 or za ==0: return 0
+     * Else if za == 0: return s0           * (sflip ? zd : xd)^2 * L3
+     * Else if zd == 0: return s0           * (sflip ? zd : xd)^2 * L3
+     * Else if pflip:   return      xs * zs * (sflip ? zd : xd)   * L3
+     * Else:            return s0 * xs * zs * (sflip ? zd : xd)   * den
      */
     cond_sel(xd, xd, zd, sflip); /* xd = actual xd we care about */
     cond_sel(den,den,L3,pflip|zcase);
     cond_sel(xz_s,xz_s,xd,zcase);
     cond_sel(s0,s0,ONE,pflip&~zcase);
     cond_sel(s0,s0,ZERO,output_zero);
-
-    /* compute the output xd*den*xs*zs or
-     *   den*xd^2*s0 = (oden*s0*xd)^2 * xa * za * s0
-     * in zcase */
+    
     gf_mul(L0,xd,den);
     gf_mul(L1,L0,s0);
     gf_mul(L0,L1,xz_s);
+    
     cond_neg(L0,hibit(L0));
     gf_encode(scaled, L0);
 
