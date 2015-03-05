@@ -13,6 +13,8 @@
 #include <string.h>
 #include "field.h"
 
+#include "constant_time.h" /* TODO REMOVE */
+
 #define WBITS DECAF_WORD_BITS
 
 #if WBITS == 64
@@ -168,7 +170,8 @@ static inline void gf_add_nr ( gf c, const gf a, const gf b ) {
 
 /** Constant time, x = is_z ? z : y */
 sv cond_sel(gf x, const gf y, const gf z, decaf_bool_t is_z) {
-    FOR_LIMB(i, x[i] = (y[i] & ~is_z) | (z[i] & is_z) );
+    //FOR_LIMB(i, x[i] = (y[i] & ~is_z) | (z[i] & is_z) );
+    constant_time_select(x,z,y,sizeof(gf),is_z);
 }
 
 /** Constant time, if (neg) x=-x; */
