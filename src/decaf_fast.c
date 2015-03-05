@@ -873,9 +873,10 @@ decaf_bool_t decaf_448_direct_scalarmul (
     cond_swap(xa,xd,pflip);
     cond_swap(za,zd,pflip);
     
-    /* OK, time to reserialize! */
-    gf xz_d, xz_a, den, L0, L1, L2, L3, out; /* TODO: simplify */
+    /* OK, time to reserialize! Should be easy (heh, but seriously, TODO: simplify) */
+    gf xz_d, xz_a, xz_s, den, L0, L1, L2, L3;
     mask_t zcase, output_zero, sflip, za_zero;
+    gf_mul(xz_s, xs, zs);
     gf_mul(xz_d, xd, zd);
     gf_mul(xz_a, xa, za);
     output_zero = gf_eq(xz_d, ZERO);
@@ -917,32 +918,31 @@ decaf_bool_t decaf_448_direct_scalarmul (
     /* OK, done with y-coordinates */
     
     
-    /* If zd==0 or za ==0:
+    /* If xa==0 or za ==0:
      *   return 0
      * Else if za == 0:
      *   return s0           * (sflip ? zd : xd)^2 * L3
      * Else if zd == 0:
      *   return s0           * (sflip ? zd : xd)^2 * L3
      * Else if pflip:
-     *   return      xs * zs * (sflip ? zd : xd) * L3
+     *   return      xs * zs * (sflip ? zd : xd)   * L3
      * Else:
-     *   return s0 * xs * zs * (sflip ? zd : xd) * den
+     *   return s0 * xs * zs * (sflip ? zd : xd)   * den
      */
     cond_sel(xd, xd, zd, sflip); /* xd = actual xd we care about */
-    gf_mul(L1,den,s0);
-    cond_sel(den,L1,L3,pflip|zcase);
-    cond_sel(den,den,ZERO,output_zero);
-    cond_sel(zs,zs,s0,zcase);
-    cond_sel(xs,xs,xd,zcase);
+    cond_sel(den,den,L3,pflip|zcase);
+    cond_sel(xz_s,xz_s,xd,zcase);
+    cond_sel(s0,s0,ONE,pflip&~zcase);
+    cond_sel(s0,s0,ZERO,output_zero);
 
     /* compute the output xd*den*xs*zs or
      *   den*xd^2*s0 = (oden*s0*xd)^2 * xa * za * s0
      * in zcase */
-    gf_mul(L1,xd,den);
-    gf_mul(L0,xs,zs);
-    gf_mul(out,L0,L1);
-    cond_neg(out,hibit(out));
-    gf_encode(scaled, out);
+    gf_mul(L0,xd,den);
+    gf_mul(L1,L0,s0);
+    gf_mul(L0,L1,xz_s);
+    cond_neg(L0,hibit(L0));
+    gf_encode(scaled, L0);
 
     return succ;
 }
