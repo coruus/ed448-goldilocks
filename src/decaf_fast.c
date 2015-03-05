@@ -829,7 +829,6 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf s0, x0, xa, za, xd, zd, xs, zs;
     decaf_bool_t succ = gf_deser ( s0, base );
     succ &= allow_identity |~ gf_eq( s0, ZERO);
-    succ &= ~hibit(s0);
 
     gf_sqr ( xa, s0 );
     gf_cpy ( x0, xa );
@@ -874,16 +873,10 @@ decaf_bool_t decaf_448_direct_scalarmul (
     output_zero = gf_eq(xz_d, ZERO);
     cond_sel(xz_d, xz_d, ONE, output_zero); /* make xz_d always nonzero */
     zcase = output_zero | gf_eq(xz_a, ZERO);
-
     za_zero = gf_eq(za, ZERO);
-    cond_sel(zs,zs,s0,zcase); /* zs, but s0 in zcase */
-    cond_sel(L3,xd,zd,za_zero);
-    cond_sel(xs,xs,L3,zcase); /* xs, but zq or qq in zcase */
-    
 
     /* Curve test in zcase */
-    gf_cpy(L0,x0);
-    gf_add(L0,L0,ONE);
+    gf_add(L0,x0,ONE);
     gf_sqr(L1,L0);
     gf_mlw(L0,x0,-4*EDWARDS_D);
     gf_add(L1,L1,L0);
@@ -914,18 +907,26 @@ decaf_bool_t decaf_448_direct_scalarmul (
     gf_mul(L2, L1, den); /* L2 = y0 / x0 */
     gf_mul(L1, L0, den); /* L1 = yO / xO */
     sflip = hibit(L1) ^ hibit(L2) ^ za_zero;
-    cond_sel(L0, xd, zd, sflip); /* L0 = "times" */
+    cond_swap(xd, zd, sflip); /* L0 = "times" */
     /* OK, done with y-coordinates */
 
-    /* OK, now correct for swappage */
     gf_add(den,den,den);
+    
+    /* OK, now correct for swappage, if last was flip, or in zcase */
+    /* Possibly den = (den*s0)^2 * xa * za */
     gf_mul(L1,den,s0);
     gf_sqr(L2,L1);
     gf_mul(L3,L2,xz_a);
     cond_sel(den,L1,L3,pflip|zcase);
+    
+    /* zs*xs, but s0*(xd or zd) in zcase */
+    cond_sel(zs,zs,s0,zcase);
+    cond_sel(xs,xs,xd,zcase);
 
-    /* compute the output */
-    gf_mul(L1,L0,den);
+    /* compute the output xd*den*xs*zs or
+     *   den*xd^2*s0 = (oden*s0*xd)^2 * xa * za * s0
+     * in zcase */
+    gf_mul(L1,xd,den);
     gf_mul(L0,xs,zs);
     gf_mul(out,L0,L1);
 

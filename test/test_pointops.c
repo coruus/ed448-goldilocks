@@ -353,6 +353,9 @@ int test_decaf_evil (void) {
             mask_t s_ed = decaf_deserialize_tw_extended(pt_ed,base,-1);
             mask_t s_m  = decaf_montgomery_ladder(out_m, base, random_scalar, 448);
             
+            uint8_t ser_di[56];
+            mask_t s_di = decaf_448_direct_scalarmul(ser_di,random_input,(struct decaf_448_scalar_s *)random_scalar,-1,-1);
+            
             tw_extensible_a_t work;
             convert_tw_affine_to_tw_extensible(work,pt_te);
             scalarmul(work, random_scalar);
@@ -391,10 +394,11 @@ int test_decaf_evil (void) {
             eq_pos = decaf_448_point_eq(m,decaf_448_point_identity);
             
             if ((care_should && should != s_m)
-                || ~s_base || s_e != s_te || s_m != s_te || s_ed != s_te
+                || ~s_base || s_e != s_te || s_m != s_te || s_ed != s_te || s_di != s_te
                 || (s_te && ~field_eq(out_e,out_m))
                 || (s_ed && ~field_eq(out_e,out_ed))
                 || memcmp(ser_de, ser_ed, 56)
+                || (s_te && memcmp(ser_di, ser_ed, 56))
                 || (s_e & ~succ_dec)
                 || (s_e & ~decaf_448_point_eq(pt_dec, pt_dec2)
                 || (s_e & ~decaf_448_point_valid(pt_dec))
@@ -409,8 +413,8 @@ int test_decaf_evil (void) {
                 field_print("    oute", out_e);
                 field_print("    outE", out_ed);
                 field_print("    outm", out_m);
-                printf("    succ: m=%d, e=%d, t=%d, b=%d, T=%d, D=%d, nur=%d, e+=%d, e-=%d, should=%d[%d]\n",
-                    -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_base,-(int)s_ed,-(int)succ_dec,
+                printf("    succ: m=%d, e=%d, t=%d, di=%d, b=%d, T=%d, D=%d, nur=%d, e+=%d, e-=%d, should=%d[%d]\n",
+                    -(int)s_m,-(int)s_e,-(int)s_te,-(int)s_di,-(int)s_base,-(int)s_ed,-(int)succ_dec,
                     -(int)succ_nur, -(int)eq_neg, -(int)eq_pos,
                     -(int)should,-(int)care_should
                 );
