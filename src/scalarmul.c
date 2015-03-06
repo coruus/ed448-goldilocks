@@ -153,6 +153,7 @@ scalarmul (
         SCALARMUL_FIXED_WINDOW_ADJUSTMENT, SCALAR_WORDS
     );
 
+	/* FIXME: tabulator is redundant */
     tw_extensible_a_t tabulator;
     copy_tw_extensible(tabulator, working);
     double_tw_extensible(tabulator);

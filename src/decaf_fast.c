@@ -13,7 +13,8 @@
 #include <string.h>
 #include "field.h"
 
-#include "constant_time.h" /* TODO REMOVE */
+ /* TODO REMOVE */
+#include "constant_time.h"
 
 #define WBITS DECAF_WORD_BITS
 
@@ -547,7 +548,6 @@ void decaf_448_point_add (
     gf_mul ( p->t, b, c );
 }
 
-/* No dedicated point double yet (PERF) */
 void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
     gf a, b, c, d;
     gf_sqr ( c, q->x );
@@ -563,6 +563,7 @@ void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
     gf_mul ( p->x, a, b );
     gf_mul ( p->z, p->t, a );
     gf_mul ( p->y, p->t, d );
+    /* TODO: conditional? */
     gf_mul ( p->t, b, d );
 }
 
@@ -670,7 +671,7 @@ void decaf_448_scalar_encode(
     }
 }
 
-void decaf_448_point_scalarmul (
+void decaf_448_point_scalarmul_xxx (
     decaf_448_point_t a,
     const decaf_448_point_t b,
     const decaf_448_scalar_t scalar
@@ -694,6 +695,137 @@ void decaf_448_point_scalarmul (
     /* low bit is special because fo signed window */
     decaf_448_cond_sel(tmp,b,decaf_448_point_identity,-(scalar->limb[0]&1));
     decaf_448_point_sub(a,w,tmp);
+}
+
+/* Projective Niels coordinates */
+typedef struct { gf a, b, c; } niels_s, niels_t[1];
+typedef struct { niels_t n; gf z; } pniels_s, pniels_t[1];
+
+static void cond_neg_pniels (
+    pniels_t b,
+    decaf_bool_t neg
+) {
+    cond_swap(b->n->a, b->n->b, neg);
+    cond_neg(b->n->c, neg);
+}
+
+static void pt_to_pniels (
+    pniels_t b,
+    const decaf_448_point_t a
+) {
+    gf_sub ( b->n->a, a->y, a->x );
+    gf_add ( b->n->b, a->x, a->y );
+    gf_mlw ( b->n->c, a->t, 2*EDWARDS_D-2 );
+    gf_add ( b->z, a->z, a->z );
+}
+
+static void pniels_to_pt (
+    decaf_448_point_t e,
+    const pniels_t d
+) {
+    gf eu;
+    gf_add ( eu, d->n->b, d->n->a );
+    gf_sub ( e->y, d->n->b, d->n->a );
+    gf_mul ( e->t, e->y, eu);
+    gf_mul ( e->x, d->z, e->y );
+    gf_mul ( e->y, d->z, eu );
+    gf_sqr ( e->z, d->z );
+}
+
+static void add_niels_to_pt (
+    decaf_448_point_t d,
+    const niels_t e
+) {
+    gf a, b, c;
+    gf_sub_nr ( b, d->y, d->x );
+    gf_mul ( a, e->a, b );
+    gf_add_nr ( b, d->x, d->y );
+    gf_mul ( d->y, e->b, b );
+    gf_mul ( d->x, e->c, d->t );
+    gf_add_nr ( c, a, d->y );
+    gf_sub_nr ( b, d->y, a );
+    gf_sub_nr ( d->y, d->z, d->x );
+    gf_add_nr ( a, d->x, d->z );
+    gf_mul ( d->z, a, d->y );
+    gf_mul ( d->x, d->y, b );
+    gf_mul ( d->y, a, c );
+    /* TODO: if... */
+    gf_mul ( d->t, b, c );
+}
+
+static void add_pniels_to_pt (
+    decaf_448_point_t p,
+    const pniels_t pn
+) {
+    gf L0;
+    gf_mul ( L0, p->z, pn->z );
+    gf_cpy ( p->z, L0 );
+    add_niels_to_pt( p, pn->n );
+}
+
+void decaf_448_point_scalarmul (
+    decaf_448_point_t a,
+    const decaf_448_point_t b,
+    const decaf_448_scalar_t scalar
+) {
+    const int WINDOW = 5,
+        WINDOW_MASK = (1<<WINDOW)-1,
+        WINDOW_U_MASK = (1<<((448%WINDOW)-1))-1,
+        WINDOW_T_MASK = WINDOW_MASK >> 1,
+        NTABLE = 1<<(WINDOW-1);
+    
+    decaf_448_scalar_t scalar2, onehalf = {{{0}}}, arrr;
+    onehalf->limb[SCALAR_WORDS-1] = 1ull<<(WBITS-1);
+
+    /* PERF dedicated halve */
+    decaf_448_scalar_sub(scalar2, scalar, decaf_448_scalar_one);
+    decaf_448_montmul(scalar2,scalar2,onehalf,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+
+    /* FIXME PERF precompute 2^447-1/2 mod q.  Could instead use 2^446-1/2 mod q though. */
+    decaf_448_montmul(arrr,decaf_448_scalar_one,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    decaf_448_montmul(arrr,arrr,onehalf,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+
+    decaf_448_scalar_add(scalar2, scalar2, arrr);
+
+    pniels_t pn, multiples[NTABLE];
+    pt_to_pniels(multiples[0], b);
+    decaf_448_point_double(a, b);
+    pt_to_pniels(pn, a);
+
+    int i,j;
+    for (i=1; i<NTABLE; i++) {
+        add_pniels_to_pt(a, pn);
+        pt_to_pniels(multiples[i], a);
+    }
+
+    i = 448 - (448 % WINDOW);
+    int bits = scalar2->limb[i/WBITS] >> (i%WBITS),
+        inv = (bits>>((448 % WINDOW)-1))-1;
+    bits ^= inv;
+    
+    constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_U_MASK);
+    cond_neg_pniels(pn, inv);
+    pniels_to_pt(a, pn);
+
+    for (i-=WINDOW; i>=0; i-=WINDOW) {
+        for (j=0; j<WINDOW; j++) {
+            decaf_448_point_double(a, a);
+        }
+
+        bits = scalar2->limb[i/WBITS] >> (i%WBITS);
+        
+        if (i%WBITS >= WBITS-WINDOW) {
+            bits ^= scalar2->limb[i/WBITS+1] << (WBITS - (i%WBITS));
+        }
+                
+        bits &= WINDOW_MASK;
+        inv = (bits>>(WINDOW-1))-1;
+        bits ^= inv;
+    
+        constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
+        cond_neg_pniels(pn, inv);
+        add_pniels_to_pt(a, pn);
+    }
 }
 
 void decaf_448_point_double_scalarmul (
@@ -854,10 +986,9 @@ decaf_bool_t decaf_448_direct_scalarmul (
     decaf_bool_t pflip = 0;
     for (j=DECAF_448_SCALAR_BITS+1; j>=0; j--) {
         /* FIXME: -1, but the test cases use too many bits */
-        /* TODO PERF: consider a selection-based ladder.  It uses more memory but is probably faster. */
         
         /* Augmented Montgomery ladder */
-        decaf_bool_t flip = -((scalar->limb[j/WORD_BITS]>>(j%WORD_BITS))&1);
+        decaf_bool_t flip = -((scalar->limb[j/WBITS]>>(j%WBITS))&1);
         
         /* Differential add first... */
         gf_add_nr ( xs, xa, za );
@@ -873,19 +1004,18 @@ decaf_bool_t decaf_448_direct_scalarmul (
         gf_add_nr ( xs, xd, zd );
         gf_sub_nr ( zd, xd, zd );
         gf_mul ( zs, zd, s0 );
+        gf_sqr ( xa, xs );
+        gf_sqr ( za, zs );
         
         /* ... and then double */
         gf_sqr ( zd, L0 );
-        gf_sqr ( xa, L1 );
-        gf_sub_nr ( za, zd, xa );
-        gf_mul ( xd, xa, zd );
-        gf_mlw ( zd, za, 1-EDWARDS_D );
-        gf_add_nr ( xa, xa, zd );
-        gf_mul ( zd, xa, za );
+        gf_sqr ( L0, L1 );
+        gf_sub_nr ( L1, zd, L0 );
+        gf_mul ( xd, L0, zd );
+        gf_mlw ( zd, L1, 1-EDWARDS_D );
+        gf_add_nr ( L0, L0, zd );
+        gf_mul ( zd, L0, L1 );
         
-        /* OK, finish the dadd */
-        gf_sqr ( xa, xs );
-        gf_sqr ( za, zs );
         pflip = flip;
     }
     cond_swap(xa,xd,pflip);
