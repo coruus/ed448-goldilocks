@@ -548,7 +548,11 @@ void decaf_448_point_add (
     gf_mul ( p->t, b, c );
 }
 
-void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
+static void decaf_448_point_double_internal (
+    decaf_448_point_t p,
+    const decaf_448_point_t q,
+    decaf_bool_t before_double
+) {
     gf a, b, c, d;
     gf_sqr ( c, q->x );
     gf_sqr ( a, q->y );
@@ -563,8 +567,11 @@ void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
     gf_mul ( p->x, a, b );
     gf_mul ( p->z, p->t, a );
     gf_mul ( p->y, p->t, d );
-    /* TODO: conditional? */
-    gf_mul ( p->t, b, d );
+    if (!before_double) gf_mul ( p->t, b, d );
+}
+
+void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
+    decaf_448_point_double_internal(p,q,0);
 }
 
 void decaf_448_point_copy (
@@ -734,7 +741,8 @@ static void pniels_to_pt (
 
 static void add_niels_to_pt (
     decaf_448_point_t d,
-    const niels_t e
+    const niels_t e,
+    decaf_bool_t before_double
 ) {
     gf a, b, c;
     gf_sub_nr ( b, d->y, d->x );
@@ -749,18 +757,18 @@ static void add_niels_to_pt (
     gf_mul ( d->z, a, d->y );
     gf_mul ( d->x, d->y, b );
     gf_mul ( d->y, a, c );
-    /* TODO: if... */
-    gf_mul ( d->t, b, c );
+    if (!before_double) gf_mul ( d->t, b, c );
 }
 
 static void add_pniels_to_pt (
     decaf_448_point_t p,
-    const pniels_t pn
+    const pniels_t pn,
+    decaf_bool_t before_double
 ) {
     gf L0;
     gf_mul ( L0, p->z, pn->z );
     gf_cpy ( p->z, L0 );
-    add_niels_to_pt( p, pn->n );
+    add_niels_to_pt( p, pn->n, before_double );
 }
 
 void decaf_448_point_scalarmul (
@@ -768,64 +776,73 @@ void decaf_448_point_scalarmul (
     const decaf_448_point_t b,
     const decaf_448_scalar_t scalar
 ) {
-    const int WINDOW = 5,
+    const int WINDOW = 5, /* PERF: Make 4 on non hugevector platforms? */
         WINDOW_MASK = (1<<WINDOW)-1,
-        WINDOW_U_MASK = (1<<((448%WINDOW)-1))-1,
         WINDOW_T_MASK = WINDOW_MASK >> 1,
         NTABLE = 1<<(WINDOW-1);
     
-    decaf_448_scalar_t scalar2, onehalf = {{{0}}}, arrr;
+    /* Adjust the scalar to SABS window.  TODO: optimize, subroutinize */
+    decaf_448_scalar_t scalar2, onehalf = {{{0}}}, two = {{{2}}}, arrr;
     onehalf->limb[SCALAR_WORDS-1] = 1ull<<(WBITS-1);
+    
+    /* FIXME PERF MAGIC precompute 2^449-1/2 mod q.  Could instead use 2^446-1/2 mod q though. */
+    decaf_448_montmul(arrr,two,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
 
     /* PERF dedicated halve */
     decaf_448_scalar_sub(scalar2, scalar, decaf_448_scalar_one);
     decaf_448_montmul(scalar2,scalar2,onehalf,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-
-    /* FIXME PERF precompute 2^447-1/2 mod q.  Could instead use 2^446-1/2 mod q though. */
-    decaf_448_montmul(arrr,decaf_448_scalar_one,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-    decaf_448_montmul(arrr,arrr,onehalf,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-
     decaf_448_scalar_add(scalar2, scalar2, arrr);
-
+    
+    /* Set up a precomputed table with odd multiples of b. */
     pniels_t pn, multiples[NTABLE];
+    decaf_448_point_t tmp;
+    decaf_448_point_double(tmp, b);
+    pt_to_pniels(pn, tmp);
     pt_to_pniels(multiples[0], b);
-    decaf_448_point_double(a, b);
-    pt_to_pniels(pn, a);
+    decaf_448_point_copy(tmp, b);
 
     int i,j;
     for (i=1; i<NTABLE; i++) {
-        add_pniels_to_pt(a, pn);
-        pt_to_pniels(multiples[i], a);
+        add_pniels_to_pt(tmp, pn, 0);
+        pt_to_pniels(multiples[i], tmp);
     }
 
-    i = 448 - (448 % WINDOW);
-    int bits = scalar2->limb[i/WBITS] >> (i%WBITS),
-        inv = (bits>>((448 % WINDOW)-1))-1;
+    /* Initialize. */
+    i = DECAF_448_SCALAR_BITS - ((DECAF_448_SCALAR_BITS-1) % WINDOW) - 1;
+    int bits = scalar2->limb[i/WBITS] >> (i%WBITS) & WINDOW_MASK,
+        inv = (bits>>(WINDOW-1))-1;
     bits ^= inv;
     
-    constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_U_MASK);
+    constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
     cond_neg_pniels(pn, inv);
-    pniels_to_pt(a, pn);
+    pniels_to_pt(tmp, pn);
 
     for (i-=WINDOW; i>=0; i-=WINDOW) {
-        for (j=0; j<WINDOW; j++) {
-            decaf_448_point_double(a, a);
-        }
+        /* Using Hisil et al's lookahead method instead of extensible here
+         * for no particular reason.  Double WINDOW times, but only compute t on
+         * the last one.
+         */
+        for (j=0; j<WINDOW-1; j++)
+            decaf_448_point_double_internal(tmp, tmp, -1);
+        decaf_448_point_double(tmp, tmp);
 
+        /* Fetch another block of bits */
         bits = scalar2->limb[i/WBITS] >> (i%WBITS);
-        
         if (i%WBITS >= WBITS-WINDOW) {
             bits ^= scalar2->limb[i/WBITS+1] << (WBITS - (i%WBITS));
         }
-                
         bits &= WINDOW_MASK;
         inv = (bits>>(WINDOW-1))-1;
         bits ^= inv;
     
+        /* Add in from table.  Compute t only on last iteration. */
         constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
         cond_neg_pniels(pn, inv);
-        add_pniels_to_pt(a, pn);
+        add_pniels_to_pt(tmp, pn, i ? -1 : 0);
     }
+    
+    /* Write out the answer */
+    decaf_448_point_copy(a,tmp);
 }
 
 void decaf_448_point_double_scalarmul (
