@@ -1130,16 +1130,18 @@ void decaf_448_precomputed_scalarmul (
                 }
             }
             
-            mask_t invert = (tab>>(t-1))-1;
+            decaf_bool_t invert = (tab>>(t-1))-1;
             tab ^= invert;
             tab &= (1<<(t-1)) - 1;
             
             constant_time_lookup(ni, &table->table[j<<(t-1)], sizeof(ni), 1<<(t-1), tab);
             cond_neg_niels(ni, invert);
             if (i||j) {
-                add_niels_to_pt(out, ni, (j==n-1 && i<s-1));
+                add_niels_to_pt(out, ni, j==n-1 && i<s-1);
+                assert(decaf_point_valid(out));
             } else {
                 niels_to_pt(out, ni);
+                assert(decaf_point_valid(out));
             }
         }
     }
