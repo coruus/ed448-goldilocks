@@ -89,12 +89,13 @@ const decaf_448_point_t decaf_448_point_base = {{
       LIMB(0x723a55709a3983),LIMB(0xe1c0107a823dd4) }
 }};
 
-struct decaf_448_precomputed_s {
-    decaf_448_point_t p[1];
-};
+/* Projective Niels coordinates */
+typedef struct { gf a, b, c; } niels_s, niels_t[1];
+typedef struct { niels_t n; gf z; } pniels_s, pniels_t[1];
+struct decaf_448_precomputed_s { niels_t table [5<<4]; /* MAGIC */ };
 
-const struct decaf_448_precomputed_s *decaf_448_precomputed_base =
-    (const struct decaf_448_precomputed_s *)decaf_448_point_base;
+const struct decaf_448_precomputed_s decaf_448_precomputed_base_s,
+    *decaf_448_precomputed_base = &decaf_448_precomputed_base_s;
 
 const size_t sizeof_decaf_448_precomputed_s = sizeof(struct decaf_448_precomputed_s);
 const size_t alignof_decaf_448_precomputed_s = 32;
@@ -704,16 +705,13 @@ void decaf_448_point_scalarmul_xxx (
     decaf_448_point_sub(a,w,tmp);
 }
 
-/* Projective Niels coordinates */
-typedef struct { gf a, b, c; } niels_s, niels_t[1];
-typedef struct { niels_t n; gf z; } pniels_s, pniels_t[1];
-
-static void cond_neg_pniels (
-    pniels_t b,
+/* Operations on [p]niels */
+static void cond_neg_niels (
+    niels_t n,
     decaf_bool_t neg
 ) {
-    cond_swap(b->n->a, b->n->b, neg);
-    cond_neg(b->n->c, neg);
+    cond_swap(n->a, n->b, neg);
+    cond_neg(n->c, neg);
 }
 
 static void pt_to_pniels (
@@ -737,6 +735,16 @@ static void pniels_to_pt (
     gf_mul ( e->x, d->z, e->y );
     gf_mul ( e->y, d->z, eu );
     gf_sqr ( e->z, d->z );
+}
+
+static void niels_to_pt (
+    decaf_448_point_t e,
+    const niels_t n
+) {
+    gf_add ( e->y, n->b, n->a );
+    gf_sub ( e->x, n->b, n->a );
+    gf_mul ( e->t, e->y, e->x );
+    gf_cpy ( e->z, ONE );
 }
 
 static void add_niels_to_pt (
@@ -814,7 +822,7 @@ void decaf_448_point_scalarmul (
     bits ^= inv;
     
     constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
-    cond_neg_pniels(pn, inv);
+    cond_neg_niels(pn->n, inv);
     pniels_to_pt(tmp, pn);
 
     for (i-=WINDOW; i>=0; i-=WINDOW) {
@@ -837,7 +845,7 @@ void decaf_448_point_scalarmul (
     
         /* Add in from table.  Compute t only on last iteration. */
         constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
-        cond_neg_pniels(pn, inv);
+        cond_neg_niels(pn->n, inv);
         add_pniels_to_pt(tmp, pn, i ? -1 : 0);
     }
     
@@ -961,19 +969,180 @@ decaf_bool_t decaf_448_point_valid (
     return out;
 }
 
-void decaf_448_precompute (
-    decaf_448_precomputed_s *a,
-    const decaf_448_point_t b
+// void decaf_448_precompute (
+//     decaf_448_precomputed_s *a,
+//     const decaf_448_point_t b
+// ) {
+//     decaf_448_point_copy(a->p[0],b);
+// }
+
+// void decaf_448_precomputed_scalarmul (
+//     decaf_448_point_t a,
+//     const decaf_448_precomputed_s *b,
+//     const decaf_448_scalar_t scalar
+// ) {
+//     decaf_448_point_scalarmul(a,b->p[0],scalar);
+// }
+
+void gf_batch_invert (
+    gf *__restrict__ out,
+    const gf *in,
+    unsigned int n
 ) {
-    decaf_448_point_copy(a->p[0],b);
+    // if (n==0) {
+    //     return;
+    // } else if (n==1) {
+    //     field_inverse(out[0],in[0]);
+    //     return;
+    // }
+    assert(n>1);
+  
+    gf_cpy(out[1], in[0]);
+    int i;
+    for (i=1; i<(int) (n-1); i++) {
+        gf_mul(out[i+1], out[i], in[i]);
+    }
+    gf_mul(out[0], out[n-1], in[n-1]);
+
+    gf t1, t2;
+    gf_isqrt(t1, out[0]);
+    gf_sqr(t2, t1);
+    gf_sqr(t1, t2);
+    gf_mul(t2, t1, out[0]);
+    gf_cpy(out[0], t2);
+
+    for (i=n-1; i>0; i--) {
+        gf_mul(t1, out[i], out[0]);
+        gf_cpy(out[i], t1);
+        gf_mul(t1, out[0], in[i]);
+        gf_cpy(out[0], t1);
+    }
+}
+
+void
+decaf_448_precompute (
+    struct decaf_448_precomputed_s *table,
+    const decaf_448_point_t base
+) { 
+    const int n = 5, t = 5, s = 18; // TODO MAGIC
+    assert(n*t*s >= DECAF_448_SCALAR_BITS);
+  
+    decaf_448_point_t working, start, doubles[t-1];
+    decaf_448_point_copy(working, base);
+    pniels_t pn_tmp;
+  
+    gf zs[n<<(t-1)], zis[n<<(t-1)];
+  
+    unsigned int i,j,k;
+    
+    /* Compute n tables */
+    for (i=0; i<n; i++) {
+
+        /* Doubling phase */
+        for (j=0; j<t; j++) {
+            if (j) decaf_448_point_add(start, start, working);
+            else decaf_448_point_copy(start, working);
+
+            if (j==t-1 && i==n-1) break;
+
+            decaf_448_point_double(working, working);
+            if (j<t-1) decaf_448_point_copy(doubles[j], working);
+
+            for (k=0; k<s-1; k++)
+                decaf_448_point_double_internal(working, working, k<s-2);
+        }
+
+        /* Gray-code phase */
+        for (j=0;; j++) {
+            int gray = j ^ (j>>1);
+            int idx = (((i+1)<<(t-1))-1) ^ gray;
+
+            pt_to_pniels(pn_tmp, start);
+            memcpy(table->table[idx], pn_tmp->n, sizeof(pn_tmp->n));
+            gf_cpy(zs[idx], pn_tmp->z);
+			
+            if (j >= (1u<<(t-1)) - 1) break;
+            int delta = (j+1) ^ ((j+1)>>1) ^ gray;
+
+            for (k=0; delta>1; k++)
+                delta >>=1;
+            
+            if (gray & (1<<k)) {
+                decaf_448_point_add(start, start, doubles[k]);
+            } else {
+                decaf_448_point_sub(start, start, doubles[k]);
+            }
+        }
+    }
+    
+    gf_batch_invert(zis, zs, n<<(t-1));
+
+    gf product;
+    for (i=0; i<n<<(t-1); i++) {
+        gf_mul(product, table->table[i]->a, zis[i]);
+        gf_canon(product);
+        gf_cpy(table->table[i]->a, product);
+        
+        gf_mul(product, table->table[i]->b, zis[i]);
+        gf_canon(product);
+        gf_cpy(table->table[i]->b, product);
+        
+        gf_mul(product, table->table[i]->c, zis[i]);
+        gf_canon(product);
+        gf_cpy(table->table[i]->c, product);
+    }
 }
 
 void decaf_448_precomputed_scalarmul (
-    decaf_448_point_t a,
-    const decaf_448_precomputed_s *b,
+    decaf_448_point_t out,
+    const struct decaf_448_precomputed_s *table,
     const decaf_448_scalar_t scalar
 ) {
-    decaf_448_point_scalarmul(a,b->p[0],scalar);
+    unsigned int i,j,k;
+    const int n = 5, t = 5, s = 18, nbits = 450; // TODO MAGIC
+    
+    unsigned int scalar2_words = (nbits + WBITS - 1)/WBITS;
+    if (scalar2_words < SCALAR_WORDS) scalar2_words = SCALAR_WORDS;
+    
+    decaf_448_scalar_t scalar2, onehalf = {{{0}}}, two = {{{2}}}, arrr;
+    onehalf->limb[SCALAR_WORDS-1] = 1ull<<(WBITS-1);
+
+    /* FIXME PERF MAGIC precompute 2^449-1/2 mod q.  Could instead use 2^446-1/2 mod q though. */
+    decaf_448_montmul(arrr,two,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+
+    /* PERF dedicated halve */
+    decaf_448_scalar_sub(scalar2, scalar, decaf_448_scalar_one);
+    decaf_448_montmul(scalar2,scalar2,onehalf,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    decaf_448_scalar_add(scalar2, scalar2, arrr);
+    
+    niels_t ni;
+    
+    for (i=0; i<s; i++) {
+        if (i) decaf_448_point_double(out,out);
+        
+        for (j=0; j<n; j++) {
+            int tab = 0;
+            
+            for (k=0; k<t; k++) {
+                unsigned int bit = (s-1-i) + k*s + j*(s*t);
+                if (bit < scalar2_words * WBITS) {
+                    tab |= (scalar2->limb[bit/WBITS] >> (bit%WBITS) & 1) << k;
+                }
+            }
+            
+            mask_t invert = (tab>>(t-1))-1;
+            tab ^= invert;
+            tab &= (1<<(t-1)) - 1;
+            
+            constant_time_lookup(ni, &table->table[j<<(t-1)], sizeof(ni), 1<<(t-1), tab);
+            cond_neg_niels(ni, invert);
+            if (i||j) {
+                add_niels_to_pt(out, ni, (j==n-1 && i<s-1));
+            } else {
+                niels_to_pt(out, ni);
+            }
+        }
+    }
 }
 
 decaf_bool_t decaf_448_direct_scalarmul (
