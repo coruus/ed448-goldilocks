@@ -359,7 +359,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
  * @param [in] b Any point.
  */
 void decaf_448_precompute (
-    struct decaf_448_precomputed_s *a,
+    decaf_448_precomputed_s *a,
     const decaf_448_point_t b
 ) API_VIS NONNULL2;
 
@@ -376,7 +376,7 @@ void decaf_448_precompute (
  */
 void decaf_448_precomputed_scalarmul (
     decaf_448_point_t scaled,
-    const struct decaf_448_precomputed_s *base,
+    const decaf_448_precomputed_s *base,
     const decaf_448_scalar_t scalar
 ) API_VIS NONNULL3;
 

@@ -70,7 +70,7 @@ LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
   build/$(FIELD).o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o \
 	build/f_arithmetic.o build/arithmetic.o
 
-DECAFCOMPONENTS= build/$(DECAF).o build/shake.o build/decaf_crypto.o
+DECAFCOMPONENTS= build/$(DECAF).o build/shake.o build/decaf_crypto.o build/decaf_tables.o
 
 TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o \
@@ -113,6 +113,7 @@ else
 	ln -sf `basename $@` build/goldilocks.so.1
 endif
 
+
 build/decaf.so: $(DECAFCOMPONENTS)
 	rm -f $@
 ifeq ($(UNAME),Darwin)
@@ -131,6 +132,15 @@ build/timestamp:
 build/%.o: build/%.s
 	$(ASM) $(ASFLAGS) -c -o $@ $<
 
+build/decaf_gen_tables: build/decaf_gen_tables.o build/$(DECAF).o build/$(FIELD).o build/f_arithmetic.o
+	$(LD) $(LDFLAGS) -o $@ $^
+	
+build/decaf_tables.c: build/decaf_gen_tables
+	./$< > $@
+	
+build/decaf_tables.s: build/decaf_tables.c $(HEADERS)
+	$(CC) $(CFLAGS) -S -c -o $@ $<
+	
 build/%.s: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<
 

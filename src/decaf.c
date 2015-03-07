@@ -89,8 +89,13 @@ struct decaf_448_precomputed_s {
     decaf_448_point_t p[1];
 };
 
-const struct decaf_448_precomputed_s *decaf_448_precomputed_base =
-    (const struct decaf_448_precomputed_s *)decaf_448_point_base;
+/* FIXME: restore */
+// const struct decaf_448_precomputed_s *decaf_448_precomputed_base =
+//     (const struct decaf_448_precomputed_s *)decaf_448_point_base;
+
+extern const decaf_word_t decaf_448_precomputed_base_as_words[];
+const decaf_448_precomputed_s *decaf_448_precomputed_base =
+    (const decaf_448_precomputed_s *) &decaf_448_precomputed_base_as_words;
 
 const size_t sizeof_decaf_448_precomputed_s = sizeof(struct decaf_448_precomputed_s);
 const size_t alignof_decaf_448_precomputed_s = 32;

@@ -15,6 +15,7 @@
 
  /* TODO REMOVE */
 #include "constant_time.h"
+#include <stdio.h>
 
 #define WBITS DECAF_WORD_BITS
 
@@ -94,10 +95,11 @@ typedef struct { gf a, b, c; } niels_s, niels_t[1];
 typedef struct { niels_t n; gf z; } pniels_s, pniels_t[1];
 struct decaf_448_precomputed_s { niels_t table [5<<4]; /* MAGIC */ };
 
-const struct decaf_448_precomputed_s decaf_448_precomputed_base_s,
-    *decaf_448_precomputed_base = &decaf_448_precomputed_base_s;
+extern const decaf_word_t decaf_448_precomputed_base_as_words[];
+const decaf_448_precomputed_s *decaf_448_precomputed_base =
+    (const decaf_448_precomputed_s *) &decaf_448_precomputed_base_as_words;
 
-const size_t sizeof_decaf_448_precomputed_s = sizeof(struct decaf_448_precomputed_s);
+const size_t sizeof_decaf_448_precomputed_s = sizeof(decaf_448_precomputed_s);
 const size_t alignof_decaf_448_precomputed_s = 32;
 
 #if (defined(__OPTIMIZE__) && !defined(__OPTIMIZE_SIZE__)) || defined(DECAF_FORCE_UNROLL)
@@ -1021,7 +1023,7 @@ void gf_batch_invert (
 
 void
 decaf_448_precompute (
-    struct decaf_448_precomputed_s *table,
+    decaf_448_precomputed_s *table,
     const decaf_448_point_t base
 ) { 
     const int n = 5, t = 5, s = 18; // TODO MAGIC
@@ -1095,14 +1097,11 @@ decaf_448_precompute (
 
 void decaf_448_precomputed_scalarmul (
     decaf_448_point_t out,
-    const struct decaf_448_precomputed_s *table,
+    const decaf_448_precomputed_s *table,
     const decaf_448_scalar_t scalar
 ) {
     unsigned int i,j,k;
-    const int n = 5, t = 5, s = 18, nbits = 450; // TODO MAGIC
-    
-    unsigned int scalar2_words = (nbits + WBITS - 1)/WBITS;
-    if (scalar2_words < SCALAR_WORDS) scalar2_words = SCALAR_WORDS;
+    const int n = 5, t = 5, s = 18; // TODO MAGIC
     
     decaf_448_scalar_t scalar2, onehalf = {{{0}}}, two = {{{2}}}, arrr;
     onehalf->limb[SCALAR_WORDS-1] = 1ull<<(WBITS-1);
@@ -1125,7 +1124,7 @@ void decaf_448_precomputed_scalarmul (
             
             for (k=0; k<t; k++) {
                 unsigned int bit = (s-1-i) + k*s + j*(s*t);
-                if (bit < scalar2_words * WBITS) {
+                if (bit < SCALAR_WORDS * WBITS) {
                     tab |= (scalar2->limb[bit/WBITS] >> (bit%WBITS) & 1) << k;
                 }
             }
@@ -1138,10 +1137,8 @@ void decaf_448_precomputed_scalarmul (
             cond_neg_niels(ni, invert);
             if (i||j) {
                 add_niels_to_pt(out, ni, j==n-1 && i<s-1);
-                assert(decaf_point_valid(out));
             } else {
                 niels_to_pt(out, ni);
-                assert(decaf_point_valid(out));
             }
         }
     }
