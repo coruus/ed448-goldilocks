@@ -681,32 +681,6 @@ void decaf_448_scalar_encode(
     }
 }
 
-void decaf_448_point_scalarmul_xxx (
-    decaf_448_point_t a,
-    const decaf_448_point_t b,
-    const decaf_448_scalar_t scalar
-) {
-    /* w=2 signed window uses about 1.5 adds per bit.
-     * I figured a few extra lines was worth the 25% speedup.
-     */
-    decaf_448_point_t w,b3,tmp;
-    decaf_448_point_double(w,b);
-    /* b3 = b*3 */
-    decaf_448_point_add(b3,w,b);
-    int i;
-    for (i=DECAF_448_SCALAR_BITS &~ 1; i>0; i-=2) {
-        decaf_word_t bits = scalar->limb[i/WBITS]>>(i%WBITS);
-        decaf_448_cond_sel(tmp,b,b3,((bits^(bits>>1))&1)-1);
-        decaf_448_point_double(w,w);
-        decaf_448_point_add_sub(w,w,tmp,((bits>>1)&1)-1);
-        decaf_448_point_double(w,w);
-    }
-    decaf_448_point_add_sub(w,w,b,((scalar->limb[0]>>1)&1)-1);
-    /* low bit is special because fo signed window */
-    decaf_448_cond_sel(tmp,b,decaf_448_point_identity,-(scalar->limb[0]&1));
-    decaf_448_point_sub(a,w,tmp);
-}
-
 /* Operations on [p]niels */
 static void cond_neg_niels (
     niels_t n,
@@ -971,24 +945,9 @@ decaf_bool_t decaf_448_point_valid (
     return out;
 }
 
-// void decaf_448_precompute (
-//     decaf_448_precomputed_s *a,
-//     const decaf_448_point_t b
-// ) {
-//     decaf_448_point_copy(a->p[0],b);
-// }
-
-// void decaf_448_precomputed_scalarmul (
-//     decaf_448_point_t a,
-//     const decaf_448_precomputed_s *b,
-//     const decaf_448_scalar_t scalar
-// ) {
-//     decaf_448_point_scalarmul(a,b->p[0],scalar);
-// }
-
-void gf_batch_invert (
+static void gf_batch_invert (
     gf *__restrict__ out,
-    const gf *in,
+    /* const */ gf *in,
     unsigned int n
 ) {
     // if (n==0) {
@@ -1026,7 +985,7 @@ decaf_448_precompute (
     decaf_448_precomputed_s *table,
     const decaf_448_point_t base
 ) { 
-    const int n = 5, t = 5, s = 18; // TODO MAGIC
+    const unsigned int n = 5, t = 5, s = 18; // TODO MAGIC
     assert(n*t*s >= DECAF_448_SCALAR_BITS);
   
     decaf_448_point_t working, start, doubles[t-1];
@@ -1101,7 +1060,7 @@ void decaf_448_precomputed_scalarmul (
     const decaf_448_scalar_t scalar
 ) {
     unsigned int i,j,k;
-    const int n = 5, t = 5, s = 18; // TODO MAGIC
+    const unsigned int n = 5, t = 5, s = 18; // TODO MAGIC
     
     decaf_448_scalar_t scalar2, onehalf = {{{0}}}, two = {{{2}}}, arrr;
     onehalf->limb[SCALAR_WORDS-1] = 1ull<<(WBITS-1);

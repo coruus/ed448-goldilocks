@@ -113,7 +113,12 @@ single_scalarmul_compatibility_test (
         
         decaf_448_point_t ed2, ed3;
         struct decaf_448_precomputed_s *dpre;
-        posix_memalign((void**)&dpre, alignof_decaf_448_precomputed_s, sizeof_decaf_448_precomputed_s);
+        int pmret = posix_memalign(
+            (void**)&dpre,
+            alignof_decaf_448_precomputed_s,
+            sizeof_decaf_448_precomputed_s
+        );
+        if (pmret) return 1;
     	tw_extended_a_t ed;
         convert_tw_extensible_to_tw_extended(ed, &text);
         uint8_t ser4[DECAF_448_SER_BYTES];

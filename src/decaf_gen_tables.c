@@ -19,8 +19,8 @@ int main(int argc, char **argv) {
     (void)argc; (void)argv;
     
     decaf_448_precomputed_s *pre;
-    posix_memalign((void**)&pre, alignof_decaf_448_precomputed_s, sizeof_decaf_448_precomputed_s);
-    if (!pre) return 1;
+    int ret = posix_memalign((void**)&pre, alignof_decaf_448_precomputed_s, sizeof_decaf_448_precomputed_s);
+    if (ret || !pre) return 1;
     decaf_448_precompute(pre, decaf_448_point_base);
     
     const decaf_word_t *output = (const decaf_word_t *)pre;
