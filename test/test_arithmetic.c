@@ -132,12 +132,14 @@ static mask_t test_mul_sqr (
     const mpz_t y,
     word_t word
 ) {
-    field_a_t xx,yy,tt;
-    mpz_t t;
+    ANALYZE_THIS_ROUTINE_CAREFULLY;
+    field_a_t xx,yy,tt,zz;
+    mpz_t t, z;
     mask_t succ = MASK_SUCCESS;
     succ  = mpz_to_field(xx,x);
     succ &= mpz_to_field(yy,y);
     mpz_init(t);
+    mpz_init(z);
     
     field_mul(tt,xx,yy);
     mpz_mul(t,x,y);
@@ -150,10 +152,18 @@ static mask_t test_mul_sqr (
     field_sqr(tt,xx);
     mpz_mul(t,x,x);
     succ &= field_assert_eq_gmp("sqrx",xx,yy,tt,t,0,1.1);
-    
+
     field_sqr(tt,yy);
     mpz_mul(t,y,y);
     succ &= field_assert_eq_gmp("sqy",xx,yy,tt,t,0,1.1);
+    
+    field_add_nr(zz,xx,xx);
+    mpz_add(z,x,x);
+    mpz_mul(t,z,z);
+    field_mul(tt,zz,zz);
+    succ &= field_assert_eq_gmp("msr4",xx,yy,tt,t,0,1.1);
+    field_sqr(tt,zz);
+    succ &= field_assert_eq_gmp("sqr4",xx,yy,tt,t,0,1.1);
     
     if (!succ) {
         field_print("    x", xx);
@@ -161,6 +171,7 @@ static mask_t test_mul_sqr (
     }
     
     mpz_clear(t);
+    mpz_clear(z);
     
     return succ;
 }
