@@ -179,7 +179,7 @@ p448_mul (
         VMAC(vmlsl.s32,_a1b,_al2_1,_bl0_1,1)
         VMAC(vmlal.s32,_a1b,_al0_0,_bs0_0,1)
                 
-            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsra.u64,_a0a,_a0b,"#28")
             VOP3(vsub.i32,_bs0_1,_bl0_1,_bh0_1)
             VOP2(vmovn.i64,_a0b_0,_a0b)
                 
@@ -190,7 +190,7 @@ p448_mul (
         VMAC(vmull.s32,_a0a,_as2_0,_bs2_1,0)
             VOP2(vmovn.i64,_a0b_1,_a1b)
         VMAC(vmlal.s32,_a0a,_as2_1,_bs2_0,0)
-            VOP3(vsra.s64,_a1a,_a1b,"#28")
+            VOP3(vsra.u64,_a1a,_a1b,"#28")
         VMAC(vmlal.s32,_a0a,_as0_0,_bh0_1,0)
             VOP2(vbic.i32,_a0b,"#0xf0000000")
         VMAC(vmlal.s32,_a0a,_as0_1,_bh0_0,0)
@@ -227,7 +227,7 @@ p448_mul (
         VMAC(vmlal.s32,_a1b,_al0_0,_bs0_1,1)
         VMAC(vmlal.s32,_a1b,_al0_1,_bs0_0,1)
                                         
-            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsra.u64,_a0a,_a0b,"#28")
             VOP3(vsub.i32,_bs2_0,_bl2_0,_bh2_0)
             VOP2(vmovn.i64,_a0b_0,_a0b)
                         
@@ -237,7 +237,7 @@ p448_mul (
         VMAC(vmull.s32,_a0a,_as2_1,_bs2_1,0)
             VOP2(vmovn.i64,_a0b_1,_a1b)
         VMAC(vmlal.s32,_a0a,_as0_0,_bh2_0,0)
-            VOP3(vsra.s64,_a1a,_a1b,"#28")
+            VOP3(vsra.u64,_a1a,_a1b,"#28")
         VMAC(vmlal.s32,_a0a,_as0_1,_bh0_1,0)
             VOP2(vbic.i32,_a0b,"#0xf0000000")
         VMAC(vmlal.s32,_a0a,_as2_0,_bh0_0,0)
@@ -275,7 +275,7 @@ p448_mul (
         VMAC(vmlal.s32,_a1b,_al2_0,_bs0_0,1)
                                                                 
             VOP3(vsub.i32,_bs2_1,_bl2_1,_bh2_1)
-            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsra.u64,_a0a,_a0b,"#28")
             VOP2(vmovn.i64,_a0b_0,_a0b)
                         
             VOP2(vswp,_a1b_1,_a1a_0)
@@ -284,7 +284,7 @@ p448_mul (
         VMAC(vmull.s32,_a0a,_as0_0,_bh2_1,0)
             VOP2(vmovn.i64,_a0b_1,_a1b)
         VMAC(vmlal.s32,_a0a,_as0_1,_bh2_0,0)
-            VOP3(vsra.s64,_a1a,_a1b,"#28")
+            VOP3(vsra.u64,_a1a,_a1b,"#28")
         VMAC(vmlal.s32,_a0a,_as2_0,_bh0_1,0)
             VOP2(vbic.i32,_a0b,"#0xf0000000")
         VMAC(vmlal.s32,_a0a,_as2_1,_bh0_0,0)
@@ -321,14 +321,14 @@ p448_mul (
         VMAC(vmlal.s32,_a1b,_al2_0,_bs0_1,1)
         VMAC(vmlal.s32,_a1b,_al2_1,_bs0_0,1)
                         
-            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsra.u64,_a0a,_a0b,"#28")
             VOP2(vmovn.i64,_a0b_0,_a0b)
                                                                                             
             VOP2(vswp,_a1b_1,_a1a_0)
             VOP3(vadd.i64,_a0a,_a0a,_a1b)
 
             VOP2(vmovn.i64,_a0b_1,_a0a)
-            VOP3(vsra.s64,_a1a,_a0a,"#28")
+            VOP3(vsra.u64,_a1a,_a0a,"#28")
                                                                                             
             VOP2(vbic.i32,_a0b,"#0xf0000000") 
                                                                                             
@@ -376,43 +376,43 @@ p448_sqr (
 
     __asm__ __volatile__ (
         "vld2.32 {"_bl0_0","_bl0_1","_bh0_0","_bh0_1"}, [%[b],:128]!" "\n\t"
-        VOP3(vadd.i32,_bs0_1,_bl0_1,_bh0_1)
-        VOP3(vsub.i32,_bs0_0,_bl0_0,_bh0_0)
-        VOP3(vadd.i32,_as0,_bl0,_bh0)
+        VOP3(vadd.i32,_bs0_1,_bl0_1,_bh0_1) /* 0 .. 2^30 */
+        VOP3(vsub.i32,_bs0_0,_bl0_0,_bh0_0) /* +- 2^29 */
+        VOP3(vadd.i32,_as0,_bl0,_bh0)       /* 0 .. 2^30 */
             
         "vld2.32 {"_bl2_0","_bl2_1","_bh2_0","_bh2_1"}, [%[b],:128]!" "\n\t"
-        VOP3(vadd.i32,_bs2,_bl2,_bh2)
+        VOP3(vadd.i32,_bs2,_bl2,_bh2)       /* 0 .. 2^30 */
         VOP2(vmov,_as2,_bs2)
         
-        VMAC(vqdmull.s32,_a0b,_as0_1,_bs2_1,0)
-        VMAC(vmlal.s32,_a0b,_as2_0,_bs2_0,0)
-        VMAC(vmlal.s32,_a0b,_as0_0,_bh0_0,0)
+        VMAC(vqdmull.s32,_a0b,_as0_1,_bs2_1,0) /* 0 .. 8 * 2^58.  danger for vqdmlal is 32 */
+        VMAC(vmlal.s32,_a0b,_as2_0,_bs2_0,0)   /* 0 .. 12 */
+        VMAC(vmlal.s32,_a0b,_as0_0,_bh0_0,0)   /* 0 .. 14 */
             
-        VMAC(vqdmull.s32,_a1b,_as0_1,_bs2_1,1)
-        VMAC(vmlal.s32,_a1b,_as2_0,_bs2_0,1)
-        VMAC(vmlal.s32,_a1b,_as0_0,_bh0_0,1)
+        VMAC(vqdmull.s32,_a1b,_as0_1,_bs2_1,1) /* 0 .. 8 */
+        VMAC(vmlal.s32,_a1b,_as2_0,_bs2_0,1)   /* 0 .. 14 */
+        VMAC(vmlal.s32,_a1b,_as0_0,_bh0_0,1)   /* 0 .. 16 */
             
-        VOP2(vmov,_a0a,_a0b)
-        VMAC(vqdmlal.s32,_a0a,_bh0_1,_bh2_1,0)
-        VMAC(vmlal.s32,_a0a,_bh2_0,_bh2_0,0)
-        VMAC(vmlal.s32,_a0a,_bh0_0,_bl0_0,0)
+        VOP2(vmov,_a0a,_a0b)                   /* 0 .. 14 */
+        VMAC(vqdmlal.s32,_a0a,_bh0_1,_bh2_1,0) /* 0 .. 16 */
+        VMAC(vmlal.s32,_a0a,_bh2_0,_bh2_0,0)   /* 0 .. 17 */
+        VMAC(vmlal.s32,_a0a,_bh0_0,_bl0_0,0)   /* 0 .. 18 */
             
-        VMAC(vqdmlsl.s32,_a0b,_bl0_1,_bl2_1,0)
-        VMAC(vmlsl.s32,_a0b,_bl2_0,_bl2_0,0)
-        VMAC(vmlal.s32,_a0b,_bl0_0,_bs0_0,0)
+        VMAC(vqdmlsl.s32,_a0b,_bl0_1,_bl2_1,0) /*-2 .. 14 */
+        VMAC(vmlsl.s32,_a0b,_bl2_0,_bl2_0,0)   /*-3 .. 14 */
+        VMAC(vmlal.s32,_a0b,_bl0_0,_bs0_0,0)   /*-4 .. 15 */
             
         VOP2(vmov,_a1a,_a1b)
-        VMAC(vqdmlal.s32,_a1a,_bh0_1,_bh2_1,1)
-        VMAC(vmlal.s32,_a1a,_bh2_0,_bh2_0,1)
-        VMAC(vmlal.s32,_a1a,_bh0_0,_bl0_0,1)
+        VMAC(vqdmlal.s32,_a1a,_bh0_1,_bh2_1,1) /* 0 .. 18 */
+        VMAC(vmlal.s32,_a1a,_bh2_0,_bh2_0,1)   /* 0 .. 19 */
+        VMAC(vmlal.s32,_a1a,_bh0_0,_bl0_0,1)   /* 0 .. 20 */
             
             VOP2(vswp,_a0b_1,_a0a_0)
             
-        VMAC(vqdmlsl.s32,_a1b,_bl0_1,_bl2_1,1)
-        VMAC(vmlsl.s32,_a1b,_bl2_0,_bl2_0,1)
-        VMAC(vmlal.s32,_a1b,_bl0_0,_bs0_0,1)
+        VMAC(vqdmlsl.s32,_a1b,_bl0_1,_bl2_1,1) /*-2 .. 16 */
+        VMAC(vmlsl.s32,_a1b,_bl2_0,_bl2_0,1)   /*-3 .. 16 */
+        VMAC(vmlal.s32,_a1b,_bl0_0,_bs0_0,1)   /*-4 .. 17 */
                 
-            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsra.u64,_a0a,_a0b,"#28")
             VOP3(vsub.i32,_bs0_1,_bl0_1,_bh0_1)
             VOP2(vmovn.i64,_a0b_0,_a0b)
                 
@@ -420,35 +420,35 @@ p448_sqr (
             VOP3(vadd.i64,_a1b,_a0a,_a1b)
                     
                     
-        VMAC(vqdmull.s32,_a0a,_as2_0,_bs2_1,0)
+        VMAC(vqdmull.s32,_a0a,_as2_0,_bs2_1,0) /* 0 .. 8 */
             VOP2(vmovn.i64,_a0b_1,_a1b)
-            VOP3(vsra.s64,_a1a,_a1b,"#28")
-        VMAC(vqdmlal.s32,_a0a,_as0_0,_bh0_1,0)
+            VOP3(vsra.u64,_a1a,_a1b,"#28")
+        VMAC(vqdmlal.s32,_a0a,_as0_0,_bh0_1,0) /* 0 .. 12 */
             VOP2(vbic.i32,_a0b,"#0xf0000000")
             "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
                     
-        VMAC(vqdmull.s32,_a1b,_as2_0,_bs2_1,1)
-        VMAC(vqdmlal.s32,_a1b,_as0_0,_bh0_1,1)
+        VMAC(vqdmull.s32,_a1b,_as2_0,_bs2_1,1) /* 0 .. 8 */
+        VMAC(vqdmlal.s32,_a1b,_as0_0,_bh0_1,1) /* 0 .. 12 */
 
-        VOP2(vmov,_a0b_1,_a0a_1)
-        VOP3(vadd.i64,_a0b_0,_a0a_0,_a1a_0)
+        VOP2(vmov,_a0b,_a0a)               /* 0 .. 12 */
+        VMAC(vqdmlal.s32,_a0a,_bh2_0,_bh2_1,0) /* 0 .. 14 */
+        VMAC(vqdmlal.s32,_a0a,_bh0_0,_bl0_1,0) /* 0 .. 16 */
+
+        VMAC(vqdmlsl.s32,_a0b,_bl2_0,_bl2_1,0) /*-2 .. 12 */
+        VMAC(vqdmlal.s32,_a0b,_bl0_0,_bs0_1,0) /*-4 .. 14 */
         VOP3(vadd.i64,_a0a_0,_a0a_0,_a1a_1)
-        VMAC(vqdmlal.s32,_a0a,_bh2_0,_bh2_1,0)
-        VMAC(vqdmlal.s32,_a0a,_bh0_0,_bl0_1,0)
+        VOP3(vadd.i64,_a0b_0,_a0b_0,_a1a_0)
 
-        VMAC(vqdmlsl.s32,_a0b,_bl2_0,_bl2_1,0)
-        VMAC(vqdmlal.s32,_a0b,_bl0_0,_bs0_1,0)
-
-        VOP2(vmov,_a1a,_a1b)
-        VMAC(vqdmlal.s32,_a1a,_bh2_0,_bh2_1,1)
-        VMAC(vqdmlal.s32,_a1a,_bh0_0,_bl0_1,1)
+        VOP2(vmov,_a1a,_a1b)                   /* 0 .. 12 */
+        VMAC(vqdmlal.s32,_a1a,_bh2_0,_bh2_1,1) /* 0 .. 14 */
+        VMAC(vqdmlal.s32,_a1a,_bh0_0,_bl0_1,1) /* 0 .. 16 */
 
             VOP2(vswp,_a0b_1,_a0a_0)
 
-        VMAC(vqdmlsl.s32,_a1b,_bl2_0,_bl2_1,1)
-        VMAC(vqdmlal.s32,_a1b,_bl0_0,_bs0_1,1)
+        VMAC(vqdmlsl.s32,_a1b,_bl2_0,_bl2_1,1) /*-2 .. 12 */
+        VMAC(vqdmlal.s32,_a1b,_bl0_0,_bs0_1,1) /*-4 .. 14 */
                                         
-            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsra.u64,_a0a,_a0b,"#28")
             VOP3(vsub.i32,_bs2_0,_bl2_0,_bh2_0)
             VOP2(vmovn.i64,_a0b_0,_a0b)
                         
@@ -458,7 +458,7 @@ p448_sqr (
         VMAC(vmull.s32,_a0a,_as2_1,_bs2_1,0)
             VOP2(vmovn.i64,_a0b_1,_a1b)
         VMAC(vqdmlal.s32,_a0a,_as0_0,_bh2_0,0)
-            VOP3(vsra.s64,_a1a,_a1b,"#28")
+            VOP3(vsra.u64,_a1a,_a1b,"#28")
         VMAC(vmlal.s32,_a0a,_as0_1,_bh0_1,0)
             VOP2(vbic.i32,_a0b,"#0xf0000000")
             "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
@@ -490,7 +490,7 @@ p448_sqr (
         VMAC(vmlal.s32,_a1b,_bl0_1,_bs0_1,1)
                                                                 
             VOP3(vsub.i32,_bs2_1,_bl2_1,_bh2_1)
-            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsra.u64,_a0a,_a0b,"#28")
             VOP2(vmovn.i64,_a0b_0,_a0b)
                         
             VOP2(vswp,_a1b_1,_a1a_0)
@@ -498,7 +498,7 @@ p448_sqr (
 
         VMAC(vqdmull.s32,_a0a,_as0_0,_bh2_1,0)
             VOP2(vmovn.i64,_a0b_1,_a1b)
-            VOP3(vsra.s64,_a1a,_a1b,"#28")
+            VOP3(vsra.u64,_a1a,_a1b,"#28")
         VMAC(vqdmlal.s32,_a0a,_as2_0,_bh0_1,0)
             VOP2(vbic.i32,_a0b,"#0xf0000000")
             "vstmia %[c]!, {"_a0b_0", "_a0b_1"}" "\n\t"
@@ -524,14 +524,14 @@ p448_sqr (
         VMAC(vqdmlal.s32,_a1b,_bl0_0,_bs2_1,1)
         VMAC(vqdmlal.s32,_a1b,_bl2_0,_bs0_1,1)
                         
-            VOP3(vsra.s64,_a0a,_a0b,"#28")
+            VOP3(vsra.u64,_a0a,_a0b,"#28")
             VOP2(vmovn.i64,_a0b_0,_a0b)
                                                                                             
             VOP2(vswp,_a1b_1,_a1a_0)
             VOP3(vadd.i64,_a0a,_a0a,_a1b)
 
             VOP2(vmovn.i64,_a0b_1,_a0a)
-            VOP3(vsra.s64,_a1a,_a0a,"#28")
+            VOP3(vsra.u64,_a1a,_a0a,"#28")
                                                                                             
             VOP2(vbic.i32,_a0b,"#0xf0000000") 
                                                                                             
