@@ -388,6 +388,13 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("decaf slo2:  %5.1fµs\n", when * 1e6 / i);
+   
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        decaf_448_precomputed_scalarmul(Da,decaf_448_precomputed_base,bsc);
+    }
+    when = now() - when;
+    printf("decaf pres:  %5.1fµs\n", when * 1e6 / i);
 
     when = now();
     for (i=0; i<nbase/10; i++) {
@@ -731,6 +738,10 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("sign:        %5.1fµs\n", when * 1e6 / i);
     
+    if (memcmp(dshared[0], dshared[1], 32)) {
+        printf("BUG: mismatched shared secrets\n");
+    }
+    
     when = now();
     for (i=0; i<nbase/10; i++) {
         decaf_bool_t ret = decaf_448_verify(dsig, dpub[0],
@@ -745,6 +756,18 @@ int main(int argc, char **argv) {
     }
     when = now() - when;
     printf("verify:      %5.1fµs\n", when * 1e6 / i);
+    
+    decaf_448_precomputed_s *dpre;
+    ignore_result(posix_memalign((void**)&dpre,
+        alignof_decaf_448_precomputed_s, sizeof_decaf_448_precomputed_s));
+    assert(dpre);
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        decaf_448_precompute(dpre, Da);
+    }
+    when = now() - when;
+    printf("pre:         %5.1fµs\n", when * 1e6 / i);
+    free(dpre);
     
     return 0;
 }

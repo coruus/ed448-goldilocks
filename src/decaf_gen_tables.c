@@ -13,7 +13,20 @@
 #include <stdlib.h>
 #include "decaf.h"
 
-const decaf_word_t decaf_448_precomputed_base_as_words[1]; /* To satisfy linker. */
+ /* To satisfy linker. */
+const decaf_word_t decaf_448_precomputed_base_as_words[1];
+const decaf_448_scalar_t decaf_448_precomputed_scalarmul_adjustment;
+const decaf_448_scalar_t decaf_448_point_scalarmul_adjustment;
+
+void scalar_print(const char *name, const decaf_448_scalar_t sc) {
+    printf("const decaf_448_scalar_t %s = {{{\n", name);
+    unsigned i;
+    for (i=0; i<sizeof(decaf_448_scalar_t)/sizeof(decaf_word_t); i++) {
+        if (i) printf(", ");
+        printf("0x%0*llxull", (int)sizeof(decaf_word_t)*2, (unsigned long long)sc->limb[i] );
+    }
+    printf("}}};\n\n");
+}
 
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
@@ -39,6 +52,24 @@ int main(int argc, char **argv) {
         output++;
     }
     printf("\n};\n");
+    
+    decaf_448_scalar_t smadj;
+    decaf_448_scalar_copy(smadj,decaf_448_scalar_one);
+
+    const unsigned int n = 5, t = 5, s = 18; // TODO MAGIC
+    for (i=0; i<n*t*s; i++) {
+        decaf_448_scalar_add(smadj,smadj,smadj);
+    }
+    decaf_448_scalar_sub(smadj, smadj, decaf_448_scalar_one);
+    scalar_print("decaf_448_precomputed_scalarmul_adjustment", smadj);
+    
+    const unsigned int WINDOW=5; // TODO magic
+    decaf_448_scalar_copy(smadj,decaf_448_scalar_one);
+    for (i=0; i<DECAF_448_SCALAR_BITS-1 + WINDOW - ((DECAF_448_SCALAR_BITS-1)%WINDOW); i++) {
+        decaf_448_scalar_add(smadj,smadj,smadj);
+    }
+    decaf_448_scalar_sub(smadj, smadj, decaf_448_scalar_one);
+    scalar_print("decaf_448_point_scalarmul_adjustment", smadj);
     
     return 0;
 }

@@ -792,10 +792,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
 ) {
     decaf_448_point_t basep;
     decaf_bool_t succ = decaf_448_point_decode(basep, base, allow_identity);
-    /* FIXME: compiler can probably reorder this to something non-consttime even if
-     * !short_circuit.
-     */
-    if (short_circuit && ~succ) return succ;
+    if (short_circuit & ~succ) return succ;
     decaf_448_point_scalarmul(basep, basep, scalar);
     decaf_448_point_encode(scaled, basep);
     return succ;

@@ -38,6 +38,8 @@ typedef int64_t decaf_sdword_t;
 static const int QUADRATIC_NONRESIDUE = -1;
 
 #define sv static void
+#define snv static void __attribute__((noinline))
+#define siv static inline void __attribute__((always_inline))
 typedef decaf_word_t gf[DECAF_448_LIMBS] __attribute__((aligned(32)));
 static const gf ZERO = {0}, ONE = {1}, TWO = {2};
 
@@ -120,54 +122,54 @@ const size_t alignof_decaf_448_precomputed_s = 32;
 #endif
 
 /** Copy x = y */
-sv gf_cpy(gf x, const gf y) { FOR_LIMB(i, x[i] = y[i]); }
+siv gf_cpy(gf x, const gf y) { FOR_LIMB(i, x[i] = y[i]); }
 
-/** Mostly-unoptimized multiply (PERF), but at least it's unrolled. */
-static inline void gf_mul (gf c, const gf a, const gf b) {
+/** Mostly-unoptimized multiply, but at least it's unrolled. */
+siv gf_mul (gf c, const gf a, const gf b) {
     field_mul((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
 
-/** No dedicated square (PERF) */
-static inline void gf_sqr (gf c, const gf a) {
+/** Dedicated square */
+siv gf_sqr (gf c, const gf a) {
     field_sqr((field_t *)c, (const field_t *)a);
 }
 
 /** Inverse square root using addition chain. */
-sv gf_isqrt(gf y, const gf x) {
+siv gf_isqrt(gf y, const gf x) {
     field_isr((field_t *)y, (const field_t *)x);
 }
 
-/** Add mod p.  Conservatively always weak-reduce. (PERF) */
-static inline void gf_add ( gf c, const gf a, const gf b ) {
+/** Add mod p.  Conservatively always weak-reduce. */
+snv gf_add ( gf c, const gf a, const gf b ) {
     field_add((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
 
-/** Subtract mod p.  Conservatively always weak-reduce. (PERF) */
-static inline void gf_sub ( gf c, const gf a, const gf b ) {
+/** Subtract mod p.  Conservatively always weak-reduce. */
+snv gf_sub ( gf c, const gf a, const gf b ) {
     field_sub((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
 
-/** Add mod p.  Conservatively always weak-reduce. (PERF) */
-static inline void gf_bias ( gf c, int amt) {
+/** Add mod p.  Conservatively always weak-reduce.) */
+siv gf_bias ( gf c, int amt) {
     field_bias((field_t *)c, amt);
 }
 
 /** Subtract mod p.  Bias by 2 and don't reduce  */
-static inline void gf_sub_nr ( gf c, const gf a, const gf b ) {
+siv gf_sub_nr ( gf c, const gf a, const gf b ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_sub_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
     gf_bias(c, 2);
 }
 
 /** Subtract mod p. Bias by amt but don't reduce.  */
-static inline void gf_sub_nr_x ( gf c, const gf a, const gf b, int amt ) {
+siv gf_sub_nr_x ( gf c, const gf a, const gf b, int amt ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_sub_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
     gf_bias(c, amt);
 }
 
 /** Add mod p.  Don't reduce. */
-static inline void gf_add_nr ( gf c, const gf a, const gf b ) {
+siv gf_add_nr ( gf c, const gf a, const gf b ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_add_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
@@ -186,10 +188,13 @@ sv cond_neg(gf x, decaf_bool_t neg) {
 }
 
 /** Constant time, if (swap) (x,y) = (y,x); */
-static inline void cond_swap(gf x, gf y, decaf_bool_t swap) {
+siv cond_swap(gf x, decaf_word_t *__restrict__ y, decaf_bool_t swap) {
     int i;
-    /* PERF */
-    //_Pragma("clang loop unroll(disable) vectorize(enable) vectorize_width(4) interleave_count(2)")
+#ifdef __clang__
+#if 10*__clang_major__ + __clang_minor__ > 35
+    _Pragma("clang loop unroll(disable) vectorize(enable) vectorize_width(4) interleave_count(2)")
+#endif
+#endif
     for (i=0; i<DECAF_448_LIMBS; i++) {
         decaf_word_t s = (x[i] ^ y[i]) & swap;
         x[i] ^= s;
@@ -201,7 +206,7 @@ static inline void cond_swap(gf x, gf y, decaf_bool_t swap) {
  * Mul by signed int.  Not constant-time WRT the sign of that int.
  * Just uses a full mul (PERF)
  */
-static inline void gf_mlw(gf c, const gf a, int w) {
+siv gf_mlw(gf c, const gf a, int w) {
     if (w>0) {
         field_mulw((field_t *)c, (const field_t *)a, w);
     } else {
@@ -211,7 +216,7 @@ static inline void gf_mlw(gf c, const gf a, int w) {
 }
 
 /** Canonicalize */
-static inline void gf_canon ( gf a ) {
+siv gf_canon ( gf a ) {
     field_strong_reduce((field_t *)a);
 }
 
@@ -258,7 +263,7 @@ sv decaf_448_cond_sel (
 /** {extra,accum} - sub +? p
  * Must have extra <= 1
  */
-sv decaf_448_subx(
+snv decaf_448_subx(
     decaf_448_scalar_t out,
     const decaf_word_t accum[DECAF_448_SCALAR_LIMBS],
     const decaf_448_scalar_t sub,
@@ -282,7 +287,7 @@ sv decaf_448_subx(
     }
 }
 
-sv decaf_448_montmul (
+snv decaf_448_montmul (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b,
@@ -352,6 +357,25 @@ void decaf_448_scalar_add (
         chain >>= WBITS;
     }
     decaf_448_subx(out, out->limb, decaf_448_scalar_p, decaf_448_scalar_p, chain);
+}
+
+snv decaf_448_halve (
+    decaf_448_scalar_t out,
+    const decaf_448_scalar_t a,
+    const decaf_448_scalar_t p
+) {
+    decaf_word_t mask = -(a->limb[0] & 1);
+    decaf_dword_t chain = 0;
+    unsigned int i;
+    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+        chain = (chain + a->limb[i]) + (p->limb[i] & mask);
+        out->limb[i] = chain;
+        chain >>= WBITS;
+    }
+    for (i=0; i<DECAF_448_SCALAR_LIMBS-1; i++) {
+        out->limb[i] = out->limb[i]>>1 | out->limb[i+1]<<(WBITS-1);
+    }
+    out->limb[i] = out->limb[i]>>1 | chain<<(WBITS-1);
 }
 
 void decaf_448_scalar_copy (
@@ -551,7 +575,7 @@ void decaf_448_point_add (
     gf_mul ( p->t, b, c );
 }
 
-static void decaf_448_point_double_internal (
+snv decaf_448_point_double_internal (
     decaf_448_point_t p,
     const decaf_448_point_t q,
     decaf_bool_t before_double
@@ -682,7 +706,7 @@ void decaf_448_scalar_encode(
 }
 
 /* Operations on [p]niels */
-static void cond_neg_niels (
+siv cond_neg_niels (
     niels_t n,
     decaf_bool_t neg
 ) {
@@ -713,7 +737,7 @@ static void pniels_to_pt (
     gf_sqr ( e->z, d->z );
 }
 
-static void niels_to_pt (
+snv niels_to_pt (
     decaf_448_point_t e,
     const niels_t n
 ) {
@@ -723,7 +747,7 @@ static void niels_to_pt (
     gf_cpy ( e->z, ONE );
 }
 
-static void add_niels_to_pt (
+snv add_niels_to_pt (
     decaf_448_point_t d,
     const niels_t e,
     decaf_bool_t before_double
@@ -744,7 +768,7 @@ static void add_niels_to_pt (
     if (!before_double) gf_mul ( d->t, b, c );
 }
 
-static void add_pniels_to_pt (
+sv add_pniels_to_pt (
     decaf_448_point_t p,
     const pniels_t pn,
     decaf_bool_t before_double
@@ -755,6 +779,8 @@ static void add_pniels_to_pt (
     add_niels_to_pt( p, pn->n, before_double );
 }
 
+extern const decaf_448_scalar_t decaf_448_point_scalarmul_adjustment;
+
 void decaf_448_point_scalarmul (
     decaf_448_point_t a,
     const decaf_448_point_t b,
@@ -764,18 +790,10 @@ void decaf_448_point_scalarmul (
         WINDOW_MASK = (1<<WINDOW)-1,
         WINDOW_T_MASK = WINDOW_MASK >> 1,
         NTABLE = 1<<(WINDOW-1);
-    
-    /* Adjust the scalar to SABS window.  TODO: optimize, subroutinize */
-    decaf_448_scalar_t scalar2, onehalf = {{{0}}}, two = {{{2}}}, arrr;
-    onehalf->limb[SCALAR_WORDS-1] = 1ull<<(WBITS-1);
-    
-    /* FIXME PERF MAGIC precompute 2^449-1/2 mod q.  Could instead use 2^446-1/2 mod q though. */
-    decaf_448_montmul(arrr,two,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-
-    /* PERF dedicated halve */
-    decaf_448_scalar_sub(scalar2, scalar, decaf_448_scalar_one);
-    decaf_448_montmul(scalar2,scalar2,onehalf,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-    decaf_448_scalar_add(scalar2, scalar2, arrr);
+        
+    decaf_448_scalar_t scalar2;
+    decaf_448_scalar_add(scalar2, scalar, decaf_448_point_scalarmul_adjustment);
+    decaf_448_halve(scalar2,scalar2,decaf_448_scalar_p);
     
     /* Set up a precomputed table with odd multiples of b. */
     pniels_t pn, multiples[NTABLE];
@@ -1054,6 +1072,8 @@ decaf_448_precompute (
     }
 }
 
+extern const decaf_448_scalar_t decaf_448_precomputed_scalarmul_adjustment;
+
 void decaf_448_precomputed_scalarmul (
     decaf_448_point_t out,
     const decaf_448_precomputed_s *table,
@@ -1062,16 +1082,9 @@ void decaf_448_precomputed_scalarmul (
     unsigned int i,j,k;
     const unsigned int n = 5, t = 5, s = 18; // TODO MAGIC
     
-    decaf_448_scalar_t scalar2, onehalf = {{{0}}}, two = {{{2}}}, arrr;
-    onehalf->limb[SCALAR_WORDS-1] = 1ull<<(WBITS-1);
-
-    /* FIXME PERF MAGIC precompute 2^449-1/2 mod q.  Could instead use 2^446-1/2 mod q though. */
-    decaf_448_montmul(arrr,two,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-
-    /* PERF dedicated halve */
-    decaf_448_scalar_sub(scalar2, scalar, decaf_448_scalar_one);
-    decaf_448_montmul(scalar2,scalar2,onehalf,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-    decaf_448_scalar_add(scalar2, scalar2, arrr);
+    decaf_448_scalar_t scalar2;
+    decaf_448_scalar_add(scalar2, scalar, decaf_448_precomputed_scalarmul_adjustment);
+    decaf_448_halve(scalar2,scalar2,decaf_448_scalar_p);
     
     niels_t ni;
     
