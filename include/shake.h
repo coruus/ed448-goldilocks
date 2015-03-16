@@ -91,38 +91,38 @@ void sponge_hash (
 /* TODO: expand/doxygenate individual SHAKE/SHA3 instances? */
 
 #define DECSHAKE(n) \
-    extern const struct kparams_s *SHAKE##n##_params API_VIS; \
+    extern const struct kparams_s SHAKE##n##_params_s API_VIS; \
     static inline void shake##n##_init(keccak_sponge_t sponge) { \
-        sponge_init(sponge, SHAKE##n##_params); \
+        sponge_init(sponge, &SHAKE##n##_params_s); \
     } \
     static inline void shake##n##_update(keccak_sponge_t sponge, const uint8_t *in, size_t inlen ) { \
         sha3_update(sponge, in, inlen); \
     } \
     static inline void shake##n##_final(keccak_sponge_t sponge, uint8_t *out, size_t outlen ) { \
         sha3_output(sponge, out, outlen); \
-        sponge_init(sponge, SHAKE##n##_params); \
+        sponge_init(sponge, &SHAKE##n##_params_s); \
     } \
     static inline void shake##n##_hash(uint8_t *out, size_t outlen, const uint8_t *in, size_t inlen) { \
-        sponge_hash(in,inlen,out,outlen,SHAKE##n##_params); \
+        sponge_hash(in,inlen,out,outlen,&SHAKE##n##_params_s); \
     } \
     static inline void shake##n##_destroy( keccak_sponge_t sponge ) { \
         sponge_destroy(sponge); \
     }
     
 #define DECSHA3(n) \
-    extern const struct kparams_s *SHA3_##n##_params API_VIS; \
+    extern const struct kparams_s SHA3_##n##_params_s API_VIS; \
     static inline void sha3_##n##_init(keccak_sponge_t sponge) { \
-        sponge_init(sponge, SHA3_##n##_params); \
+        sponge_init(sponge, &SHA3_##n##_params_s); \
     } \
     static inline void sha3_##n##_update(keccak_sponge_t sponge, const uint8_t *in, size_t inlen ) { \
         sha3_update(sponge, in, inlen); \
     } \
     static inline void sha3_##n##_final(keccak_sponge_t sponge, uint8_t *out, size_t outlen ) { \
         sha3_output(sponge, out, outlen); \
-        sponge_init(sponge, SHA3_##n##_params); \
+        sponge_init(sponge, &SHA3_##n##_params_s); \
     } \
     static inline void sha3_##n##_hash(uint8_t *out, size_t outlen, const uint8_t *in, size_t inlen) { \
-        sponge_hash(in,inlen,out,outlen,SHA3_##n##_params); \
+        sponge_hash(in,inlen,out,outlen,&SHA3_##n##_params_s); \
     } \
     static inline void sha3_##n##_destroy( keccak_sponge_t sponge ) { \
         sponge_destroy(sponge); \

@@ -35,7 +35,7 @@ typedef int64_t decaf_sdword_t;
 #error "Only supporting 32- and 64-bit platforms right now"
 #endif
 
-static const int QUADRATIC_NONRESIDUE = -1;
+//static const int QUADRATIC_NONRESIDUE = -1;
 
 #define sv static void
 #define snv static void __attribute__((noinline))

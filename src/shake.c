@@ -100,13 +100,13 @@ static inline uint64_t rol(uint64_t x, int s) {
 /* Helper macros to unroll the permutation.  TODO: opt tradeoffs. */
 #define REPEAT5(e) e e e e e
 #define FOR51(v, e) v = 0; REPEAT5(e; v += 1;)
-#if (defined(__OPTIMIZE__) && !defined(__OPTIMIZE_SIZE__))
+//#if (defined(__OPTIMIZE__) && !defined(__OPTIMIZE_SIZE__))
 #    define FOR55(v, e) v = 0; REPEAT5(e; v += 5;)
 #    define REPEAT24(e) e e e e e e e e e e e e e e e e e e e e e e e e
-#else
-#    define FOR55(v, e) for (v=0; v<25; v+= 5) { e; }
-#    define REPEAT24(e) {int _j=0; for (_j=0; _j<24; _j++) { e }}
-#endif
+// #else
+// #    define FOR55(v, e) for (v=0; v<25; v+= 5) { e; }
+// #    define REPEAT24(e) {int _j=0; for (_j=0; _j<24; _j++) { e }}
+// #endif
 
 /*** The Keccak-f[1600] permutation ***/
 static void
@@ -251,13 +251,11 @@ void sponge_hash (
 
 #define DEFSHAKE(n) \
     const struct kparams_s SHAKE##n##_params_s = \
-        { 0, FLAG_ABSORBING, 200-n/4, 0, 0x1f, 0x80, 0xFF, 0 }, \
-        *SHAKE##n##_params = &SHAKE##n##_params_s;
+        { 0, FLAG_ABSORBING, 200-n/4, 0, 0x1f, 0x80, 0xFF, 0 };
     
 #define DEFSHA3(n) \
     const struct kparams_s SHA3_##n##_params_s = \
-        { 0, FLAG_ABSORBING, 200-n/4, 0, 0x06, 0x80, n/8, 0 }, \
-        *SHA3_##n##_params = &SHA3_##n##_params_s;
+        { 0, FLAG_ABSORBING, 200-n/4, 0, 0x06, 0x80, n/8, 0 };
 
 DEFSHAKE(128)
 DEFSHAKE(256)
