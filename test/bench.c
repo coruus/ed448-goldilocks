@@ -704,7 +704,7 @@ int main(int argc, char **argv) {
     unsigned char dshared[2][32];
     
     when = now();
-    for (i=0; i<nbase/10; i++) {
+    for (i=0; i<nbase; i++) {
         decaf_448_derive_private_key(dpriv[i&1], sym[i&1]);
     }
     when = now() - when;
@@ -714,7 +714,7 @@ int main(int argc, char **argv) {
     decaf_448_private_to_public(dpub[1], dpriv[1]);
     
     when = now();
-    for (i=0; i<nbase/10; i++) {
+    for (i=0; i<nbase; i++) {
         decaf_bool_t ret = decaf_448_shared_secret(dshared[i&1], 32, dpriv[i&1], dpub[(i+1)&1]);
         if (ret != DECAF_SUCCESS) {
             printf("BUG: shared secret returns failure on %d.\n", i);
@@ -732,7 +732,7 @@ int main(int argc, char **argv) {
     const char *dmessage = "hello world";
     const char *dnessage = "Jello world";
     when = now();
-    for (i=0; i<nbase/10; i++) {
+    for (i=0; i<nbase; i++) {
         decaf_448_sign(dsig, dpriv[0], (const unsigned char *)dmessage, 11);
     }
     when = now() - when;
@@ -743,7 +743,7 @@ int main(int argc, char **argv) {
     }
     
     when = now();
-    for (i=0; i<nbase/10; i++) {
+    for (i=0; i<nbase; i++) {
         decaf_bool_t ret = decaf_448_verify(dsig, dpub[0],
             (const unsigned char *)((i&1) ? dmessage : dnessage), 11);
         if ((i&1) && ~ret) {
@@ -762,7 +762,7 @@ int main(int argc, char **argv) {
         alignof_decaf_448_precomputed_s, sizeof_decaf_448_precomputed_s));
     assert(dpre);
     when = now();
-    for (i=0; i<nbase/10; i++) {
+    for (i=0; i<nbase; i++) {
         decaf_448_precompute(dpre, Da);
     }
     when = now() - when;

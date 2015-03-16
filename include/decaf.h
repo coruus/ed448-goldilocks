@@ -60,10 +60,13 @@ typedef uint32_t decaf_word_t, decaf_bool_t;
 /** Number of bytes in a serialized scalar. */
 #define DECAF_448_SCALAR_BYTES 56
 
+/** Galois field element internal structure */
+typedef struct gf_s {
+    decaf_word_t limb[DECAF_448_LIMBS];
+} __attribute__((aligned(32))) gf_s, gf[1];
+
 /** Twisted Edwards (-1,d-1) extended homogeneous coordinates */
-typedef struct decaf_448_point_s {
-    decaf_word_t x[DECAF_448_LIMBS],y[DECAF_448_LIMBS],z[DECAF_448_LIMBS],t[DECAF_448_LIMBS];
-} __attribute__((aligned(32))) decaf_448_point_t[1];
+typedef struct decaf_448_point_s { gf x,y,z,t; } decaf_448_point_t[1];
 
 /** Precomputed table based on a point.  Can be trivial implementation. */
 struct decaf_448_precomputed_s;
