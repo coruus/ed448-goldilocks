@@ -13,10 +13,6 @@
 #include <string.h>
 #include "field.h"
 
- /* TODO REMOVE */
-#include "constant_time.h"
-#include <stdio.h>
-
 #define WBITS DECAF_WORD_BITS
 
 #if WBITS == 64
@@ -184,9 +180,17 @@ siv gf_add_nr ( gf c, const gf a, const gf b ) {
 }
 
 /** Constant time, x = is_z ? z : y */
-sv cond_sel(gf x, const gf y, const gf z, decaf_bool_t is_z) {
-    //FOR_LIMB(i, x[i] = (y[i] & ~is_z) | (z[i] & is_z) );
+siv cond_sel(gf x, const gf y, const gf z, decaf_bool_t is_z) {
+    big_register_t br_mask = br_set_to_mask(is_z);
+    big_register_t *out = (big_register_t *)x;
+    const big_register_t *y_ = (const big_register_t *)y, *z_ = (const big_register_t *)z;
+    word_t k;
+    for (k=0; k<sizeof(gf)/sizeof(big_register_t); k++) {
+        out[k] = (~br_mask & y_[k]) | (br_mask & z_[k]);
+    }
+    /*
     constant_time_select(x,z,y,sizeof(gf),is_z);
+    */
 }
 
 /** Constant time, if (neg) x=-x; */
@@ -209,9 +213,6 @@ siv cond_swap(gf x, gf_s *__restrict__ y, decaf_bool_t swap) {
         x->limb[i] ^= s;
         y->limb[i] ^= s;
     }
-    /*
-    constant_time_cond_swap(x,y,sizeof(gf),swap);
-    */
 }
 
 /**
@@ -791,6 +792,27 @@ snv add_niels_to_pt (
     if (!before_double) gf_mul ( d->t, b, c );
 }
 
+snv sub_niels_from_pt (
+    decaf_448_point_t d,
+    const niels_t e,
+    decaf_bool_t before_double
+) {
+    gf a, b, c;
+    gf_sub_nr ( b, d->y, d->x );
+    gf_mul ( a, e->b, b );
+    gf_add_nr ( b, d->x, d->y );
+    gf_mul ( d->y, e->a, b );
+    gf_mul ( d->x, e->c, d->t );
+    gf_add_nr ( c, a, d->y );
+    gf_sub_nr ( b, d->y, a );
+    gf_add_nr ( d->y, d->z, d->x );
+    gf_sub_nr ( a, d->z, d->x );
+    gf_mul ( d->z, a, d->y );
+    gf_mul ( d->x, d->y, b );
+    gf_mul ( d->y, a, c );
+    if (!before_double) gf_mul ( d->t, b, c );
+}
+
 sv add_pniels_to_pt (
     decaf_448_point_t p,
     const pniels_t pn,
@@ -802,7 +824,41 @@ sv add_pniels_to_pt (
     add_niels_to_pt( p, pn->n, before_double );
 }
 
+sv sub_pniels_from_pt (
+    decaf_448_point_t p,
+    const pniels_t pn,
+    decaf_bool_t before_double
+) {
+    gf L0;
+    gf_mul ( L0, p->z, pn->z );
+    gf_cpy ( p->z, L0 );
+    sub_niels_from_pt( p, pn->n, before_double );
+}
+
 extern const decaf_448_scalar_t decaf_448_point_scalarmul_adjustment;
+
+/* TODO: get rid of big_register_t dependencies? */
+siv constant_time_lookup_xx (
+    void *__restrict__ out_,
+    const void *table_,
+    word_t elem_bytes,
+    word_t n_table,
+    word_t idx
+) {
+    big_register_t big_one = br_set_to_mask(1), big_i = br_set_to_mask(idx);
+    big_register_t *out = (big_register_t *)out_;
+    const unsigned char *table = (const unsigned char *)table_;
+    word_t j,k;
+    
+    for (k=0; k<elem_bytes/sizeof(big_register_t); k++)
+        out[k] = 0;
+    for (j=0; j<n_table; j++, big_i-=big_one) {        
+        big_register_t br_mask = br_is_zero(big_i);
+        for (k=0; k<elem_bytes/sizeof(big_register_t); k++) {
+            out[k] |= br_mask & *(const big_register_t*)(&table[k*sizeof(big_register_t)+j*elem_bytes]);
+        }
+    }
+}
 
 void decaf_448_point_scalarmul (
     decaf_448_point_t a,
@@ -838,7 +894,7 @@ void decaf_448_point_scalarmul (
         inv = (bits>>(WINDOW-1))-1;
     bits ^= inv;
     
-    constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
+    constant_time_lookup_xx(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
     cond_neg_niels(pn->n, inv);
     pniels_to_pt(tmp, pn);
 
@@ -861,7 +917,7 @@ void decaf_448_point_scalarmul (
         bits ^= inv;
     
         /* Add in from table.  Compute t only on last iteration. */
-        constant_time_lookup(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
+        constant_time_lookup_xx(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
         cond_neg_niels(pn->n, inv);
         add_pniels_to_pt(tmp, pn, i ? -1 : 0);
     }
@@ -1104,7 +1160,7 @@ siv constant_time_lookup_niels (
     int nelts,
     int idx
 ) {
-    constant_time_lookup(ni, table, sizeof(niels_s), nelts, idx);
+    constant_time_lookup_xx(ni, table, sizeof(niels_s), nelts, idx);
 }
 
 void decaf_448_precomputed_scalarmul (
@@ -1112,25 +1168,26 @@ void decaf_448_precomputed_scalarmul (
     const decaf_448_precomputed_s *table,
     const decaf_448_scalar_t scalar
 ) {
-    unsigned int i,j,k;
+    int i;
+    unsigned j,k;
     const unsigned int n = 5, t = 5, s = 18; // TODO MAGIC
     
-    decaf_448_scalar_t scalar2;
-    decaf_448_scalar_add(scalar2, scalar, decaf_448_precomputed_scalarmul_adjustment);
-    decaf_448_halve(scalar2,scalar2,decaf_448_scalar_p);
+    decaf_448_scalar_t scalar1x;
+    decaf_448_scalar_add(scalar1x, scalar, decaf_448_precomputed_scalarmul_adjustment);
+    decaf_448_halve(scalar1x,scalar1x,decaf_448_scalar_p);
     
     niels_t ni;
     
-    for (i=0; i<s; i++) {
-        if (i) decaf_448_point_double(out,out);
+    for (i=s-1; i>=0; i--) {
+        if (i != (int)s-1) decaf_448_point_double(out,out);
         
         for (j=0; j<n; j++) {
             int tab = 0;
          
             for (k=0; k<t; k++) {
-                unsigned int bit = (s-1-i) + k*s + j*(s*t);
+                unsigned int bit = i + s*(k + j*t);
                 if (bit < SCALAR_WORDS * WBITS) {
-                    tab |= (scalar2->limb[bit/WBITS] >> (bit%WBITS) & 1) << k;
+                    tab |= (scalar1x->limb[bit/WBITS] >> (bit%WBITS) & 1) << k;
                 }
             }
             
@@ -1141,8 +1198,8 @@ void decaf_448_precomputed_scalarmul (
             constant_time_lookup_niels(ni, &table->table[j<<(t-1)], 1<<(t-1), tab);
 
             cond_neg_niels(ni, invert);
-            if (i||j) {
-                add_niels_to_pt(out, ni, j==n-1 && i<s-1);
+            if ((i!=s-1)||j) {
+                add_niels_to_pt(out, ni, j==n-1 && i);
             } else {
                 niels_to_pt(out, ni);
             }
@@ -1280,3 +1337,158 @@ decaf_bool_t decaf_448_direct_scalarmul (
     return succ;
 }
 
+/**
+ * @cond internal
+ * Control for variable-time scalar multiply algorithms.
+ */
+struct smvt_control {
+  int power, addend;
+};
+
+static int recode_wnaf (
+    struct smvt_control *control, /* [nbits/(tableBits+1) + 3] */
+    const decaf_448_scalar_t scalar,
+    unsigned int tableBits
+) {
+    int current = 0, i, j;
+    unsigned int position = 0;
+
+    /* PERF: negate scalar if it's large
+     * PERF: this is a pretty simplistic algorithm.  I'm sure there's a faster one...
+     */
+    for (i=DECAF_448_SCALAR_BITS-1; i >= 0; i--) {
+        int bit = (scalar->limb[i/WORD_BITS] >> (i%WORD_BITS)) & 1;
+        current = 2*current + bit;
+
+        /*
+         * Sizing: |current| >= 2^(tableBits+1) -> |current| = 2^0
+         * So current loses (tableBits+1) bits every time.  It otherwise gains
+         * 1 bit per iteration.  The number of iterations is
+         * (nbits + 2 + tableBits), and an additional control word is added at
+         * the end.  So the total number of control words is at most
+         * ceil((nbits+1) / (tableBits+1)) + 2 = floor((nbits)/(tableBits+1)) + 2.
+         * There's also the stopper with power -1, for a total of +3.
+         */
+        if (current >= (2<<tableBits) || current <= -1 - (2<<tableBits)) {
+            int delta = (current + 1) >> 1; /* |delta| < 2^tablebits */
+            current = -(current & 1);
+
+            for (j=i; (delta & 1) == 0; j++) {
+                delta >>= 1;
+            }
+            control[position].power = j+1;
+            control[position].addend = delta;
+            position++;
+            assert(position <= DECAF_448_SCALAR_BITS/(tableBits+1) + 2);
+        }
+    }
+    
+    if (current) {
+        for (j=0; (current & 1) == 0; j++) {
+            current >>= 1;
+        }
+        control[position].power = j;
+        control[position].addend = current;
+        position++;
+        assert(position <= DECAF_448_SCALAR_BITS/(tableBits+1) + 2);
+    }
+    
+  
+    control[position].power = -1;
+    control[position].addend = 0;
+    return position;
+}
+
+sv prepare_wnaf_table(
+    pniels_t *output,
+    decaf_448_point_t working,
+    unsigned int tbits
+) {
+    int i;
+    pt_to_pniels(output[0], working);
+
+    if (tbits == 0) return;
+
+    decaf_448_point_double(working,working);
+    pniels_t twop;
+    pt_to_pniels(twop, working);
+
+    add_pniels_to_pt(working, output[0],0);
+    pt_to_pniels(output[1], working);
+
+    for (i=2; i < 1<<tbits; i++) {
+        add_pniels_to_pt(working, twop,0);
+        pt_to_pniels(output[i], working);
+    }
+}
+
+void decaf_448_precomputed_double_scalarmul_non_secret (
+    decaf_448_point_t combo,
+    const decaf_448_precomputed_s *base1,
+    const decaf_448_scalar_t scalar1,
+    const decaf_448_point_t base2,
+    const decaf_448_scalar_t scalar2
+) {
+    int i;
+    unsigned j,k;
+    const unsigned int n = 5, t = 5;
+    const int s = 18; // TODO MAGIC
+    
+    decaf_448_scalar_t scalar1x;
+    decaf_448_scalar_add(scalar1x, scalar1, decaf_448_precomputed_scalarmul_adjustment);
+    decaf_448_halve(scalar1x,scalar1x,decaf_448_scalar_p);
+    
+    decaf_448_point_copy(combo, base2);
+    const int table_bits = 4; // TODO MAGIC
+    struct smvt_control control[DECAF_448_SCALAR_BITS/(table_bits+1)+3];
+    
+    int control_bits = recode_wnaf(control, scalar2, table_bits);
+  
+    pniels_t precmp[1<<table_bits];
+    prepare_wnaf_table(precmp, combo, table_bits);
+    
+    decaf_448_point_copy(combo, decaf_448_point_identity);
+
+    int conti = 0;
+    for (i = control[0].power; i >= 0; i--) {
+
+        if (i == control[conti].power) {
+            decaf_448_point_double_internal(combo,combo,0);
+            assert(control[conti].addend);
+
+            if (control[conti].addend > 0) {
+                add_pniels_to_pt(combo, precmp[control[conti].addend >> 1], i>=s); // TODO PERF: internal
+            } else {
+                sub_pniels_from_pt(combo, precmp[(-control[conti].addend) >> 1], i>=s); // TODO PERF: internal
+            }
+            conti++;
+            assert(conti <= control_bits);
+        } else {
+            decaf_448_point_double_internal(combo,combo,i>=s);
+        }
+        
+        if (i < s) {
+            /* comb component */
+            for (j=0; j<n; j++) {
+                int tab = 0;
+         
+                for (k=0; k<t; k++) {
+                    unsigned int bit = i + s*(k + j*t);
+                    if (bit < SCALAR_WORDS * WBITS) {
+                        tab |= (scalar1x->limb[bit/WBITS] >> (bit%WBITS) & 1) << k;
+                    }
+                }
+            
+                decaf_bool_t invert = (tab>>(t-1))-1;
+                tab ^= invert;
+                tab &= (1<<(t-1)) - 1;
+
+                if (invert) {
+                    sub_niels_from_pt(combo, base1->table[(j<<(t-1)) + tab], j==n-1 && i);
+                } else {
+                    add_niels_to_pt(combo, base1->table[(j<<(t-1)) + tab], j==n-1 && i);
+                }
+            }
+        }
+    }
+}

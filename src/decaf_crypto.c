@@ -186,9 +186,9 @@ decaf_448_verify_shake (
     ret &= decaf_448_point_decode(pubpoint, pub, DECAF_FALSE);
     ret &= decaf_448_scalar_decode(response, &sig[DECAF_448_SER_BYTES]);
 
-    decaf_448_point_double_scalarmul (
+    decaf_448_precomputed_double_scalarmul_non_secret (
         pubpoint,
-        decaf_448_point_base, response,
+        decaf_448_precomputed_base, response,
         pubpoint, challenge
     );
 

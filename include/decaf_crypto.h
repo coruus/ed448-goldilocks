@@ -85,6 +85,9 @@ void decaf_448_private_to_public (
  *
  * @retval DECAF_SUCCESS Key exchange was successful.
  * @retval DECAF_FAILURE Key exchange failed.
+ *
+ * @warning This is a pretty silly shared secret computation
+ * and will almost definitely change in the future.
  */
 decaf_bool_t
 decaf_448_shared_secret (

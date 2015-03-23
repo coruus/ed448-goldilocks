@@ -396,13 +396,34 @@ void decaf_448_precomputed_scalarmul (
  * @param [in] scalar1 A first scalar to multiply by.
  * @param [in] base2 A second point to be scaled.
  * @param [in] scalar2 A second scalar to multiply by.
- *
- * @TODO: test
- * @TODO: define vartime/precomp version of this for performance??
  */
 void decaf_448_point_double_scalarmul (
     decaf_448_point_t combo,
     const decaf_448_point_t base1,
+    const decaf_448_scalar_t scalar1,
+    const decaf_448_point_t base2,
+    const decaf_448_scalar_t scalar2
+) API_VIS NONNULL5 NOINLINE;
+
+/**
+ * @brief Multiply two base points by two scalars:
+ * scaled = scalar1*base1 + scalar2*base2.
+ *
+ * Otherwise quivalent to two calls to decaf_448_point_scalarmul, but may be
+ * faster.
+ *
+ * @param [out] scaled The scaled point base*scalar
+ * @param [in] base1 A precomputed first point to be scaled.
+ * @param [in] scalar1 A first scalar to multiply by.
+ * @param [in] base2 A second point to be scaled.
+ * @param [in] scalar2 A second scalar to multiply by.
+ *
+ * @warning: This function takes variable time, and may leak the scalars
+ * used.  It is designed for signature verification.
+ */
+void decaf_448_precomputed_double_scalarmul_non_secret (
+    decaf_448_point_t combo,
+    const decaf_448_precomputed_s *base1,
     const decaf_448_scalar_t scalar1,
     const decaf_448_point_t base2,
     const decaf_448_scalar_t scalar2
