@@ -10,6 +10,7 @@
 
 #include "decaf_crypto.h"
 #include <string.h>
+#include "sha512.h"
 
 static const unsigned int DECAF_448_SCALAR_OVERKILL_BYTES = DECAF_448_SCALAR_BYTES + 8;
 
@@ -18,9 +19,10 @@ void decaf_448_derive_private_key (
     const decaf_448_symmetric_key_t proto
 ) {
     const char *magic = "decaf_448_derive_private_key";
-    keccak_sponge_t sponge;
     uint8_t encoded_scalar[DECAF_448_SCALAR_OVERKILL_BYTES];
     decaf_448_point_t pub;
+
+    keccak_sponge_t sponge;
     shake256_init(sponge);
     shake256_update(sponge, proto, sizeof(decaf_448_symmetric_key_t));
     shake256_update(sponge, (const unsigned char *)magic, strlen(magic));

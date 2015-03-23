@@ -33,6 +33,7 @@
 #define __attribute__((x))
 #endif
 #define API_VIS __attribute__((visibility("default")))
+#define NOINLINE  __attribute__((noinline))
 #define WARN_UNUSED __attribute__((warn_unused_result))
 #define NONNULL1 __attribute__((nonnull(1)))
 #define NONNULL2 __attribute__((nonnull(1,2)))
@@ -130,7 +131,7 @@ extern "C" {
 decaf_bool_t decaf_448_scalar_decode (
     decaf_448_scalar_t s,
     const unsigned char ser[DECAF_448_SCALAR_BYTES]
-) API_VIS WARN_UNUSED NONNULL2;
+) API_VIS WARN_UNUSED NONNULL2 NOINLINE;
 
 /**
  * @brief Read a scalar from wire format or from bytes.  Reduces mod
@@ -144,7 +145,7 @@ void decaf_448_scalar_decode_long (
     decaf_448_scalar_t s,
     const unsigned char *ser,
     size_t ser_len
-) API_VIS NONNULL2;
+) API_VIS NONNULL2 NOINLINE;
     
 /**
  * @brief Serialize a scalar to wire format.
@@ -155,7 +156,7 @@ void decaf_448_scalar_decode_long (
 void decaf_448_scalar_encode (
     unsigned char ser[DECAF_448_SCALAR_BYTES],
     const decaf_448_scalar_t s
-) API_VIS NONNULL2;
+) API_VIS NONNULL2 NOINLINE NOINLINE;
         
 /**
  * @brief Add two scalars.  The scalars may use the same memory.
@@ -167,7 +168,7 @@ void decaf_448_scalar_add (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b
-) API_VIS NONNULL3;
+) API_VIS NONNULL3 NOINLINE;
 
 /**
  * @brief Compare two scalars.
@@ -179,7 +180,7 @@ void decaf_448_scalar_add (
 decaf_bool_t decaf_448_scalar_eq (
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b
-) API_VIS WARN_UNUSED NONNULL2;
+) API_VIS WARN_UNUSED NONNULL2 NOINLINE;
 
 /**
  * @brief Subtract two scalars.  The scalars may use the same memory.
@@ -191,7 +192,7 @@ void decaf_448_scalar_sub (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b
-) API_VIS NONNULL3;
+) API_VIS NONNULL3 NOINLINE;
 
 /**
  * @brief Multiply two scalars.  The scalars may use the same memory.
@@ -203,7 +204,7 @@ void decaf_448_scalar_mul (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b
-) API_VIS NONNULL3;
+) API_VIS NONNULL3 NOINLINE;
 
 /**
  * @brief Copy a scalar.  The scalars may use the same memory, in which
@@ -225,7 +226,7 @@ void decaf_448_scalar_copy (
 void decaf_448_point_encode (
     uint8_t ser[DECAF_448_SER_BYTES],
     const decaf_448_point_t pt
-) API_VIS NONNULL2;
+) API_VIS NONNULL2 NOINLINE;
 
 /**
  * @brief Decode a point from a sequence of bytes.
@@ -244,7 +245,7 @@ decaf_bool_t decaf_448_point_decode (
     decaf_448_point_t pt,
     const uint8_t ser[DECAF_448_SER_BYTES],
     decaf_bool_t allow_identity
-) API_VIS WARN_UNUSED NONNULL2;
+) API_VIS WARN_UNUSED NONNULL2 NOINLINE;
 
 /**
  * @brief Copy a point.  The input and output may alias,
@@ -270,7 +271,7 @@ void decaf_448_point_copy (
 decaf_bool_t decaf_448_point_eq (
     const decaf_448_point_t a,
     const decaf_448_point_t b
-) API_VIS WARN_UNUSED NONNULL2;
+) API_VIS WARN_UNUSED NONNULL2 NOINLINE;
 
 /**
  * @brief Add two points to produce a third point.  The
@@ -285,7 +286,7 @@ void decaf_448_point_add (
     decaf_448_point_t sum,
     const decaf_448_point_t a,
     const decaf_448_point_t b
-) API_VIS NONNULL3;
+) API_VIS NONNULL3; // TODO: NOINLINE?
 
 /**
  * @brief Double a point.  Equivalent to
@@ -297,7 +298,7 @@ void decaf_448_point_add (
 void decaf_448_point_double (
     decaf_448_point_t two_a,
     const decaf_448_point_t a
-) API_VIS NONNULL2;
+) API_VIS NONNULL2; // TODO: NOINLINE?
 
 /**
  * @brief Subtract two points to produce a third point.  The
@@ -312,7 +313,7 @@ void decaf_448_point_sub (
     decaf_448_point_t diff,
     const decaf_448_point_t a,
     const decaf_448_point_t b
-) API_VIS NONNULL3;
+) API_VIS NONNULL3; // TODO: NOINLINE?
 
 /**
  * @brief Multiply a base point by a scalar: scaled = scalar*base.
@@ -325,7 +326,7 @@ void decaf_448_point_scalarmul (
     decaf_448_point_t scaled,
     const decaf_448_point_t base,
     const decaf_448_scalar_t scalar
-) API_VIS NONNULL3;
+) API_VIS NONNULL3 NOINLINE;
 
 /**
  * @brief Multiply a base point by a scalar: scaled = scalar*base.
@@ -350,7 +351,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     const decaf_448_scalar_t scalar,
     decaf_bool_t allow_identity,
     decaf_bool_t short_circuit
-) API_VIS NONNULL3 WARN_UNUSED;
+) API_VIS NONNULL3 WARN_UNUSED NOINLINE;
 
 /**
  * @brief Precompute a table for fast scalar multiplication.
@@ -364,7 +365,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
 void decaf_448_precompute (
     decaf_448_precomputed_s *a,
     const decaf_448_point_t b
-) API_VIS NONNULL2;
+) API_VIS NONNULL2 NOINLINE;
 
 /**
  * @brief Multiply a precomputed base point by a scalar:
@@ -381,7 +382,7 @@ void decaf_448_precomputed_scalarmul (
     decaf_448_point_t scaled,
     const decaf_448_precomputed_s *base,
     const decaf_448_scalar_t scalar
-) API_VIS NONNULL3;
+) API_VIS NONNULL3 NOINLINE;
 
 /**
  * @brief Multiply two base points by two scalars:
@@ -405,7 +406,7 @@ void decaf_448_point_double_scalarmul (
     const decaf_448_scalar_t scalar1,
     const decaf_448_point_t base2,
     const decaf_448_scalar_t scalar2
-) API_VIS NONNULL5;
+) API_VIS NONNULL5 NOINLINE;
 
 /**
  * @brief Test that a point is valid, for debugging purposes.
@@ -416,7 +417,7 @@ void decaf_448_point_double_scalarmul (
  */
 decaf_bool_t decaf_448_point_valid (
     const decaf_448_point_t toTest
-) API_VIS WARN_UNUSED NONNULL1;
+) API_VIS WARN_UNUSED NONNULL1 NOINLINE;
 
 /**
  * @brief Almost-Elligator-like hash to curve.
@@ -448,7 +449,7 @@ decaf_bool_t decaf_448_point_valid (
 void decaf_448_point_from_hash_nonuniform (
     decaf_448_point_t pt,
     const unsigned char hashed_data[DECAF_448_SER_BYTES]
-) API_VIS NONNULL2;
+) API_VIS NONNULL2 NOINLINE;
 
 /**
  * @brief Indifferentiable hash function encoding to curve.
@@ -461,7 +462,7 @@ void decaf_448_point_from_hash_nonuniform (
 void decaf_448_point_from_hash_uniform (
     decaf_448_point_t pt,
     const unsigned char hashed_data[2*DECAF_448_SER_BYTES]
-) API_VIS NONNULL2;
+) API_VIS NONNULL2 NOINLINE;
 
 /**
  * @brief Overwrite data with zeros.  Use memset_s if available.
@@ -469,7 +470,7 @@ void decaf_448_point_from_hash_uniform (
 void decaf_bzero (
    void *data,
    size_t size
-) NONNULL1 API_VIS;
+) NONNULL1 API_VIS NOINLINE;
 
 /**
  * @brief Overwrite scalar with zeros.

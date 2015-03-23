@@ -392,7 +392,7 @@ scalarmul_fixed_base (
         for (j=0; j<n; j++) {
             int tab = 0;
 			
-			/*
+            /*
              * PERF: This computation takes about 1.5µs on SBR, i.e. 2-3% of the
 			 * time of a keygen or sign op.  Surely it is possible to speed it up.
              */

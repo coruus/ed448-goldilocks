@@ -71,6 +71,16 @@ static const decaf_448_scalar_t decaf_448_scalar_r2 = {{{
     SC_LIMB(0x3402a939f823b729)
 }}};
 
+static const decaf_448_scalar_t decaf_448_scalar_r1 = {{{
+    SC_LIMB(0x721cf5b5529eec34),
+    SC_LIMB(0x7a4cf635c8e9c2ab),
+    SC_LIMB(0xeec492d944a725bf),
+    SC_LIMB(0x000000020cd77058),
+    SC_LIMB(0),
+    SC_LIMB(0),
+    SC_LIMB(0)
+}}};
+
 static const decaf_word_t DECAF_MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae918bc5ull);
 
 /** base = twist of Goldilocks base point (~,19). */
@@ -611,25 +621,33 @@ void decaf_448_point_copy (
     gf_cpy(a->t, b->t);
 }
 
-decaf_bool_t decaf_448_scalar_decode(
+siv decaf_448_scalar_decode_short (
     decaf_448_scalar_t s,
-    const unsigned char ser[DECAF_448_SER_BYTES]
+    const unsigned char ser[DECAF_448_SER_BYTES],
+    unsigned int nbytes
 ) {
     unsigned int i,j,k=0;
     for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
         decaf_word_t out = 0;
-        for (j=0; j<sizeof(decaf_word_t); j++,k++) {
+        for (j=0; j<sizeof(decaf_word_t) && k<nbytes; j++,k++) {
             out |= ((decaf_word_t)ser[k])<<(8*j);
         }
         s->limb[i] = out;
     }
-    
+}
+
+decaf_bool_t decaf_448_scalar_decode(
+    decaf_448_scalar_t s,
+    const unsigned char ser[DECAF_448_SER_BYTES]
+) {
+    unsigned int i;
+    decaf_448_scalar_decode_short(s, ser, DECAF_448_SER_BYTES);
     decaf_sdword_t accum = 0;
     for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
         accum = (accum + s->limb[i] - decaf_448_scalar_p->limb[i]) >> WBITS;
     }
     
-    decaf_448_scalar_mul(s,s,decaf_448_scalar_one); /* ham-handed reduce */
+    decaf_448_montmul(s,s,decaf_448_scalar_r1,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR); /* ham-handed reduce */
     
     return accum;
 }
@@ -671,16 +689,21 @@ void decaf_448_scalar_decode_long(
     }
     
     size_t i;
-    unsigned char tmp[DECAF_448_SER_BYTES] = {0};
     decaf_448_scalar_t t1, t2;
 
     i = ser_len - (ser_len%DECAF_448_SER_BYTES);
     if (i==ser_len) i -= DECAF_448_SER_BYTES;
-        
-    memcpy(tmp, ser+i, ser_len - i);
-    ignore_result( decaf_448_scalar_decode(t1, tmp) );
-    decaf_bzero(tmp, sizeof(tmp));
     
+    decaf_448_scalar_decode_short(t1, &ser[i], ser_len-i);
+
+    if (ser_len == sizeof(*ser)) {
+        assert(i==0);
+        /* ham-handed reduce */
+        decaf_448_montmul(s,t1,decaf_448_scalar_r1,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+        decaf_448_scalar_destroy(t1);
+        return;
+    }
+
     while (i) {
         i -= DECAF_448_SER_BYTES;
         decaf_448_montmul(t1,t1,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
@@ -1075,6 +1098,15 @@ decaf_448_precompute (
 
 extern const decaf_448_scalar_t decaf_448_precomputed_scalarmul_adjustment;
 
+siv constant_time_lookup_niels (
+    niels_s *__restrict__ ni,
+    const niels_t *table,
+    int nelts,
+    int idx
+) {
+    constant_time_lookup(ni, table, sizeof(niels_s), nelts, idx);
+}
+
 void decaf_448_precomputed_scalarmul (
     decaf_448_point_t out,
     const decaf_448_precomputed_s *table,
@@ -1094,7 +1126,7 @@ void decaf_448_precomputed_scalarmul (
         
         for (j=0; j<n; j++) {
             int tab = 0;
-            
+         
             for (k=0; k<t; k++) {
                 unsigned int bit = (s-1-i) + k*s + j*(s*t);
                 if (bit < SCALAR_WORDS * WBITS) {
@@ -1105,8 +1137,9 @@ void decaf_448_precomputed_scalarmul (
             decaf_bool_t invert = (tab>>(t-1))-1;
             tab ^= invert;
             tab &= (1<<(t-1)) - 1;
-            
-            constant_time_lookup(ni, &table->table[j<<(t-1)], sizeof(ni), 1<<(t-1), tab);
+
+            constant_time_lookup_niels(ni, &table->table[j<<(t-1)], 1<<(t-1), tab);
+
             cond_neg_niels(ni, invert);
             if (i||j) {
                 add_niels_to_pt(out, ni, j==n-1 && i<s-1);

@@ -16,7 +16,7 @@
 
 #define DECAF_448_SYMMETRIC_KEY_BYTES 32
 /** @cond internal */
-#define API_VIS __attribute__((visibility("default")))
+#define API_VIS __attribute__((visibility("default"))) __attribute__((noinline)) // TODO: synergize with decaf.h
 #define WARN_UNUSED __attribute__((warn_unused_result))
 #define NONNULL1 __attribute__((nonnull(1)))
 #define NONNULL2 __attribute__((nonnull(1,2)))

@@ -12,6 +12,7 @@
 #define __CONSTANT_TIME_H__ 1
 
 #include "word.h"
+#include <string.h>
 
 /*
  * Constant-time operations on hopefully-compile-time-sized memory
@@ -148,7 +149,7 @@ constant_time_lookup (
     const unsigned char *table = (const unsigned char *)table_;
     word_t j,k;
     
-    really_memset(out, 0, elem_bytes);
+    memset(out, 0, elem_bytes);
     for (j=0; j<n_table; j++, big_i-=big_one) {        
         big_register_t br_mask = br_is_zero(big_i);
         for (k=0; k<=elem_bytes-sizeof(big_register_t); k+=sizeof(big_register_t)) {
