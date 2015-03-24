@@ -1,3 +1,24 @@
+March 23, 2015:
+    I've been fleshing out Decaf, and hopefully the API is somewhere
+    near final.  I will probably move a few things around and add a
+    scalar inversion command (for AugPAKE and such).
+    
+    I've built a "decaf_fast" implementation which is about as fast as
+    Goldilocks, except that verification still isn't as fast, because
+    it needs a precomputed wNAF table which I haven't implemented yet.
+    Precomputation is noticeably faster than in Goldilocks; while
+    neither is especially optimized, the extended point format works
+    slightly better for that purpose.
+    
+    While optimizing decaf_fast I also found a minor perf problem in
+    the constant time lookup code, so that's fixed (I hope?) and
+    everything is faster at least on my test machine.
+    
+    At some point soon-ish, I'd like to start removing the base
+    Goldilocks code from this branch.  That will require porting more
+    of the tests.  I might make a C++ header for Decaf, which would
+    definitely simplify testing.
+
 March 1, 2015:
     While by no means complete or stable, I've done most of the ground
     work to implement the "Decaf" point encoding.  This point encoding
