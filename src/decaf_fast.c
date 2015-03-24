@@ -1417,9 +1417,8 @@ sv prepare_wnaf_table(
     }
 }
 
-void decaf_448_precomputed_double_scalarmul_non_secret (
+void decaf_448_base_double_scalarmul_non_secret (
     decaf_448_point_t combo,
-    const decaf_448_precomputed_s *base1,
     const decaf_448_scalar_t scalar1,
     const decaf_448_point_t base2,
     const decaf_448_scalar_t scalar2
@@ -1479,9 +1478,9 @@ void decaf_448_precomputed_double_scalarmul_non_secret (
                 tab &= (1<<(t-1)) - 1;
 
                 if (invert) {
-                    sub_niels_from_pt(combo, base1->table[(j<<(t-1)) + tab], j==n-1 && i);
+                    sub_niels_from_pt(combo, decaf_448_precomputed_base->table[(j<<(t-1)) + tab], j==n-1 && i);
                 } else {
-                    add_niels_to_pt(combo, base1->table[(j<<(t-1)) + tab], j==n-1 && i);
+                    add_niels_to_pt(combo, decaf_448_precomputed_base->table[(j<<(t-1)) + tab], j==n-1 && i);
                 }
             }
         }

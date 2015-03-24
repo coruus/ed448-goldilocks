@@ -38,6 +38,7 @@
 #define NONNULL1 __attribute__((nonnull(1)))
 #define NONNULL2 __attribute__((nonnull(1,2)))
 #define NONNULL3 __attribute__((nonnull(1,2,3)))
+#define NONNULL4 __attribute__((nonnull(1,2,3,4)))
 #define NONNULL5 __attribute__((nonnull(1,2,3,4,5)))
 
 /* Internal word types */
@@ -407,13 +408,12 @@ void decaf_448_point_double_scalarmul (
 
 /**
  * @brief Multiply two base points by two scalars:
- * scaled = scalar1*base1 + scalar2*base2.
+ * scaled = scalar1*decaf_448_point_base + scalar2*base2.
  *
- * Otherwise quivalent to two calls to decaf_448_point_scalarmul, but may be
+ * Otherwise equivalent to decaf_448_point_double_scalarmul, but may be
  * faster.
  *
  * @param [out] scaled The scaled point base*scalar
- * @param [in] base1 A precomputed first point to be scaled.
  * @param [in] scalar1 A first scalar to multiply by.
  * @param [in] base2 A second point to be scaled.
  * @param [in] scalar2 A second scalar to multiply by.
@@ -421,13 +421,12 @@ void decaf_448_point_double_scalarmul (
  * @warning: This function takes variable time, and may leak the scalars
  * used.  It is designed for signature verification.
  */
-void decaf_448_precomputed_double_scalarmul_non_secret (
+void decaf_448_base_double_scalarmul_non_secret (
     decaf_448_point_t combo,
-    const decaf_448_precomputed_s *base1,
     const decaf_448_scalar_t scalar1,
     const decaf_448_point_t base2,
     const decaf_448_scalar_t scalar2
-) API_VIS NONNULL5 NOINLINE;
+) API_VIS NONNULL4 NOINLINE;
 
 /**
  * @brief Test that a point is valid, for debugging purposes.

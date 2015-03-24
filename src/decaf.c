@@ -805,12 +805,11 @@ void decaf_448_precomputed_scalarmul (
     decaf_448_point_scalarmul(a,b->p[0],scalar);
 }
 
-void decaf_448_precomputed_double_scalarmul_non_secret (
+void decaf_448_base_double_scalarmul_non_secret (
     decaf_448_point_t combo,
-    const decaf_448_precomputed_s *base1,
     const decaf_448_scalar_t scalar1,
     const decaf_448_point_t base2,
     const decaf_448_scalar_t scalar2
 ) {
-    decaf_448_point_double_scalarmul(combo, base1->p[0], scalar1, base2, scalar2);
+    decaf_448_point_double_scalarmul(combo, decaf_448_point_base, scalar1, base2, scalar2);
 }
