@@ -1073,6 +1073,31 @@ static void gf_batch_invert (
     }
 }
 
+static void batch_normalize_niels (
+    niels_t *table,
+    gf *zs,
+    gf *zis,
+    int n
+) {
+    int i;
+    gf product;
+    gf_batch_invert(zis, zs, n);
+
+    for (i=0; i<n; i++) {
+        gf_mul(product, table[i]->a, zis[i]);
+        gf_canon(product);
+        gf_cpy(table[i]->a, product);
+        
+        gf_mul(product, table[i]->b, zis[i]);
+        gf_canon(product);
+        gf_cpy(table[i]->b, product);
+        
+        gf_mul(product, table[i]->c, zis[i]);
+        gf_canon(product);
+        gf_cpy(table[i]->c, product);
+    }
+}
+
 void
 decaf_448_precompute (
     decaf_448_precomputed_s *table,
@@ -1129,22 +1154,7 @@ decaf_448_precompute (
         }
     }
     
-    gf_batch_invert(zis, zs, n<<(t-1));
-
-    gf product;
-    for (i=0; i<n<<(t-1); i++) {
-        gf_mul(product, table->table[i]->a, zis[i]);
-        gf_canon(product);
-        gf_cpy(table->table[i]->a, product);
-        
-        gf_mul(product, table->table[i]->b, zis[i]);
-        gf_canon(product);
-        gf_cpy(table->table[i]->b, product);
-        
-        gf_mul(product, table->table[i]->c, zis[i]);
-        gf_canon(product);
-        gf_cpy(table->table[i]->c, product);
-    }
+    batch_normalize_niels(table->table,zs,zis,n<<(t-1));
 }
 
 extern const decaf_448_scalar_t decaf_448_precomputed_scalarmul_adjustment;
@@ -1396,25 +1406,52 @@ static int recode_wnaf (
 
 sv prepare_wnaf_table(
     pniels_t *output,
-    decaf_448_point_t working,
+    const decaf_448_point_t working,
     unsigned int tbits
 ) {
+    decaf_448_point_t tmp;
     int i;
     pt_to_pniels(output[0], working);
 
     if (tbits == 0) return;
 
-    decaf_448_point_double(working,working);
+    decaf_448_point_double(tmp,working);
     pniels_t twop;
-    pt_to_pniels(twop, working);
+    pt_to_pniels(twop, tmp);
 
-    add_pniels_to_pt(working, output[0],0);
-    pt_to_pniels(output[1], working);
+    add_pniels_to_pt(tmp, output[0],0);
+    pt_to_pniels(output[1], tmp);
 
     for (i=2; i < 1<<tbits; i++) {
-        add_pniels_to_pt(working, twop,0);
-        pt_to_pniels(output[i], working);
+        add_pniels_to_pt(tmp, twop,0);
+        pt_to_pniels(output[i], tmp);
     }
+}
+
+extern const decaf_word_t decaf_448_precomputed_wnaf_as_words[];
+static const niels_t *decaf_448_wnaf_base = (const niels_t *)decaf_448_precomputed_wnaf_as_words;
+
+const size_t sizeof_decaf_448_precomputed_wnafs __attribute((visibility("hidden"))) = sizeof(niels_t)<<5;
+
+void decaf_448_precompute_wnafs (
+    niels_t out[1<<5],
+    const decaf_448_point_t base
+) __attribute__ ((visibility ("hidden")));
+
+void decaf_448_precompute_wnafs (
+    niels_t out[1<<5],
+    const decaf_448_point_t base
+) {
+    // TODO MAGIC
+    pniels_t tmp[1<<5];
+    gf zs[1<<5], zis[1<<5];
+    int i;
+    prepare_wnaf_table(tmp,base,5);
+    for (i=0; i<1<<5; i++) {
+        memcpy(out[i], tmp[i]->n, sizeof(niels_t));
+        gf_cpy(zs[i], tmp[i]->z);
+    }
+    batch_normalize_niels(out, zs, zis, 1<<5);
 }
 
 void decaf_448_base_double_scalarmul_non_secret (
@@ -1423,66 +1460,61 @@ void decaf_448_base_double_scalarmul_non_secret (
     const decaf_448_point_t base2,
     const decaf_448_scalar_t scalar2
 ) {
-    int i;
-    unsigned j,k;
-    const unsigned int n = 5, t = 5;
-    const int s = 18; // TODO MAGIC
+    const int table_bits_var = 3, table_bits_pre = 5; // TODO MAGIC
+    struct smvt_control control_var[DECAF_448_SCALAR_BITS/(table_bits_var+1)+3];
+    struct smvt_control control_pre[DECAF_448_SCALAR_BITS/(table_bits_pre+1)+3];
     
-    decaf_448_scalar_t scalar1x;
-    decaf_448_scalar_add(scalar1x, scalar1, decaf_448_precomputed_scalarmul_adjustment);
-    decaf_448_halve(scalar1x,scalar1x,decaf_448_scalar_p);
-    
-    decaf_448_point_copy(combo, base2);
-    const int table_bits = 4; // TODO MAGIC
-    struct smvt_control control[DECAF_448_SCALAR_BITS/(table_bits+1)+3];
-    
-    int control_bits = recode_wnaf(control, scalar2, table_bits);
+    int ncb_pre = recode_wnaf(control_pre, scalar1, table_bits_pre);
+    int ncb_var = recode_wnaf(control_var, scalar2, table_bits_var);
   
-    pniels_t precmp[1<<table_bits];
-    prepare_wnaf_table(precmp, combo, table_bits);
+    pniels_t precmp_var[1<<table_bits_var];
+    prepare_wnaf_table(precmp_var, base2, table_bits_var);
+  
+    int contp=0, contv=0, i = control_var[0].power;
+
+    if (i < 0) {
+        decaf_448_point_copy(combo, decaf_448_point_identity);
+        return;
+    } else if (i > control_pre[0].power) {
+        pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
+        contv++;
+    } else if (i == control_pre[0].power && i >=0 ) {
+        pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
+        add_niels_to_pt(combo, decaf_448_wnaf_base[control_pre[0].addend >> 1], i);
+        contv++; contp++;
+    } else {
+        i = control_pre[0].power;
+        niels_to_pt(combo, decaf_448_wnaf_base[control_pre[0].addend >> 1]);
+        contp++;
+    }
     
-    decaf_448_point_copy(combo, decaf_448_point_identity);
+    for (i--; i >= 0; i--) {
+        int cv = (i==control_var[contv].power), cp = (i==control_pre[contp].power);
+        decaf_448_point_double_internal(combo,combo,i && !(cv||cp));
 
-    int conti = 0;
-    for (i = control[0].power; i >= 0; i--) {
+        if (cv) {
+            assert(control_var[contv].addend);
 
-        if (i == control[conti].power) {
-            decaf_448_point_double_internal(combo,combo,0);
-            assert(control[conti].addend);
-
-            if (control[conti].addend > 0) {
-                add_pniels_to_pt(combo, precmp[control[conti].addend >> 1], i>=s); // TODO PERF: internal
+            if (control_var[contv].addend > 0) {
+                add_pniels_to_pt(combo, precmp_var[control_var[contv].addend >> 1], i&&!cp);
             } else {
-                sub_pniels_from_pt(combo, precmp[(-control[conti].addend) >> 1], i>=s); // TODO PERF: internal
+                sub_pniels_from_pt(combo, precmp_var[(-control_var[contv].addend) >> 1], i&&!cp);
             }
-            conti++;
-            assert(conti <= control_bits);
-        } else {
-            decaf_448_point_double_internal(combo,combo,i>=s);
+            contv++;
         }
-        
-        if (i < s) {
-            /* comb component */
-            for (j=0; j<n; j++) {
-                int tab = 0;
-         
-                for (k=0; k<t; k++) {
-                    unsigned int bit = i + s*(k + j*t);
-                    if (bit < SCALAR_WORDS * WBITS) {
-                        tab |= (scalar1x->limb[bit/WBITS] >> (bit%WBITS) & 1) << k;
-                    }
-                }
-            
-                decaf_bool_t invert = (tab>>(t-1))-1;
-                tab ^= invert;
-                tab &= (1<<(t-1)) - 1;
 
-                if (invert) {
-                    sub_niels_from_pt(combo, decaf_448_precomputed_base->table[(j<<(t-1)) + tab], j==n-1 && i);
-                } else {
-                    add_niels_to_pt(combo, decaf_448_precomputed_base->table[(j<<(t-1)) + tab], j==n-1 && i);
-                }
+        if (cp) {
+            assert(control_pre[contp].addend);
+
+            if (control_pre[contp].addend > 0) {
+                add_niels_to_pt(combo, decaf_448_wnaf_base[control_pre[contp].addend >> 1], i);
+            } else {
+                sub_niels_from_pt(combo, decaf_448_wnaf_base[(-control_pre[contp].addend) >> 1], i);
             }
+            contp++;
         }
     }
+
+    assert(contv == ncb_var); (void)ncb_var;
+    assert(contp == ncb_pre); (void)ncb_pre;
 }

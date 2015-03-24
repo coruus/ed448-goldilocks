@@ -18,6 +18,15 @@ const decaf_word_t decaf_448_precomputed_base_as_words[1];
 const decaf_448_scalar_t decaf_448_precomputed_scalarmul_adjustment;
 const decaf_448_scalar_t decaf_448_point_scalarmul_adjustment;
 
+struct niels_s;
+const decaf_word_t *decaf_448_precomputed_wnaf_as_words;
+extern const size_t sizeof_decaf_448_precomputed_wnafs;
+
+void decaf_448_precompute_wnafs (
+    struct niels_s *out,
+    const decaf_448_point_t base
+);
+
 static void scalar_print(const char *name, const decaf_448_scalar_t sc) {
     printf("const decaf_448_scalar_t %s = {{{\n", name);
     unsigned i;
@@ -36,6 +45,11 @@ int main(int argc, char **argv) {
     if (ret || !pre) return 1;
     decaf_448_precompute(pre, decaf_448_point_base);
     
+    struct niels_s *preWnaf;
+    ret = posix_memalign((void**)&preWnaf, alignof_decaf_448_precomputed_s, sizeof_decaf_448_precomputed_wnafs);
+    if (ret || !preWnaf) return 1;
+    decaf_448_precompute_wnafs(preWnaf, decaf_448_point_base);
+
     const decaf_word_t *output = (const decaf_word_t *)pre;
     unsigned i;
     
@@ -43,9 +57,21 @@ int main(int argc, char **argv) {
     printf("#include \"decaf.h\"\n\n");
     printf("const decaf_word_t decaf_448_precomputed_base_as_words[%d]\n", 
         (int)(sizeof_decaf_448_precomputed_s / sizeof(decaf_word_t)));
-    printf("__attribute__((aligned(%d))) = {\n  ", (int)alignof_decaf_448_precomputed_s);
+    printf("__attribute__((aligned(%d),visibility(\"hidden\"))) = {\n  ", (int)alignof_decaf_448_precomputed_s);
     
     for (i=0; i < sizeof_decaf_448_precomputed_s; i+=sizeof(decaf_word_t)) {
+        if (i && (i%8==0)) printf(",\n  ");
+        else if (i) printf(", ");
+        printf("0x%0*llxull", (int)sizeof(decaf_word_t)*2, (unsigned long long)*output );
+        output++;
+    }
+    printf("\n};\n");
+    
+    output = (const decaf_word_t *)preWnaf;
+    printf("const decaf_word_t decaf_448_precomputed_wnaf_as_words[%d]\n", 
+        (int)(sizeof_decaf_448_precomputed_wnafs / sizeof(decaf_word_t)));
+    printf("__attribute__((aligned(%d),visibility(\"hidden\"))) = {\n  ", (int)alignof_decaf_448_precomputed_s);
+    for (i=0; i < sizeof_decaf_448_precomputed_wnafs; i+=sizeof(decaf_word_t)) {
         if (i && (i%8==0)) printf(",\n  ");
         else if (i) printf(", ");
         printf("0x%0*llxull", (int)sizeof(decaf_word_t)*2, (unsigned long long)*output );

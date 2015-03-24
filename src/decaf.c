@@ -89,35 +89,47 @@ const decaf_448_point_t decaf_448_point_base = {{
 struct decaf_448_precomputed_s { decaf_448_point_t p[1]; };
 
 /* FIXME: restore */
-// const struct decaf_448_precomputed_s *decaf_448_precomputed_base =
-//     (const struct decaf_448_precomputed_s *)decaf_448_point_base;
-
-extern const decaf_word_t decaf_448_precomputed_base_as_words[];
-const decaf_448_precomputed_s *decaf_448_precomputed_base =
-    (const decaf_448_precomputed_s *) &decaf_448_precomputed_base_as_words;
+const struct decaf_448_precomputed_s *decaf_448_precomputed_base =
+    (const struct decaf_448_precomputed_s *)decaf_448_point_base;
 
 const size_t sizeof_decaf_448_precomputed_s = sizeof(struct decaf_448_precomputed_s);
 const size_t alignof_decaf_448_precomputed_s = 32;
 
+#ifdef __clang__
+#if 100*__clang_major__ + __clang_minor__ > 305
+#define VECTORIZE _Pragma("clang loop unroll(disable) vectorize(enable) vectorize_width(8)")
+#endif
+#endif
+
+#ifndef VECTORIZE
+#define VECTORIZE
+#endif
+
 #if (defined(__OPTIMIZE__) && !defined(__OPTIMIZE_SIZE__)) || defined(DECAF_FORCE_UNROLL)
     #if DECAF_448_LIMBS==8
-    #define FOR_LIMB(i,op) { unsigned int i=0; \
+    #define FOR_LIMB_U(i,op) { unsigned int i=0; \
        op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
     }
     #elif DECAF_448_LIMBS==16
-    #define FOR_LIMB(i,op) { unsigned int i=0; \
+    #define FOR_LIMB_U(i,op) { unsigned int i=0; \
        op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
        op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
     }
     #else
-    #define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
+    #define FOR_LIMB_U(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
     #endif
 #else
-#define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
+#define FOR_LIMB_U(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
 #endif
+    
+
+#define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
+
+/* TODO: figure out why this horribly degrades speed if you use it */
+#define FOR_LIMB_V(i,op) { unsigned int i=0; VECTORIZE for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
 
 /** Copy x = y */
-siv gf_cpy(gf x, const gf y) { FOR_LIMB(i, x->limb[i] = y->limb[i]); }
+siv gf_cpy(gf x, const gf y) { FOR_LIMB_U(i, x->limb[i] = y->limb[i]); }
 
 /** Mostly-unoptimized multiply (PERF), but at least it's unrolled. */
 snv gf_mul (gf c, const gf a, const gf b) {
@@ -125,19 +137,19 @@ snv gf_mul (gf c, const gf a, const gf b) {
     gf_cpy(aa,a);
     
     decaf_dword_t accum[DECAF_448_LIMBS] = {0};
-    FOR_LIMB(i, {
-        FOR_LIMB(j,{ accum[(i+j)%DECAF_448_LIMBS] += (decaf_dword_t)b->limb[i] * aa->limb[j]; });
+    FOR_LIMB_U(i, {
+        FOR_LIMB_U(j,{ accum[(i+j)%DECAF_448_LIMBS] += (decaf_dword_t)b->limb[i] * aa->limb[j]; });
         aa->limb[(DECAF_448_LIMBS-1-i)^(DECAF_448_LIMBS/2)] += aa->limb[DECAF_448_LIMBS-1-i];
     });
     
     accum[DECAF_448_LIMBS-1] += accum[DECAF_448_LIMBS-2] >> LBITS;
     accum[DECAF_448_LIMBS-2] &= LMASK;
     accum[DECAF_448_LIMBS/2] += accum[DECAF_448_LIMBS-1] >> LBITS;
-    FOR_LIMB(j,{
+    FOR_LIMB_U(j,{
         accum[j] += accum[(j-1)%DECAF_448_LIMBS] >> LBITS;
         accum[(j-1)%DECAF_448_LIMBS] &= LMASK;
     });
-    FOR_LIMB(j, c->limb[j] = accum[j] );
+    FOR_LIMB_U(j, c->limb[j] = accum[j] );
 }
 
 /** No dedicated square (PERF) */
@@ -166,7 +178,7 @@ snv gf_isqrt(gf y, const gf x) {
 /** Weak reduce mod p. */
 siv gf_reduce(gf x) {
     x->limb[DECAF_448_LIMBS/2] += x->limb[DECAF_448_LIMBS-1] >> LBITS;
-    FOR_LIMB(j,{
+    FOR_LIMB_U(j,{
         x->limb[j] += x->limb[(j-1)%DECAF_448_LIMBS] >> LBITS;
         x->limb[(j-1)%DECAF_448_LIMBS] &= LMASK;
     });
@@ -174,19 +186,19 @@ siv gf_reduce(gf x) {
 
 /** Add mod p.  Conservatively always weak-reduce. (PERF) */
 sv gf_add ( gf x, const gf y, const gf z ) {
-    FOR_LIMB(i, x->limb[i] = y->limb[i] + z->limb[i] );
+    FOR_LIMB_U(i, x->limb[i] = y->limb[i] + z->limb[i] );
     gf_reduce(x);
 }
 
 /** Subtract mod p.  Conservatively always weak-reduce. (PERF) */
 sv gf_sub ( gf x, const gf y, const gf z ) {
-    FOR_LIMB(i, x->limb[i] = y->limb[i] - z->limb[i] + 2*P->limb[i] );
+    FOR_LIMB_U(i, x->limb[i] = y->limb[i] - z->limb[i] + 2*P->limb[i] );
     gf_reduce(x);
 }
 
 /** Constant time, x = is_z ? z : y */
 sv cond_sel(gf x, const gf y, const gf z, decaf_bool_t is_z) {
-    FOR_LIMB(i, x->limb[i] = (y->limb[i] & ~is_z) | (z->limb[i] & is_z) );
+    FOR_LIMB_U(i, x->limb[i] = (y->limb[i] & ~is_z) | (z->limb[i] & is_z) );
 }
 
 /** Constant time, if (neg) x=-x; */
@@ -198,7 +210,7 @@ siv cond_neg(gf x, decaf_bool_t neg) {
 
 /** Constant time, if (swap) (x,y) = (y,x); */
 sv cond_swap(gf x, gf_s *__restrict__ y, decaf_bool_t swap) {
-    FOR_LIMB(i, {
+    FOR_LIMB_U(i, {
         decaf_word_t s = (x->limb[i] ^ y->limb[i]) & swap;
         x->limb[i] ^= s;
         y->limb[i] ^= s;
@@ -388,9 +400,9 @@ decaf_bool_t decaf_448_scalar_eq (
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b
 ) {
+    int i;
     decaf_word_t diff = 0;
-    unsigned int i;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for(i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
         diff |= a->limb[i] ^ b->limb[i];
     }
     return (((decaf_dword_t)diff)-1)>>WBITS;
@@ -424,14 +436,14 @@ void decaf_448_point_encode( unsigned char ser[DECAF_448_SER_BYTES], const decaf
     cond_neg ( a, hibit(a) );
     
     gf_canon(a);
-    int i, k=0, bits=0;
+    int k=0, bits=0;
     decaf_dword_t buf=0;
-    for (i=0; i<DECAF_448_LIMBS; i++) {
+    FOR_LIMB(i, {
         buf |= (decaf_dword_t)a->limb[i]<<bits;
         for (bits += LBITS; (bits>=8 || i==DECAF_448_LIMBS-1) && k<DECAF_448_SER_BYTES; bits-=8, buf>>=8) {
             ser[k++]=buf;
         }
-    }
+    });
 }
 
 /**
