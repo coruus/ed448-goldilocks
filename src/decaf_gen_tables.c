@@ -18,7 +18,7 @@ const decaf_word_t decaf_448_precomputed_base_as_words[1];
 const decaf_448_scalar_t decaf_448_precomputed_scalarmul_adjustment;
 const decaf_448_scalar_t decaf_448_point_scalarmul_adjustment;
 
-void scalar_print(const char *name, const decaf_448_scalar_t sc) {
+static void scalar_print(const char *name, const decaf_448_scalar_t sc) {
     printf("const decaf_448_scalar_t %s = {{{\n", name);
     unsigned i;
     for (i=0; i<sizeof(decaf_448_scalar_t)/sizeof(decaf_word_t); i++) {

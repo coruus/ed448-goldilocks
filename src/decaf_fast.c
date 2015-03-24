@@ -109,25 +109,22 @@ const decaf_448_precomputed_s *decaf_448_precomputed_base =
 const size_t sizeof_decaf_448_precomputed_s = sizeof(decaf_448_precomputed_s);
 const size_t alignof_decaf_448_precomputed_s = 32;
 
-#if (defined(__OPTIMIZE__) && !defined(__OPTIMIZE_SIZE__)) || defined(DECAF_FORCE_UNROLL)
-    #if DECAF_448_LIMBS==8
-    #define FOR_LIMB(i,op) { unsigned int i=0; \
-       op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
-    }
-    #elif DECAF_448_LIMBS==16
-    #define FOR_LIMB(i,op) { unsigned int i=0; \
-       op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
-       op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; op;i++; \
-    }
-    #else
-    #define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
-    #endif
-#else
-#define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
+
+#ifdef __clang__
+#if 100*__clang_major__ + __clang_minor__ > 305
+#define VECTORIZE _Pragma("clang loop unroll(disable) vectorize(enable) vectorize_width(8)")
+#endif
 #endif
 
+#ifndef VECTORIZE
+#define VECTORIZE
+#endif
+
+#define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
+#define FOR_LIMB_V(i,op) { unsigned int i=0; VECTORIZE for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
+
 /** Copy x = y */
-siv gf_cpy(gf x, const gf y) { FOR_LIMB(i, x->limb[i] = y->limb[i]); }
+siv gf_cpy(gf x, const gf y) { FOR_LIMB_V(i, x->limb[i] = y->limb[i]); }
 
 /** Mostly-unoptimized multiply, but at least it's unrolled. */
 siv gf_mul (gf c, const gf a, const gf b) {
@@ -145,7 +142,7 @@ siv gf_isqrt(gf y, const gf x) {
 }
 
 /** Add mod p.  Conservatively always weak-reduce. */
-snv gf_add ( gf c, const gf a, const gf b ) {
+snv gf_add ( gf_s *__restrict__ c, const gf a, const gf b ) {
     field_add((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
 
@@ -160,7 +157,8 @@ siv gf_bias ( gf c, int amt) {
 }
 
 /** Subtract mod p.  Bias by 2 and don't reduce  */
-siv gf_sub_nr ( gf c, const gf a, const gf b ) {
+siv gf_sub_nr ( gf_s *__restrict__ c, const gf a, const gf b ) {
+//    FOR_LIMB_V(i, c->limb[i] = a->limb[i] - b->limb[i] + 2*P->limb[i] );
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_sub_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
     gf_bias(c, 2);
@@ -175,6 +173,7 @@ siv gf_sub_nr_x ( gf c, const gf a, const gf b, int amt ) {
 
 /** Add mod p.  Don't reduce. */
 siv gf_add_nr ( gf c, const gf a, const gf b ) {
+//    FOR_LIMB_V(i, c->limb[i] = a->limb[i] + b->limb[i]);
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_add_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
@@ -202,17 +201,11 @@ sv cond_neg(gf x, decaf_bool_t neg) {
 
 /** Constant time, if (swap) (x,y) = (y,x); */
 siv cond_swap(gf x, gf_s *__restrict__ y, decaf_bool_t swap) {
-    int i;
-#ifdef __clang__
-#if 10*__clang_major__ + __clang_minor__ > 35
-    _Pragma("clang loop unroll(disable) vectorize(enable) vectorize_width(8)")
-#endif
-#endif
-    for (i=0; i<DECAF_448_LIMBS; i++) {
+    FOR_LIMB_V(i, {
         decaf_word_t s = (x->limb[i] ^ y->limb[i]) & swap;
         x->limb[i] ^= s;
         y->limb[i] ^= s;
-    }
+    });
 }
 
 /**
@@ -850,10 +843,12 @@ siv constant_time_lookup_xx (
     const unsigned char *table = (const unsigned char *)table_;
     word_t j,k;
     
+    big_register_t br_mask = br_is_zero(big_i);
     for (k=0; k<elem_bytes/sizeof(big_register_t); k++)
-        out[k] = 0;
-    for (j=0; j<n_table; j++, big_i-=big_one) {        
-        big_register_t br_mask = br_is_zero(big_i);
+        out[k] = br_mask & *(const big_register_t*)(&table[k*sizeof(big_register_t)]);
+    big_i-=big_one;
+    for (j=1; j<n_table; j++, big_i-=big_one) {
+        br_mask = br_is_zero(big_i);
         for (k=0; k<elem_bytes/sizeof(big_register_t); k++) {
             out[k] |= br_mask & *(const big_register_t*)(&table[k*sizeof(big_register_t)+j*elem_bytes]);
         }
