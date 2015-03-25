@@ -12,6 +12,7 @@
 #include "decaf.h"
 #include <string.h>
 #include "field.h"
+#include "decaf_448_config.h"
 
 #define WBITS DECAF_WORD_BITS
 
@@ -100,7 +101,9 @@ const decaf_448_point_t decaf_448_point_base = {{
 /* Projective Niels coordinates */
 typedef struct { gf a, b, c; } niels_s, niels_t[1];
 typedef struct { niels_t n; gf z; } pniels_s, pniels_t[1];
-struct decaf_448_precomputed_s { niels_t table [5<<4]; /* MAGIC */ };
+
+/* Precomputed base */
+struct decaf_448_precomputed_s { niels_t table [DECAF_COMBS_N<<(DECAF_COMBS_T-1)]; };
 
 extern const decaf_word_t decaf_448_precomputed_base_as_words[];
 const decaf_448_precomputed_s *decaf_448_precomputed_base =
@@ -108,7 +111,6 @@ const decaf_448_precomputed_s *decaf_448_precomputed_base =
 
 const size_t sizeof_decaf_448_precomputed_s = sizeof(decaf_448_precomputed_s);
 const size_t alignof_decaf_448_precomputed_s = 32;
-
 
 #ifdef __clang__
 #if 100*__clang_major__ + __clang_minor__ > 305
@@ -243,25 +245,6 @@ static decaf_word_t hibit(const gf x) {
     gf_add(y,x,x);
     gf_canon(y);
     return -(y->limb[0]&1);
-}
-
-/** Return high bit of x/2 = low bit of x mod p */
-static inline decaf_word_t lobit(gf x) {
-    gf_canon(x);
-    return -(x->limb[0]&1);
-}
-
-/* a = use_c ? c : b */
-sv decaf_448_cond_sel (
-    decaf_448_point_t a,
-    const decaf_448_point_t b,
-    const decaf_448_point_t c,
-    decaf_bool_t use_c
-) {
-    cond_sel(a->x, b->x, c->x, use_c);
-    cond_sel(a->y, b->y, c->y, use_c);
-    cond_sel(a->z, b->z, c->z, use_c);
-    cond_sel(a->t, b->t, c->t, use_c);
 }
 
 /** {extra,accum} - sub +? p
@@ -528,37 +511,6 @@ static decaf_bool_t gf_deser(gf s, const unsigned char ser[DECAF_448_SER_BYTES])
     FOR_LIMB(i, accum = (accum + s->limb[i] - P->limb[i]) >> WBITS );
     return accum;
 }
-    
-/* Constant-time add or subtract */
-sv decaf_448_point_add_sub (
-    decaf_448_point_t p,
-    const decaf_448_point_t q,
-    const decaf_448_point_t r,
-    decaf_bool_t do_sub
-) {
-    /* Twisted Edward formulas, complete when 4-torsion isn't involved */
-    gf a, b, c, d;
-    gf_sub_nr ( b, q->y, q->x );
-    gf_sub_nr ( c, r->y, r->x );
-    gf_add_nr ( d, r->y, r->x );
-    cond_swap(c,d,do_sub);
-    gf_mul ( a, c, b );
-    gf_add_nr ( b, q->y, q->x );
-    gf_mul ( p->y, d, b );
-    gf_mul ( b, r->t, q->t );
-    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
-    gf_add_nr ( b, a, p->y );
-    gf_sub_nr ( c, p->y, a );
-    gf_mul ( a, q->z, r->z );
-    gf_add_nr ( a, a, a );
-    gf_add_nr ( p->y, a, p->x );
-    gf_sub_nr ( a, a, p->x );
-    cond_swap(a,p->y,do_sub);
-    gf_mul ( p->z, a, p->y );
-    gf_mul ( p->x, p->y, c );
-    gf_mul ( p->y, a, b );
-    gf_mul ( p->t, b, c );
-}   
     
 decaf_bool_t decaf_448_point_decode (
     decaf_448_point_t p,
@@ -931,66 +883,74 @@ siv constant_time_lookup_xx (
     }
 }
 
+snv prepare_fixed_window(
+    pniels_t *multiples,
+    const decaf_448_point_t b,
+    int ntable
+) {
+    decaf_448_point_t tmp;
+    pniels_t pn;
+    int i;
+    
+    decaf_448_point_double(tmp, b);
+    pt_to_pniels(pn, tmp);
+    pt_to_pniels(multiples[0], b);
+    decaf_448_point_copy(tmp, b);
+    for (i=1; i<ntable; i++) {
+        add_pniels_to_pt(tmp, pn, 0);
+        pt_to_pniels(multiples[i], tmp);
+    }
+}
+
 void decaf_448_point_scalarmul (
     decaf_448_point_t a,
     const decaf_448_point_t b,
     const decaf_448_scalar_t scalar
 ) {
-    const int WINDOW = 5, /* PERF: Make 4 on non hugevector platforms? */
+    const int WINDOW = DECAF_WINDOW_BITS,
         WINDOW_MASK = (1<<WINDOW)-1,
         WINDOW_T_MASK = WINDOW_MASK >> 1,
         NTABLE = 1<<(WINDOW-1);
         
-    decaf_448_scalar_t scalar2;
-    decaf_448_scalar_add(scalar2, scalar, decaf_448_point_scalarmul_adjustment);
-    decaf_448_halve(scalar2,scalar2,decaf_448_scalar_p);
+    decaf_448_scalar_t scalar1x;
+    decaf_448_scalar_add(scalar1x, scalar, decaf_448_point_scalarmul_adjustment);
+    decaf_448_halve(scalar1x,scalar1x,decaf_448_scalar_p);
     
     /* Set up a precomputed table with odd multiples of b. */
     pniels_t pn, multiples[NTABLE];
     decaf_448_point_t tmp;
-    decaf_448_point_double(tmp, b);
-    pt_to_pniels(pn, tmp);
-    pt_to_pniels(multiples[0], b);
-    decaf_448_point_copy(tmp, b);
-
-    int i,j;
-    for (i=1; i<NTABLE; i++) {
-        add_pniels_to_pt(tmp, pn, 0);
-        pt_to_pniels(multiples[i], tmp);
-    }
+    prepare_fixed_window(multiples, b, NTABLE);
 
     /* Initialize. */
+    int i,j,first=1;
     i = DECAF_448_SCALAR_BITS - ((DECAF_448_SCALAR_BITS-1) % WINDOW) - 1;
-    int bits = scalar2->limb[i/WBITS] >> (i%WBITS) & WINDOW_MASK,
-        inv = (bits>>(WINDOW-1))-1;
-    bits ^= inv;
-    
-    constant_time_lookup_xx(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
-    cond_neg_niels(pn->n, inv);
-    pniels_to_pt(tmp, pn);
 
-    for (i-=WINDOW; i>=0; i-=WINDOW) {
-        /* Using Hisil et al's lookahead method instead of extensible here
-         * for no particular reason.  Double WINDOW times, but only compute t on
-         * the last one.
-         */
-        for (j=0; j<WINDOW-1; j++)
-            decaf_448_point_double_internal(tmp, tmp, -1);
-        decaf_448_point_double(tmp, tmp);
-
+    for (; i>=0; i-=WINDOW) {
         /* Fetch another block of bits */
-        bits = scalar2->limb[i/WBITS] >> (i%WBITS);
-        if (i%WBITS >= WBITS-WINDOW) {
-            bits ^= scalar2->limb[i/WBITS+1] << (WBITS - (i%WBITS));
+        decaf_word_t bits = scalar1x->limb[i/WBITS] >> (i%WBITS);
+        if (i%WBITS >= WBITS-WINDOW && i/WBITS<DECAF_448_SCALAR_LIMBS-1) {
+            bits ^= scalar1x->limb[i/WBITS+1] << (WBITS - (i%WBITS));
         }
         bits &= WINDOW_MASK;
-        inv = (bits>>(WINDOW-1))-1;
+        decaf_word_t inv = (bits>>(WINDOW-1))-1;
         bits ^= inv;
     
         /* Add in from table.  Compute t only on last iteration. */
         constant_time_lookup_xx(pn, multiples, sizeof(pn), NTABLE, bits & WINDOW_T_MASK);
         cond_neg_niels(pn->n, inv);
-        add_pniels_to_pt(tmp, pn, i ? -1 : 0);
+        if (first) {
+            pniels_to_pt(tmp, pn);
+            first = 0;
+        } else {
+           /* Using Hisil et al's lookahead method instead of extensible here
+            * for no particular reason.  Double WINDOW times, but only compute t on
+            * the last one.
+            */
+            for (j=0; j<WINDOW-1; j++)
+                decaf_448_point_double_internal(tmp, tmp, -1);
+            decaf_448_point_double(tmp, tmp);
+            add_pniels_to_pt(tmp, pn, i ? -1 : 0);
+        }
     }
     
     /* Write out the answer */
@@ -1004,36 +964,65 @@ void decaf_448_point_double_scalarmul (
     const decaf_448_point_t c,
     const decaf_448_scalar_t scalarc
 ) {
-    /* w=2 signed window uses about 1.5 adds per bit.
-     * I figured a few extra lines was worth the 25% speedup.
-     * NB: if adapting this function to scalarmul by a
-     * possibly-odd number of unmasked bits, may need to mask.
-     */
-    decaf_448_point_t w,b3,c3,tmp;
-    decaf_448_point_double(w,b);
-    decaf_448_point_double(tmp,c);
-    /* b3 = b*3 */
-    decaf_448_point_add(b3,w,b);
-    decaf_448_point_add(c3,tmp,c);
-    decaf_448_point_add(w,w,tmp);
-    int i;
-    for (i=DECAF_448_SCALAR_BITS &~ 1; i>0; i-=2) {
-        decaf_448_point_double(w,w);
-        decaf_word_t bits = scalarb->limb[i/WBITS]>>(i%WBITS);
-        decaf_448_cond_sel(tmp,b,b3,((bits^(bits>>1))&1)-1);
-        decaf_448_point_add_sub(w,w,tmp,((bits>>1)&1)-1);
-        bits = scalarc->limb[i/WBITS]>>(i%WBITS);
-        decaf_448_cond_sel(tmp,c,c3,((bits^(bits>>1))&1)-1);
-        decaf_448_point_add_sub(w,w,tmp,((bits>>1)&1)-1);
-        decaf_448_point_double(w,w);
+    const int WINDOW = DECAF_WINDOW_BITS,
+        WINDOW_MASK = (1<<WINDOW)-1,
+        WINDOW_T_MASK = WINDOW_MASK >> 1,
+        NTABLE = 1<<(WINDOW-1);
+        
+    decaf_448_scalar_t scalar1x, scalar2x;
+    decaf_448_scalar_add(scalar1x, scalarb, decaf_448_point_scalarmul_adjustment);
+    decaf_448_halve(scalar1x,scalar1x,decaf_448_scalar_p);
+    decaf_448_scalar_add(scalar2x, scalarc, decaf_448_point_scalarmul_adjustment);
+    decaf_448_halve(scalar2x,scalar2x,decaf_448_scalar_p);
+    
+    /* Set up a precomputed table with odd multiples of b. */
+    pniels_t pn, multiples1[NTABLE], multiples2[NTABLE];
+    decaf_448_point_t tmp;
+    prepare_fixed_window(multiples1, b, NTABLE);
+    prepare_fixed_window(multiples2, c, NTABLE);
+
+    /* Initialize. */
+    int i,j,first=1;
+    i = DECAF_448_SCALAR_BITS - ((DECAF_448_SCALAR_BITS-1) % WINDOW) - 1;
+
+    for (; i>=0; i-=WINDOW) {
+        /* Fetch another block of bits */
+        decaf_word_t bits1 = scalar1x->limb[i/WBITS] >> (i%WBITS),
+                     bits2 = scalar2x->limb[i/WBITS] >> (i%WBITS);
+        if (i%WBITS >= WBITS-WINDOW && i/WBITS<DECAF_448_SCALAR_LIMBS-1) {
+            bits1 ^= scalar1x->limb[i/WBITS+1] << (WBITS - (i%WBITS));
+            bits2 ^= scalar2x->limb[i/WBITS+1] << (WBITS - (i%WBITS));
+        }
+        bits1 &= WINDOW_MASK;
+        bits2 &= WINDOW_MASK;
+        decaf_word_t inv1 = (bits1>>(WINDOW-1))-1;
+        decaf_word_t inv2 = (bits1>>(WINDOW-1))-1;
+        bits1 ^= inv1;
+        bits2 ^= inv2;
+    
+        /* Add in from table.  Compute t only on last iteration. */
+        constant_time_lookup_xx(pn, multiples1, sizeof(pn), NTABLE, bits1 & WINDOW_T_MASK);
+        cond_neg_niels(pn->n, inv1);
+        if (first) {
+            pniels_to_pt(tmp, pn);
+            first = 0;
+        } else {
+           /* Using Hisil et al's lookahead method instead of extensible here
+            * for no particular reason.  Double WINDOW times, but only compute t on
+            * the last one.
+            */
+            for (j=0; j<WINDOW-1; j++)
+                decaf_448_point_double_internal(tmp, tmp, -1);
+            decaf_448_point_double(tmp, tmp);
+            add_pniels_to_pt(tmp, pn, 0);
+        }
+        constant_time_lookup_xx(pn, multiples2, sizeof(pn), NTABLE, bits2 & WINDOW_T_MASK);
+        cond_neg_niels(pn->n, inv2);
+        add_pniels_to_pt(tmp, pn, i?-1:0);
     }
-    decaf_448_point_add_sub(w,w,b,((scalarb->limb[0]>>1)&1)-1);
-    decaf_448_point_add_sub(w,w,c,((scalarc->limb[0]>>1)&1)-1);
-    /* low bit is special because of signed window */
-    decaf_448_cond_sel(tmp,b,decaf_448_point_identity,-(scalarb->limb[0]&1));
-    decaf_448_point_sub(w,w,tmp);
-    decaf_448_cond_sel(tmp,c,decaf_448_point_identity,-(scalarc->limb[0]&1));
-    decaf_448_point_sub(a,w,tmp);
+    
+    /* Write out the answer */
+    decaf_448_point_copy(a,tmp);
 }
 
 decaf_bool_t decaf_448_point_eq ( const decaf_448_point_t p, const decaf_448_point_t q ) {
@@ -1179,7 +1168,7 @@ decaf_448_precompute (
     decaf_448_precomputed_s *table,
     const decaf_448_point_t base
 ) { 
-    const unsigned int n = 5, t = 5, s = 18; // TODO MAGIC
+    const unsigned int n = DECAF_COMBS_N, t = DECAF_COMBS_T, s = DECAF_COMBS_S;
     assert(n*t*s >= DECAF_448_SCALAR_BITS);
   
     decaf_448_point_t working, start, doubles[t-1];
@@ -1251,7 +1240,7 @@ void decaf_448_precomputed_scalarmul (
 ) {
     int i;
     unsigned j,k;
-    const unsigned int n = 5, t = 5, s = 18; // TODO MAGIC
+    const unsigned int n = DECAF_COMBS_N, t = DECAF_COMBS_T, s = DECAF_COMBS_S;
     
     decaf_448_scalar_t scalar1x;
     decaf_448_scalar_add(scalar1x, scalar, decaf_448_precomputed_scalarmul_adjustment);
@@ -1286,6 +1275,13 @@ void decaf_448_precomputed_scalarmul (
             }
         }
     }
+}
+
+#if DECAF_USE_MONTGOMERY_LADDER
+/** Return high bit of x/2 = low bit of x mod p */
+static inline decaf_word_t lobit(gf x) {
+    gf_canon(x);
+    return -(x->limb[0]&1);
 }
 
 decaf_bool_t decaf_448_direct_scalarmul (
@@ -1417,6 +1413,22 @@ decaf_bool_t decaf_448_direct_scalarmul (
 
     return succ;
 }
+#else /* DECAF_USE_MONTGOMERY_LADDER */
+decaf_bool_t decaf_448_direct_scalarmul (
+    uint8_t scaled[DECAF_448_SER_BYTES],
+    const uint8_t base[DECAF_448_SER_BYTES],
+    const decaf_448_scalar_t scalar,
+    decaf_bool_t allow_identity,
+    decaf_bool_t short_circuit
+) {
+    decaf_448_point_t basep;
+    decaf_bool_t succ = decaf_448_point_decode(basep, base, allow_identity);
+    if (short_circuit & ~succ) return succ;
+    decaf_448_point_scalarmul(basep, basep, scalar);
+    decaf_448_point_encode(scaled, basep);
+    return succ;
+}
+#endif /* DECAF_USE_MONTGOMERY_LADDER */
 
 /**
  * @cond internal
@@ -1506,28 +1518,27 @@ sv prepare_wnaf_table(
 
 extern const decaf_word_t decaf_448_precomputed_wnaf_as_words[];
 static const niels_t *decaf_448_wnaf_base = (const niels_t *)decaf_448_precomputed_wnaf_as_words;
-
-const size_t sizeof_decaf_448_precomputed_wnafs __attribute((visibility("hidden"))) = sizeof(niels_t)<<5;
+const size_t sizeof_decaf_448_precomputed_wnafs __attribute((visibility("hidden")))
+    = sizeof(niels_t)<<DECAF_WNAF_FIXED_TABLE_BITS;
 
 void decaf_448_precompute_wnafs (
-    niels_t out[1<<5],
+    niels_t out[1<<DECAF_WNAF_FIXED_TABLE_BITS],
     const decaf_448_point_t base
 ) __attribute__ ((visibility ("hidden")));
 
 void decaf_448_precompute_wnafs (
-    niels_t out[1<<5],
+    niels_t out[1<<DECAF_WNAF_FIXED_TABLE_BITS],
     const decaf_448_point_t base
 ) {
-    // TODO MAGIC
-    pniels_t tmp[1<<5];
-    gf zs[1<<5], zis[1<<5];
+    pniels_t tmp[1<<DECAF_WNAF_FIXED_TABLE_BITS];
+    gf zs[1<<DECAF_WNAF_FIXED_TABLE_BITS], zis[1<<DECAF_WNAF_FIXED_TABLE_BITS];
     int i;
-    prepare_wnaf_table(tmp,base,5);
-    for (i=0; i<1<<5; i++) {
+    prepare_wnaf_table(tmp,base,DECAF_WNAF_FIXED_TABLE_BITS);
+    for (i=0; i<1<<DECAF_WNAF_FIXED_TABLE_BITS; i++) {
         memcpy(out[i], tmp[i]->n, sizeof(niels_t));
         gf_cpy(zs[i], tmp[i]->z);
     }
-    batch_normalize_niels(out, zs, zis, 1<<5);
+    batch_normalize_niels(out, zs, zis, 1<<DECAF_WNAF_FIXED_TABLE_BITS);
 }
 
 void decaf_448_base_double_scalarmul_non_secret (
@@ -1536,7 +1547,8 @@ void decaf_448_base_double_scalarmul_non_secret (
     const decaf_448_point_t base2,
     const decaf_448_scalar_t scalar2
 ) {
-    const int table_bits_var = 3, table_bits_pre = 5; // TODO MAGIC
+    const int table_bits_var = DECAF_WNAF_VAR_TABLE_BITS,
+        table_bits_pre = DECAF_WNAF_FIXED_TABLE_BITS;
     struct smvt_control control_var[DECAF_448_SCALAR_BITS/(table_bits_var+1)+3];
     struct smvt_control control_pre[DECAF_448_SCALAR_BITS/(table_bits_pre+1)+3];
     

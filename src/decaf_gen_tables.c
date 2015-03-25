@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "decaf.h"
+#include "decaf_448_config.h"
 
  /* To satisfy linker. */
 const decaf_word_t decaf_448_precomputed_base_as_words[1];
@@ -82,16 +83,15 @@ int main(int argc, char **argv) {
     decaf_448_scalar_t smadj;
     decaf_448_scalar_copy(smadj,decaf_448_scalar_one);
 
-    const unsigned int n = 5, t = 5, s = 18; // TODO MAGIC
-    for (i=0; i<n*t*s; i++) {
+    for (i=0; i<DECAF_COMBS_N*DECAF_COMBS_T*DECAF_COMBS_S; i++) {
         decaf_448_scalar_add(smadj,smadj,smadj);
     }
     decaf_448_scalar_sub(smadj, smadj, decaf_448_scalar_one);
     scalar_print("decaf_448_precomputed_scalarmul_adjustment", smadj);
     
-    const unsigned int WINDOW=5; // TODO magic
     decaf_448_scalar_copy(smadj,decaf_448_scalar_one);
-    for (i=0; i<DECAF_448_SCALAR_BITS-1 + WINDOW - ((DECAF_448_SCALAR_BITS-1)%WINDOW); i++) {
+    for (i=0; i<DECAF_448_SCALAR_BITS-1 + DECAF_WINDOW_BITS
+            - ((DECAF_448_SCALAR_BITS-1)%DECAF_WINDOW_BITS); i++) {
         decaf_448_scalar_add(smadj,smadj,smadj);
     }
     decaf_448_scalar_sub(smadj, smadj, decaf_448_scalar_one);

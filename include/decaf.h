@@ -410,6 +410,8 @@ void decaf_448_precompute (
  * @param [out] scaled The scaled point base*scalar
  * @param [in] base The point to be scaled.
  * @param [in] scalar The scalar to multiply by.
+ *
+ * @TODO: precomputed dsmul? const or variable time?
  */
 void decaf_448_precomputed_scalarmul (
     decaf_448_point_t scaled,
@@ -429,6 +431,7 @@ void decaf_448_precomputed_scalarmul (
  * @param [in] scalar1 A first scalar to multiply by.
  * @param [in] base2 A second point to be scaled.
  * @param [in] scalar2 A second scalar to multiply by.
+ * @fixme This function isn't tested!
  */
 void decaf_448_point_double_scalarmul (
     decaf_448_point_t combo,
@@ -485,7 +488,6 @@ decaf_bool_t decaf_448_point_valid (
  * Unlike Elligator, this function may be up to 4:1 on [0,(p-1)/2]:
  *   A factor of 2 due to the isogeny.
  *   A factor of 2 because we quotient out the 2-torsion.
- * // TODO: check that it isn't more, especially for the identity point.
  *
  * Negating the input (mod q) results in the same point.  Inverting the input
  * (mod q) results in the negative point.  This is the same as Elligator.
