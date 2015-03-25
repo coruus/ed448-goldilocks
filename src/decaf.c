@@ -318,9 +318,7 @@ snv decaf_448_subx(
 snv decaf_448_montmul (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a,
-    const decaf_448_scalar_t b,
-    const decaf_448_scalar_t p,
-    decaf_word_t montgomery_factor
+    const decaf_448_scalar_t b
 ) {
     unsigned int i,j;
     decaf_word_t accum[DECAF_448_SCALAR_LIMBS+1] = {0};
@@ -338,9 +336,9 @@ snv decaf_448_montmul (
         }
         accum[j] = chain;
         
-        mand = accum[0] * montgomery_factor;
+        mand = accum[0] * DECAF_MONTGOMERY_FACTOR;
         chain = 0;
-        mier = p->limb;
+        mier = decaf_448_scalar_p->limb;
         for (j=0; j<DECAF_448_SCALAR_LIMBS; j++) {
             chain += (decaf_dword_t)mand*mier[j] + accum[j];
             if (j) accum[j-1] = chain;
@@ -352,7 +350,7 @@ snv decaf_448_montmul (
         hi_carry = chain >> WBITS;
     }
     
-    decaf_448_subx(out, accum, p, p, hi_carry);
+    decaf_448_subx(out, accum, decaf_448_scalar_p, decaf_448_scalar_p, hi_carry);
 }
 
 void decaf_448_scalar_mul (
@@ -360,8 +358,8 @@ void decaf_448_scalar_mul (
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b
 ) {
-    decaf_448_montmul(out,a,b,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-    decaf_448_montmul(out,out,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    decaf_448_montmul(out,a,b);
+    decaf_448_montmul(out,out,decaf_448_scalar_r2);
 }
 
 decaf_bool_t decaf_448_scalar_invert (
@@ -370,10 +368,10 @@ decaf_bool_t decaf_448_scalar_invert (
 ) {
     decaf_448_scalar_t b, ma;
     int i;
-    decaf_448_montmul(b,decaf_448_scalar_one,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
-    decaf_448_montmul(ma,a,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    decaf_448_montmul(b,decaf_448_scalar_one,decaf_448_scalar_r2);
+    decaf_448_montmul(ma,a,decaf_448_scalar_r2);
     for (i=DECAF_448_SCALAR_BITS-1; i>=0; i--) {
-        decaf_448_montmul(b,b,b,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+        decaf_448_montmul(b,b,b);
             
         decaf_word_t w = decaf_448_scalar_p->limb[i/WBITS];
         if (i<WBITS) {
@@ -381,11 +379,11 @@ decaf_bool_t decaf_448_scalar_invert (
             w-=2;
         }
         if (1 & w>>(i%WBITS)) {
-            decaf_448_montmul(b,b,ma,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+            decaf_448_montmul(b,b,ma);
         }
     }
 
-    decaf_448_montmul(out,b,decaf_448_scalar_one,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    decaf_448_montmul(out,b,decaf_448_scalar_one);
     decaf_448_scalar_destroy(b);
     decaf_448_scalar_destroy(ma);
     return ~decaf_448_scalar_eq(out,decaf_448_scalar_zero);
@@ -651,7 +649,7 @@ void decaf_448_scalar_decode_long(
     
     while (i) {
         i -= DECAF_448_SER_BYTES;
-        decaf_448_montmul(t1,t1,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+        decaf_448_montmul(t1,t1,decaf_448_scalar_r2);
         ignore_result( decaf_448_scalar_decode(t2, ser+i) );
         decaf_448_scalar_add(t1, t1, t2);
     }
