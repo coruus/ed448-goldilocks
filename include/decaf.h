@@ -229,6 +229,16 @@ void decaf_448_scalar_copy (
 ) API_VIS NONNULL2;
 
 /**
+ * @brief Set a scalar to an integer.
+ * @param [in] a An integer.
+ * @param [out] out Will become equal to a.
+ */  
+void decaf_448_scalar_set (
+    decaf_448_scalar_t out,
+    decaf_word_t w
+) API_VIS NONNULL1;
+
+/**
  * @brief Encode a point as a sequence of bytes.
  *
  * @param [out] ser The byte representation of the point.
@@ -316,7 +326,7 @@ void decaf_448_point_double (
  * input points and output point can be pointers to the same
  * memory.
  *
- * @param [out] sum The difference a-b.
+ * @param [out] diff The difference a-b.
  * @param [in] a The minuend.
  * @param [in] b The subtrahend.
  */
@@ -324,7 +334,19 @@ void decaf_448_point_sub (
     decaf_448_point_t diff,
     const decaf_448_point_t a,
     const decaf_448_point_t b
-) API_VIS NONNULL3; // TODO: NOINLINE?
+) API_VIS NONNULL3;
+    
+/**
+ * @brief Negate a point to produce another point.  The input
+ * and output points can use the same memory.
+ *
+ * @param [out] nega The negated input point
+ * @param [in] a The input point.
+ */
+void decaf_448_point_negate (
+   decaf_448_point_t nega,
+   const decaf_448_point_t a
+) API_VIS NONNULL2;
 
 /**
  * @brief Multiply a base point by a scalar: scaled = scalar*base.
@@ -509,13 +531,31 @@ void decaf_448_scalar_destroy (
   decaf_448_scalar_t scalar
 ) NONNULL1 API_VIS;
 
+/**
+ * @brief Overwrite point with zeros.
+ * @todo Use this internally.
+ */
+void decaf_448_point_destroy (
+  decaf_448_point_t point
+) NONNULL1 API_VIS;
+
+/**
+ * @brief Overwrite point with zeros.
+ * @todo Use this internally.
+ */
+void decaf_448_precomputed_destroy (
+  decaf_448_precomputed_s *pre
+) NONNULL1 API_VIS;
+
 /* TODO: functions to invert point_from_hash?? */
 
 #undef API_VIS
 #undef WARN_UNUSED
+#undef NOINLINE
 #undef NONNULL1
 #undef NONNULL2
 #undef NONNULL3
+#undef NONNULL4
 #undef NONNULL5
 
 #ifdef __cplusplus

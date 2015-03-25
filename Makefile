@@ -64,7 +64,7 @@ ASFLAGS = $(ARCHFLAGS) $(XASFLAGS)
 .PHONY: clean all test bench todo doc lib bat
 .PRECIOUS: build/%.s
 
-HEADERS= Makefile $(shell find . -name "*.h") build/timestamp
+HEADERS= Makefile $(shell find . -name "*.h") $(shell find . -name "*.hxx") build/timestamp
 
 LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
   build/$(FIELD).o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o \

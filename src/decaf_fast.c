@@ -450,6 +450,14 @@ void decaf_448_scalar_copy (
     }
 }
 
+void decaf_448_scalar_set (
+    decaf_448_scalar_t out,
+    decaf_word_t w
+) {
+    memset(out,0,sizeof(decaf_448_scalar_t));
+    out->limb[0] = w;
+}
+
 decaf_bool_t decaf_448_scalar_eq (
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b
@@ -671,6 +679,16 @@ void decaf_448_point_copy (
     gf_cpy(a->y, b->y);
     gf_cpy(a->z, b->z);
     gf_cpy(a->t, b->t);
+}
+
+void decaf_448_point_negate (
+   decaf_448_point_t nega,
+   const decaf_448_point_t a
+) {
+    gf_sub(nega->x, ZERO, a->x);
+    gf_cpy(nega->y, a->y);
+    gf_cpy(nega->z, a->z);
+    gf_sub(nega->t, ZERO, a->t);
 }
 
 siv decaf_448_scalar_decode_short (
@@ -1575,4 +1593,16 @@ void decaf_448_base_double_scalarmul_non_secret (
 
     assert(contv == ncb_var); (void)ncb_var;
     assert(contp == ncb_pre); (void)ncb_pre;
+}
+
+void decaf_448_point_destroy (
+  decaf_448_point_t point
+) {
+    decaf_bzero(point, sizeof(decaf_448_point_t));
+}
+
+void decaf_448_precomputed_destroy (
+  decaf_448_precomputed_s *pre
+) {
+    decaf_bzero(pre, sizeof_decaf_448_precomputed_s);
 }
