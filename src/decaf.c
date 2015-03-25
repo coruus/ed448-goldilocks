@@ -11,6 +11,7 @@
 #define __STDC_WANT_LIB_EXT1__ 1 /* for memset_s */
 #include "decaf.h"
 #include <string.h>
+#include <assert.h>
 
 #define WBITS DECAF_WORD_BITS
 
@@ -361,6 +362,33 @@ void decaf_448_scalar_mul (
 ) {
     decaf_448_montmul(out,a,b,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
     decaf_448_montmul(out,out,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+}
+
+decaf_bool_t decaf_448_scalar_invert (
+    decaf_448_scalar_t out,
+    const decaf_448_scalar_t a
+) {
+    decaf_448_scalar_t b, ma;
+    int i;
+    decaf_448_montmul(b,decaf_448_scalar_one,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    decaf_448_montmul(ma,a,decaf_448_scalar_r2,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    for (i=DECAF_448_SCALAR_BITS-1; i>=0; i--) {
+        decaf_448_montmul(b,b,b,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+            
+        decaf_word_t w = decaf_448_scalar_p->limb[i/WBITS];
+        if (i<WBITS) {
+            assert(w >= 2);
+            w-=2;
+        }
+        if (1 & w>>(i%WBITS)) {
+            decaf_448_montmul(b,b,ma,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+        }
+    }
+
+    decaf_448_montmul(out,b,decaf_448_scalar_one,decaf_448_scalar_p,DECAF_MONTGOMERY_FACTOR);
+    decaf_448_scalar_destroy(b);
+    decaf_448_scalar_destroy(ma);
+    return ~decaf_448_scalar_eq(out,decaf_448_scalar_zero);
 }
 
 void decaf_448_scalar_sub (

@@ -276,6 +276,13 @@ int main(int argc, char **argv) {
     when = now() - when;
     printf("decaf mulsc: %5.1fns\n", when * 1e9 / i);
     
+    when = now();
+    for (i=0; i<nbase/10; i++) {
+        decaf_448_scalar_invert(csc,bsc);
+    }
+    when = now() - when;
+    printf("decaf invsc: %5.1fµs\n", when * 1e6 / i);
+    
     memset(&ext,0,sizeof(ext));
     memset(&niels,0,sizeof(niels)); /* avoid assertions in p521 even though this isn't a valid ext or niels */
 

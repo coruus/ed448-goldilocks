@@ -16,7 +16,8 @@
  * decaf_448_decode can fail because not every sequence of bytes is a valid group
  * element.
  *
- * The formulas contain no data-dependent branches, timing or memory accesses.
+ * The formulas contain no data-dependent branches, timing or memory accesses,
+ * except for decaf_448_base_double_scalarmul_non_secret.
  *
  * This library may support multiple curves eventually.  The Ed448-Goldilocks
  * specific identifiers are prefixed with DECAF_448 or decaf_448.
@@ -116,8 +117,6 @@ extern const struct decaf_448_precomputed_s *decaf_448_precomputed_base API_VIS;
 #ifdef __cplusplus
 extern "C" {
 #endif
-    
-/* TODO: scalar invert? */
 
 /**
  * @brief Read a scalar from wire format or from bytes.
@@ -206,6 +205,17 @@ void decaf_448_scalar_mul (
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t b
 ) API_VIS NONNULL3 NOINLINE;
+
+/**
+ * @brief Invert a scalar.  When passed zero, return 0.  The input and output may alias.
+ * @param [in] a A scalar.
+ * @param [out] out 1/a.
+ * @return DECAF_TRUE The input is nonzero.
+ */  
+decaf_bool_t decaf_448_scalar_invert (
+    decaf_448_scalar_t out,
+    const decaf_448_scalar_t a
+) API_VIS NONNULL2 NOINLINE;
 
 /**
  * @brief Copy a scalar.  The scalars may use the same memory, in which

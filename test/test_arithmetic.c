@@ -215,7 +215,8 @@ static mask_t test_add_sub_RAW (
 
 static mask_t test_scalar (
     const mpz_t x,
-    const mpz_t y
+    const mpz_t y,
+    int inv
 ) {
     decaf_448_scalar_t xx,yy,tt;
     mpz_t t;
@@ -235,6 +236,18 @@ static mask_t test_scalar (
     decaf_448_scalar_mul(tt,xx,yy);
     mpz_mul(t,x,y);
     succ &= scalar_assert_eq_gmp("scalar mul",xx,yy,tt,x,y,t);
+    
+    if (inv) {
+        decaf_bool_t ret = decaf_448_scalar_invert(tt,xx);
+        if (!mpz_cmp_ui(x,0)) {
+            mpz_set_ui(t,0);
+            succ &= (ret == 0) ? MASK_SUCCESS : MASK_FAILURE;
+        } else {
+            mpz_invert(t,x,mp_scalar_field);
+            succ &= (ret == MASK_SUCCESS) ? MASK_SUCCESS : MASK_FAILURE;
+        }
+        succ &= scalar_assert_eq_gmp("scalar inv",xx,yy,tt,x,y,t);
+    }
     
     mpz_clear(t);
     
@@ -361,7 +374,7 @@ int test_arithmetic (void) {
         
         succ &= test_add_sub_RAW(x,y,word);
         succ &= test_mul_sqr(x,y,word);
-        succ &= test_scalar(x,y);
+        succ &= test_scalar(x,y,(j%20==0));
         
         if (j < 1000)
             succ &= test_isr(x);
