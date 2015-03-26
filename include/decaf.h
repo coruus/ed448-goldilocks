@@ -519,7 +519,8 @@ void decaf_448_point_from_hash_uniform (
 ) API_VIS NONNULL2 NOINLINE;
 
 /**
- * @brief Overwrite data with zeros.  Use memset_s if available.
+ * @brief Overwrite data with zeros.  Uses memset_s if available.
+ * If data is NULL, this function has no effect.
  */
 void decaf_bzero (
    void *data,

@@ -678,9 +678,11 @@ void decaf_bzero (
     void *s,
     size_t size
 ) {
+    if (s==NULL) return;
 #ifdef __STDC_LIB_EXT1__
     memset_s(s, size, 0, size);
 #else
+    /* PERF: word at a time? */
     volatile uint8_t *destroy = (volatile uint8_t *)s;
     unsigned i;
     for (i=0; i<size; i++) {
