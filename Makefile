@@ -7,10 +7,13 @@ MACHINE := $(shell uname -m)
 
 ifeq ($(UNAME),Darwin)
 CC = clang
+CXX = clang++
 else
 CC = gcc
+CXX = g++
 endif
 LD = $(CC)
+LDXX = $(CXX)
 ASM ?= $(CC)
 
 DECAF ?= decaf
@@ -30,6 +33,7 @@ WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
 	 
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(FIELD) -Isrc/$(FIELD)/$(ARCH)
 LANGFLAGS = -std=c99 -fno-strict-aliasing
+LANGXXFLAGS = -fno-strict-aliasing
 GENFLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
 OFLAGS = -O3
 
@@ -58,6 +62,7 @@ endif
 
 ARCHFLAGS += $(XARCHFLAGS)
 CFLAGS  = $(LANGFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCFLAGS)
+CXXFLAGS = $(LANGXXFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCXXFLAGS) 
 LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS)
 ASFLAGS = $(ARCHFLAGS) $(XASFLAGS)
 
@@ -81,6 +86,8 @@ TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o \
 	build/shake.o
 
+TESTDECAFCOMPONENTS=build/test_decaf.o
+
 BENCHCOMPONENTS = build/bench.o build/shake.o
 
 BATBASE=ed448goldilocks-bats-$(TODAY)
@@ -92,42 +99,45 @@ scan: clean
 	scan-build --use-analyzer=`which clang` \
 		 -enable-checker deadcode -enable-checker llvm \
 		 -enable-checker osx -enable-checker security -enable-checker unix \
-		make build/bench build/test build/goldilocks.so
+		make build/bench build/test all
 
 build/bench: $(LIBCOMPONENTS) $(BENCHCOMPONENTS) $(DECAFCOMPONENTS)
 	$(LD) $(LDFLAGS) -o $@ $^
 
 build/test: $(LIBCOMPONENTS) $(TESTCOMPONENTS) $(DECAFCOMPONENTS)
 	$(LD) $(LDFLAGS) -o $@ $^ -lgmp
+
+build/test_decaf: $(TESTDECAFCOMPONENTS) decaf_lib
+	$(LDXX) $(LDFLAGS) -o $@ $< -lgmp -Lbuild -ldecaf
 	
 build/shakesum: build/shakesum.o build/shake.o
 	$(LD) $(LDFLAGS) -o $@ $^
 
-lib: build/goldilocks.so
+lib: build/libgoldilocks.so
 
-decaf_lib: build/decaf.so
+decaf_lib: build/libdecaf.so
 
-build/goldilocks.so: $(LIBCOMPONENTS)
+build/libgoldilocks.so: $(LIBCOMPONENTS)
 	rm -f $@
 ifeq ($(UNAME),Darwin)
 	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
 		  $(LIBCOMPONENTS)
 else
-	$(LD) $(LDFLAGS) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
+	$(LD) $(LDFLAGS) -shared -Wl,-soname,libgoldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
 	strip --discard-all $@
-	ln -sf `basename $@` build/goldilocks.so.1
+	ln -sf `basename $@` build/libgoldilocks.so.1
 endif
 
 
-build/decaf.so: $(DECAFCOMPONENTS)
+build/libdecaf.so: $(DECAFCOMPONENTS)
 	rm -f $@
 ifeq ($(UNAME),Darwin)
 	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
 		  $(DECAFCOMPONENTS)
 else
-	$(LD) $(LDFLAGS) -shared -Wl,-soname,goldilocks.so.1 -Wl,--gc-sections -o $@ $(DECAFCOMPONENTS)
+	$(LD) $(LDFLAGS) -shared -Wl,-soname,libdecaf.so.1 -Wl,--gc-sections -o $@ $(DECAFCOMPONENTS)
 	strip --discard-all $@
-	ln -sf `basename $@` build/goldilocks.so.1
+	ln -sf `basename $@` build/libdecaf.so.1
 endif
 
 build/timestamp:
@@ -148,9 +158,15 @@ build/decaf_tables.s: build/decaf_tables.c $(HEADERS)
 	
 build/%.s: src/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<
+	
+build/%.s: src/%.cxx $(HEADERS)
+	$(CXX) $(CXXFLAGS) -S -c -o $@ $<
 
 build/%.s: test/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<
+
+build/%.s: test/%.cxx $(HEADERS)
+	$(CXX) $(CXXFLAGS) -S -c -o $@ $<
 
 build/%.s: src/$(FIELD)/$(ARCH)/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<
@@ -203,8 +219,11 @@ todo::
 bench: build/bench
 	./$<
 
-test: build/test
-	./$<
+test: build/test test_decaf
+	build/test
+	
+test_decaf: build/test_decaf
+	LD_LIBRARY_PATH=`pwd`/build:$(LD_LIBRARY_PATH) build/test_decaf
 
 clean:
 	rm -fr build doc $(BATNAME)

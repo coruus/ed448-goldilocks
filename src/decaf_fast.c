@@ -678,7 +678,6 @@ void decaf_bzero (
     void *s,
     size_t size
 ) {
-    if (s==NULL) return;
 #ifdef __STDC_LIB_EXT1__
     memset_s(s, size, 0, size);
 #else
@@ -720,7 +719,7 @@ void decaf_448_scalar_decode_long(
     
     decaf_448_scalar_decode_short(t1, &ser[i], ser_len-i);
 
-    if (ser_len == sizeof(*ser)) {
+    if (ser_len == sizeof(decaf_448_scalar_t)) {
         assert(i==0);
         /* ham-handed reduce */
         decaf_448_montmul(s,t1,decaf_448_scalar_r1);

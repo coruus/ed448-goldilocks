@@ -27,6 +27,10 @@
     struct kparams_s;
 #endif
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 /**
  * @brief Initialize a sponge context object.
  * @param [out] sponge The object to initialize.
@@ -219,6 +223,10 @@ void spongerng_stir (
     const uint8_t * __restrict__ in,
     size_t len
 ) API_VIS;
+
+#ifdef __cplusplus
+} /* extern "C" */
+#endif
 
 #undef API_VIS
 #undef WARN_UNUSED

@@ -76,7 +76,7 @@ struct decaf_448_precomputed_s;
 typedef struct decaf_448_precomputed_s decaf_448_precomputed_s; 
 
 /** Size and alignment of precomputed point tables. */
-extern const size_t sizeof_decaf_448_precomputed_s, alignof_decaf_448_precomputed_s;
+extern const size_t sizeof_decaf_448_precomputed_s API_VIS, alignof_decaf_448_precomputed_s API_VIS;
 
 /** Scalar is stored packed, because we don't need the speed. */
 typedef struct decaf_448_scalar_s {
@@ -520,7 +520,6 @@ void decaf_448_point_from_hash_uniform (
 
 /**
  * @brief Overwrite data with zeros.  Uses memset_s if available.
- * If data is NULL, this function has no effect.
  */
 void decaf_bzero (
    void *data,
@@ -562,7 +561,7 @@ void decaf_448_precomputed_destroy (
 #undef NONNULL5
 
 #ifdef __cplusplus
-}; /* extern "C" */
+} /* extern "C" */
 #endif
 
 #endif /* __DECAF_448_H__ */
