@@ -997,7 +997,7 @@ void decaf_448_point_double_scalarmul (
         bits1 &= WINDOW_MASK;
         bits2 &= WINDOW_MASK;
         decaf_word_t inv1 = (bits1>>(WINDOW-1))-1;
-        decaf_word_t inv2 = (bits1>>(WINDOW-1))-1;
+        decaf_word_t inv2 = (bits2>>(WINDOW-1))-1;
         bits1 ^= inv1;
         bits2 ^= inv2;
     

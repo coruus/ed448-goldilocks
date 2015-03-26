@@ -49,58 +49,109 @@ namespace decaf {
 
 void really_bzero(void *data, size_t size);
     
+/**
+ * @brief Group with prime order.
+ * @todo Move declarations of functions up here?
+ */
 template<unsigned int bits = 448> struct decaf;
+
+/**
+ * @brief Ed448-Goldilocks/Decaf instantiation of group.
+ */
 template<> struct decaf<448> {
 
+/** @brief An exception for when crypto (i.e. point decode) has failed. */
 class CryptoException : public std::exception {
 public:
-    CryptoException() {}
-    virtual ~CryptoException() NOEXCEPT {}
+    /** @return "CryptoException" */
     virtual const char * what() const NOEXCEPT { return "CryptoException"; }
 };
 
+/** @cond internal */
 class Point;
 class Precomputed;
+/** @endcond */
 
+/**
+ * @brief A scalar modulo the curve order.
+ * Supports the usual arithmetic operations, all in constant time.
+ */
 class Scalar {
 public:
+    /** @brief access to the underlying scalar object */
     decaf_448_scalar_t s;
-    inline Scalar() NOEXCEPT {}
-    inline Scalar(const decaf_word_t w) NOEXCEPT {  decaf_448_scalar_set(s,w); } 
-    inline Scalar(const int w) NOEXCEPT {
+    /** @brief Set to an unsigned word */
+    inline Scalar(const decaf_word_t w=0) NOEXCEPT { *this = w; }
+
+    /** @brief Set to a signed word */
+    inline Scalar(const int w) NOEXCEPT { *this = w; } 
+    
+    /** @brief Construct from decaf_scalar_t object. */
+    inline Scalar(const decaf_448_scalar_t &t) NOEXCEPT {  decaf_448_scalar_copy(s,t); } 
+    
+    /** @brief Copy constructor. */
+    inline Scalar(const Scalar &x) NOEXCEPT {  decaf_448_scalar_copy(s,x.s); }
+    
+    /** @brief Construct from arbitrary-length little-endian byte sequence. */
+    inline explicit Scalar(const std::string &str) NOEXCEPT { *this = str; }
+    
+    /** @brief Construct from arbitrary-length little-endian byte sequence. */
+    inline Scalar(const unsigned char *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,buffer,n); }
+    
+    /** @brief Construct from arbitrary-length little-endian byte sequence. */
+    inline Scalar(const char *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,(const unsigned char *)buffer,n); }
+    
+    /** @brief Construct from arbitrary-length little-endian byte sequence. */
+    inline Scalar(const void *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,(const unsigned char *)buffer,n); }
+    
+    /** @brief Assignment. */
+    inline Scalar& operator=(const Scalar &x) NOEXCEPT {  decaf_448_scalar_copy(s,x.s); return *this; }
+    
+    /** @brief Assign from unsigned word. */
+    inline Scalar& operator=(decaf_word_t w) NOEXCEPT {  decaf_448_scalar_set(s,w); return *this; }
+    
+    /** @brief Assign from signed int. */
+    inline Scalar& operator=(int w) {
         Scalar t(-(decaf_word_t)INT_MIN);
         decaf_448_scalar_set(s,(decaf_word_t)w - (decaf_word_t)INT_MIN);
         *this -= t;
-    } 
-    inline Scalar(const decaf_448_scalar_t &t) NOEXCEPT {  decaf_448_scalar_copy(s,t); } 
-    inline Scalar(const Scalar &x) NOEXCEPT {  decaf_448_scalar_copy(s,x.s); }
-    inline Scalar& operator=(const Scalar &x) NOEXCEPT {  decaf_448_scalar_copy(s,x.s); return *this; } 
-    inline ~Scalar() NOEXCEPT {  decaf_448_scalar_destroy(s); }
+        return *this;
+    }
     
-    /* Initialize from buffer */
+    /** Destructor securely erases the scalar. */
+    inline ~Scalar() NOEXCEPT { decaf_448_scalar_destroy(s); }
+    
+    /** @briefAssign from arbitrary-length little-endian byte sequence in C++ string. */
     inline Scalar &operator=(const std::string &str) NOEXCEPT {
         decaf_448_scalar_decode_long(s,GET_DATA(str),str.length()); return *this;
     }
-    inline explicit Scalar(const std::string &str) NOEXCEPT { *this = str; }
-    inline Scalar(const unsigned char *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,buffer,n); }
-    inline Scalar(const char *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,(const unsigned char *)buffer,n); }
-    inline Scalar(const void *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,(const unsigned char *)buffer,n); }
+    
+    /**
+     * @brief Decode from correct-length little-endian byte sequence.
+     * @return DECAF_FAILURE if the scalar is greater than or equal to the group order q.
+     */
     static inline decaf_bool_t __attribute__((warn_unused_result)) decode (
         Scalar &sc, const unsigned char buffer[DECAF_448_SCALAR_BYTES]
     ) NOEXCEPT {
         return decaf_448_scalar_decode(sc.s,buffer);
     }
+    
+    /** @brief Decode from correct-length little-endian byte sequence in C++ string. */
     static inline decaf_bool_t __attribute__((warn_unused_result)) decode (
         Scalar &sc, const std::string buffer
     ) NOEXCEPT {
         if (buffer.size() != DECAF_448_SCALAR_BYTES) return DECAF_FAILURE;
         return decaf_448_scalar_decode(sc.s,GET_DATA(buffer));
     }
+    
+    /** @brief Encode to fixed-length string */
     inline EXPLICIT_CON operator std::string() const NOEXCEPT {
         unsigned char buffer[DECAF_448_SCALAR_BYTES];
         decaf_448_scalar_encode(buffer, s);
         return std::string((char*)buffer,sizeof(buffer));
     }
+    
+    /** @brief Encode to fixed-length buffer */
     inline void encode(unsigned char buffer[DECAF_448_SCALAR_BYTES]) const NOEXCEPT{
         decaf_448_scalar_encode(buffer, s);
     }
@@ -112,56 +163,133 @@ public:
     inline Scalar operator-=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_sub(s,s,q.s); return *this; }
     inline Scalar operator* (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.s); return r; }
     inline Scalar operator*=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.s); return *this; }
-    inline Scalar inverse() const NOEXCEPT { Scalar r; decaf_448_scalar_invert(r.s,s); return r; }
-    inline Scalar operator/ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.inverse().s); return r; }
-    inline Scalar operator/=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.inverse().s); return *this; }
     inline Scalar operator- ()                const NOEXCEPT { Scalar r; decaf_448_scalar_sub(r.s,decaf_448_scalar_zero,s); return r; }
+    
+    /** @brief Compare in constant time */
     inline bool   operator!=(const Scalar &q) const NOEXCEPT { return ! decaf_448_scalar_eq(s,q.s); }
+    
+    /** @brief Compare in constant time */
     inline bool   operator==(const Scalar &q) const NOEXCEPT { return !!decaf_448_scalar_eq(s,q.s); }
     
+    /** @brief Invert with Fermat's Little Theorem (slow!) */
+    inline Scalar inverse() const NOEXCEPT { Scalar r; decaf_448_scalar_invert(r.s,s); return r; }
+    
+    /** @brief Divide by inverting q. */
+    inline Scalar operator/ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.inverse().s); return r; }
+    
+    /** @brief Divide by inverting q. */
+    inline Scalar operator/=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.inverse().s); return *this; }
+    
+    /** @brief Scalarmul with scalar on left. */
     inline Point operator* (const Point &q) const NOEXCEPT { return q * (*this); }
+    
+    /** @brief Scalarmul-precomputed with scalar on left. */
     inline Point operator* (const Precomputed &q) const NOEXCEPT { return q * (*this); }
 };
 
+/**
+ * @brief Element of prime-order group.
+ */
 class Point {
 public:
     decaf_448_point_t p;
-    inline Point() {}
-    inline Point(const decaf_448_point_t &q) { decaf_448_point_copy(p,q); } /* TODO: not memcpy? */
+    
+    /** @brief Constructor sets to identity by default. */
+    inline Point(const decaf_448_point_t &q = decaf_448_point_identity) { decaf_448_point_copy(p,q); }
+    
+    /** @brief Copy constructor. */
     inline Point(const Point &q) { decaf_448_point_copy(p,q.p); }
+    
+    /** @brief Assignment. */
     inline Point& operator=(const Point &q) { decaf_448_point_copy(p,q.p); return *this; }
+    
+    /** @brief Destructor securely erases the point. */
     inline ~Point() { decaf_448_point_destroy(p); }
     
+    /**
+     * @brief Initialize from C++ fixed-length byte string.
+     * The all-zero string maps to the identity.
+     *
+     * @throw CryptoException the string was the wrong length, or wasn't the encoding of a point,
+     * or was the identity and allow_identity was DECAF_FALSE.
+     */
     inline explicit Point(const std::string &s, decaf_bool_t allow_identity=DECAF_TRUE) throw(CryptoException) {
         if (!decode(*this,s,allow_identity)) throw CryptoException();
     }
+   
+   /**
+    * @brief Initialize from C fixed-length byte string.
+     * The all-zero string maps to the identity.
+     *
+    * @throw CryptoException the string was the wrong length, or wasn't the encoding of a point,
+    * or was the identity and allow_identity was DECAF_FALSE.
+    */
     inline explicit Point(const unsigned char buffer[DECAF_448_SER_BYTES], decaf_bool_t allow_identity=DECAF_TRUE)
         throw(CryptoException) { if (!decode(*this,buffer,allow_identity)) throw CryptoException(); }
     
-    /* serialize / deserialize */
+    /**
+     * @brief Initialize from C fixed-length byte string.
+     * The all-zero string maps to the identity.
+     *
+     * @retval DECAF_SUCCESS the string was successfully decoded.
+     * @return DECAF_FAILURE the string wasn't the encoding of a point, or was the identity
+     * and allow_identity was DECAF_FALSE.  Contents of the buffer are undefined.
+     */
     static inline decaf_bool_t __attribute__((warn_unused_result)) decode (
         Point &p, const unsigned char buffer[DECAF_448_SER_BYTES], decaf_bool_t allow_identity=DECAF_TRUE
     ) NOEXCEPT {
         return decaf_448_point_decode(p.p,buffer,allow_identity);
     }
+    
+    /**
+     * @brief Initialize from C++ fixed-length byte string.
+     * The all-zero string maps to the identity.
+     *
+     * @retval DECAF_SUCCESS the string was successfully decoded.
+     * @return DECAF_FAILURE the string was the wrong length, or wasn't the encoding of a point,
+     * or was the identity and allow_identity was DECAF_FALSE.  Contents of the buffer are undefined.
+     */    
     static inline decaf_bool_t __attribute__((warn_unused_result)) decode (
         Point &p, const std::string &buffer, decaf_bool_t allow_identity=DECAF_TRUE
     ) NOEXCEPT {
         if (buffer.size() != DECAF_448_SER_BYTES) return DECAF_FAILURE;
         return decaf_448_point_decode(p.p,GET_DATA(buffer),allow_identity);
     }
-    
+
+    /**
+     * @brief Map to the curve from a C buffer.
+     * The all-zero buffer maps to the identity, as does the buffer {1,0...}
+     */
     static inline Point from_hash_nonuniform ( const unsigned char buffer[DECAF_448_SER_BYTES] ) NOEXCEPT {
         Point p; decaf_448_point_from_hash_nonuniform(p.p,buffer); return p;
     }
+    
+    /**
+     * @brief Map to the curve from a C++ string buffer.
+     * The empty or all-zero string maps to the identity, as does the string "\x01".
+     * If the buffer is shorter than (TODO) DECAF_448_SER_BYTES, it will be zero-padded on the right.
+     */
     static inline Point from_hash_nonuniform ( const std::string &s ) NOEXCEPT {
         std::string t = s;
         if (t.size() < DECAF_448_SER_BYTES) t.insert(t.size(),DECAF_448_SER_BYTES-t.size(),0);
         Point p; decaf_448_point_from_hash_nonuniform(p.p,GET_DATA(t)); return p;
     }
+    
+   
+    /**
+     * @brief Map uniformly to the curve from a C buffer.
+     * The all-zero buffer maps to the identity, as does the buffer {1,0...}.
+     */
     static inline Point from_hash ( const unsigned char buffer[2*DECAF_448_SER_BYTES] ) NOEXCEPT {
         Point p; decaf_448_point_from_hash_uniform(p.p,buffer); return p;
     }
+   
+    /**
+     * @brief Map uniformly to the curve from a C++ buffer.
+     * The empty or all-zero string maps to the identity, as does the string "\x01".
+     * If the buffer is shorter than (TODO) 2*DECAF_448_SER_BYTES, well, it won't be as uniform,
+     * but the buffer will be zero-padded on the right.
+     */
     static inline Point from_hash ( const std::string &s ) NOEXCEPT {
         std::string t = s;
         if (t.size() < DECAF_448_SER_BYTES) return from_hash_nonuniform(s);
@@ -169,11 +297,18 @@ public:
         Point p; decaf_448_point_from_hash_uniform(p.p,GET_DATA(t)); return p;
     }
     
+    /**
+     * @brief Encode to string.  The identity encodes to the all-zero string.
+     */
     inline EXPLICIT_CON operator std::string() const NOEXCEPT {
         unsigned char buffer[DECAF_448_SER_BYTES];
         decaf_448_point_encode(buffer, p);
         return std::string((char*)buffer,sizeof(buffer));
     }
+   
+   /**
+    * @brief Encode to a C buffer.  The identity encodes to all zeros.
+    */
     inline void encode(unsigned char buffer[DECAF_448_SER_BYTES]) const NOEXCEPT{
         decaf_448_point_encode(buffer, p);
     }
@@ -184,36 +319,64 @@ public:
     inline Point operator- (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_sub(r.p,p,q.p); return r; }
     inline Point operator-=(const Point &q)        NOEXCEPT { decaf_448_point_sub(p,p,q.p); return *this; }
     inline Point operator- ()                const NOEXCEPT { Point r; decaf_448_point_negate(r.p,p); return r; }
+    
+    /** @brief Double the point out of place. */
     inline Point times_two ()                const NOEXCEPT { Point r; decaf_448_point_double(r.p,p); return r; }
+    
+    /** @brief Double the point in place. */
     inline Point &double_in_place()                NOEXCEPT { decaf_448_point_double(p,p); return *this; }
+    
+    /** @brief Constant-time compare. */
     inline bool  operator!=(const Point &q)  const NOEXCEPT { return ! decaf_448_point_eq(p,q.p); }
+
+    /** @brief Constant-time compare. */
     inline bool  operator==(const Point &q)  const NOEXCEPT { return !!decaf_448_point_eq(p,q.p); }
     
-    /* Scalarmul */
+    /** @brief Scalar multiply */
     inline Point operator* (const Scalar &s) const NOEXCEPT { Point r; decaf_448_point_scalarmul(r.p,p,s.s); return r; }
     inline Point operator*=(const Scalar &s)       NOEXCEPT { decaf_448_point_scalarmul(p,p,s.s); return *this; }
+    
+    /** @brief Multiply by s.inverse().  If s=0, maps to the identity. */
     inline Point operator/ (const Scalar &s) const NOEXCEPT { return (*this) * s.inverse(); }
     
-    static inline Point double_scalar_mul (
+    /** @brief Double-scalar multiply, equivalent to q*qs + r*rs but faster. */
+    static inline Point double_scalarmul (
         const Point &q, const Scalar &qs, const Point &r, const Scalar &rs
     ) NOEXCEPT {
         Point p; decaf_448_point_double_scalarmul(p.p,q.p,qs.s,r.p,rs.s); return p;
     }
     
-    /* FIXME: are these defined to be correct? */
-    static inline const Point &base() NOEXCEPT { return *(const Point *)decaf_448_point_base; }
-    static inline const Point &identity() NOEXCEPT { return *(const Point *)decaf_448_point_identity; }
+    /** @brief Double-scalar multiply, equivalent to q*qs + r*rs but faster.
+     * For those who like their scalars before the point.
+     */
+    static inline Point double_scalarmul (
+        const Scalar &qs, const Point &q, const Scalar &rs, const Point &r
+    ) NOEXCEPT {
+        Point p; decaf_448_point_double_scalarmul(p.p,q.p,qs.s,r.p,rs.s); return p;
+    }
+    
+    /** @brief Return the base point */
+    static inline const Point base() NOEXCEPT { return Point(decaf_448_point_base); }
+    
+    /** @brief Return the identity point */
+    static inline const Point identity() NOEXCEPT { return Point(decaf_448_point_identity); }
 };
 
+/**
+ * @brief Precomputed table of points.
+ * Minor difficulties arise here because the decaf API doesn't expose, as a constant, how big such an object is.
+ * Therefore we have to call malloc() or friends, but that's probably for the best, because you don't want to
+ * stack-allocate a 15kiB object anyway.
+ */
 class Precomputed {
-public:
+private:
+    /** @cond internal */
     union {
         decaf_448_precomputed_s *mine;
         const decaf_448_precomputed_s *yours;
     } ours;
     bool isMine;
     
-private:
     inline void clear() NOEXCEPT {
         if (isMine) {
             decaf_448_precomputed_destroy(ours.mine);
@@ -222,7 +385,7 @@ private:
             isMine = false;
         }
     }
-    inline void alloc() {
+    inline void alloc() throw(std::bad_alloc) {
         if (isMine) return;
         int ret = posix_memalign((void**)&ours.mine, alignof_decaf_448_precomputed_s,sizeof_decaf_448_precomputed_s);
         if (ret || !ours.mine) {
@@ -232,14 +395,28 @@ private:
         isMine = true;
     }
     inline const decaf_448_precomputed_s *get() const NOEXCEPT { return isMine ? ours.mine : ours.yours; }
-    
+    /** @endcond */
 public:
+    /** Destructor securely erases the memory. */
     inline ~Precomputed() NOEXCEPT { clear(); }
-    inline Precomputed(const decaf_448_precomputed_s &yours = *decaf_448_precomputed_base) NOEXCEPT {
+    
+    /**
+     * @brief Initialize from underlying type, declared as a reference to prevent
+     * it from being called with 0, thereby breaking override.
+     *
+     * The underlying object must remain valid throughout the lifetime of this one.
+     */ 
+    inline Precomputed(
+        const decaf_448_precomputed_s &yours = *decaf_448_precomputed_base
+    ) NOEXCEPT {
         ours.yours = &yours;
         isMine = false;
     }
-    inline Precomputed &operator=(const Precomputed &it) {
+    
+    /**
+     * @brief Assign.  This may require an allocation and memcpy.
+     */ 
+    inline Precomputed &operator=(const Precomputed &it) throw(std::bad_alloc) {
         if (this == &it) return *this;
         if (it.isMine) {
             alloc();
@@ -251,13 +428,25 @@ public:
         isMine = it.isMine;
         return *this;
     }
-    inline Precomputed &operator=(const Point &it) {
+    
+    /**
+     * @brief Initilaize from point.  Must allocate memory, and may throw.
+     */
+    inline Precomputed &operator=(const Point &it) throw(std::bad_alloc) {
         alloc();
         decaf_448_precompute(ours.mine,it.p);
         return *this;
     }
-    inline Precomputed(const Precomputed &it) NOEXCEPT : isMine(false) { *this = it; }
-    inline explicit Precomputed(const Point &it) NOEXCEPT : isMine(false) { *this = it; }
+    
+    /**
+     * @brief Copy constructor.
+     */
+    inline Precomputed(const Precomputed &it) throw(std::bad_alloc) : isMine(false) { *this = it; }
+   
+    /**
+     * @brief Constructor which initializes from point.
+     */
+    inline explicit Precomputed(const Point &it) throw(std::bad_alloc) : isMine(false) { *this = it; }
     
 #if __cplusplus >= 201103L
     inline Precomputed &operator=(Precomputed &&it) NOEXCEPT {

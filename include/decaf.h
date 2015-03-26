@@ -222,7 +222,8 @@ decaf_bool_t decaf_448_scalar_invert (
  * case this function does nothing.
  * @param [in] a A scalar.
  * @param [out] out Will become a copy of a.
- */  
+ */
+    /* PERF: make this memcpy */
 void decaf_448_scalar_copy (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a
