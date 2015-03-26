@@ -31,7 +31,6 @@
 #include <sys/types.h>
 #include <limits.h>
 
-/* TODO: document */
 /* TODO: This is incomplete */
 /* TODO: attribute nonnull */
 
@@ -47,6 +46,9 @@
 
 namespace decaf {
 
+/**
+ * Securely erase contents of memory.
+ */
 void really_bzero(void *data, size_t size);
     
 /**
@@ -313,11 +315,19 @@ public:
         decaf_448_point_encode(buffer, p);
     }
     
-    /* Point/point arithmetic */
+    /** @brief Point add. */
     inline Point operator+ (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_add(r.p,p,q.p); return r; }
+    
+    /** @brief Point add. */
     inline Point operator+=(const Point &q)        NOEXCEPT { decaf_448_point_add(p,p,q.p); return *this; }
+    
+    /** @brief Point subtract. */
     inline Point operator- (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_sub(r.p,p,q.p); return r; }
+    
+    /** @brief Point subtract. */
     inline Point operator-=(const Point &q)        NOEXCEPT { decaf_448_point_sub(p,p,q.p); return *this; }
+    
+    /** @brief Point negate. */
     inline Point operator- ()                const NOEXCEPT { Point r; decaf_448_point_negate(r.p,p); return r; }
     
     /** @brief Double the point out of place. */
@@ -332,8 +342,10 @@ public:
     /** @brief Constant-time compare. */
     inline bool  operator==(const Point &q)  const NOEXCEPT { return !!decaf_448_point_eq(p,q.p); }
     
-    /** @brief Scalar multiply */
+    /** @brief Scalar multiply. */
     inline Point operator* (const Scalar &s) const NOEXCEPT { Point r; decaf_448_point_scalarmul(r.p,p,s.s); return r; }
+    
+    /** @brief Scalar multiply in place. */
     inline Point operator*=(const Scalar &s)       NOEXCEPT { decaf_448_point_scalarmul(p,p,s.s); return *this; }
     
     /** @brief Multiply by s.inverse().  If s=0, maps to the identity. */
@@ -346,7 +358,8 @@ public:
         Point p; decaf_448_point_double_scalarmul(p.p,q.p,qs.s,r.p,rs.s); return p;
     }
     
-    /** @brief Double-scalar multiply, equivalent to q*qs + r*rs but faster.
+    /**
+     * @brief Double-scalar multiply, equivalent to q*qs + r*rs but faster.
      * For those who like their scalars before the point.
      */
     static inline Point double_scalarmul (
@@ -405,6 +418,10 @@ public:
      * it from being called with 0, thereby breaking override.
      *
      * The underlying object must remain valid throughout the lifetime of this one.
+     *
+     * By default, initializes to the table for the base point.
+     *
+     * @todo: FIXME Harmonize with Point(), which initializes to the identity.
      */ 
     inline Precomputed(
         const decaf_448_precomputed_s &yours = *decaf_448_precomputed_base
@@ -461,9 +478,13 @@ public:
     inline Precomputed(Precomputed &&it) NOEXCEPT : isMine(false) { *this = it; }
 #endif
     
+    /** @brief Fixed base scalarmul. */
     inline Point operator* (const Scalar &s) const NOEXCEPT { Point r; decaf_448_precomputed_scalarmul(r.p,get(),s.s); return r; }
+    
+    /** @brief Multiply by s.inverse().  If s=0, maps to the identity. */
     inline Point operator/ (const Scalar &s) const NOEXCEPT { return (*this) * s.inverse(); }
     
+    /** @brief Return the table for the base point. */
     static inline const Precomputed base() NOEXCEPT { return Precomputed(*decaf_448_precomputed_base); }
 };
 
