@@ -65,7 +65,7 @@ template<unsigned int bits = 448> struct decaf;
  */
 template<> struct decaf<448> {
 
-/** @brief An exception for when crypto (i.e. point decode) has failed. */
+/** @brief An exception for when crypto (ie point decode) has failed. */
 class CryptoException : public std::exception {
 public:
     /** @return "CryptoException" */
