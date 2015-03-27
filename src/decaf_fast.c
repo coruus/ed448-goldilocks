@@ -423,16 +423,6 @@ snv decaf_448_halve (
     out->limb[i] = out->limb[i]>>1 | chain<<(WBITS-1);
 }
 
-void decaf_448_scalar_copy (
-    decaf_448_scalar_t out,
-    const decaf_448_scalar_t a
-) {
-    unsigned int i;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
-        out->limb[i] = a->limb[i];
-    }
-}
-
 void decaf_448_scalar_set (
     decaf_448_scalar_t out,
     decaf_word_t w
@@ -621,16 +611,6 @@ snv decaf_448_point_double_internal (
 
 void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
     decaf_448_point_double_internal(p,q,0);
-}
-
-void decaf_448_point_copy (
-    decaf_448_point_t a,
-    const decaf_448_point_t b
-) {
-    gf_cpy(a->x, b->x);
-    gf_cpy(a->y, b->y);
-    gf_cpy(a->z, b->z);
-    gf_cpy(a->t, b->t);
 }
 
 void decaf_448_point_negate (

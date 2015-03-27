@@ -173,13 +173,13 @@ public:
     /** @brief Compare in constant time */
     inline bool   operator==(const Scalar &q) const NOEXCEPT { return !!decaf_448_scalar_eq(s,q.s); }
     
-    /** @brief Invert with Fermat's Little Theorem (slow!) */
+    /** @brief Invert with Fermat's Little Theorem (slow!).  If *this == 0, return 0. */
     inline Scalar inverse() const NOEXCEPT { Scalar r; decaf_448_scalar_invert(r.s,s); return r; }
     
-    /** @brief Divide by inverting q. */
+    /** @brief Divide by inverting q. If q == 0, return 0.  */
     inline Scalar operator/ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.inverse().s); return r; }
     
-    /** @brief Divide by inverting q. */
+    /** @brief Divide by inverting q. If q == 0, return 0.  */
     inline Scalar operator/=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.inverse().s); return *this; }
     
     /** @brief Scalarmul with scalar on left. */

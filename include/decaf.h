@@ -224,10 +224,12 @@ decaf_bool_t decaf_448_scalar_invert (
  * @param [out] out Will become a copy of a.
  */
     /* PERF: make this memcpy */
-void decaf_448_scalar_copy (
+static inline void NONNULL2 decaf_448_scalar_copy (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a
-) API_VIS NONNULL2;
+) {
+    *out = *a;
+}
 
 /**
  * @brief Set a scalar to an integer.
@@ -276,10 +278,12 @@ decaf_bool_t decaf_448_point_decode (
  * @param [out] a A copy of the point.
  * @param [in] b Any point.
  */
-void decaf_448_point_copy (
+static inline void NONNULL2 decaf_448_point_copy (
     decaf_448_point_t a,
     const decaf_448_point_t b
-) API_VIS NONNULL2;
+) {
+    *a=*b;
+}
 
 /**
  * @brief Test whether two points are equal.  If yes, return
