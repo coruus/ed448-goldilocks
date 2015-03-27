@@ -179,7 +179,7 @@ doc/timestamp:
 	touch $@
 
 doc: Doxyfile doc/timestamp include/*.h src/*.c src/include/*.h src/$(FIELD)/$(ARCH)/*.c src/$(FIELD)/$(ARCH)/*.h
-	doxygen
+	doxygen > /dev/null
 
 bat: $(BATNAME)
 

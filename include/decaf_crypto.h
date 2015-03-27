@@ -14,7 +14,9 @@
 #include "decaf.h"
 #include "shake.h"
 
+/** Number of bytes for a symmetric key (expanded to full key) */
 #define DECAF_448_SYMMETRIC_KEY_BYTES 32
+
 /** @cond internal */
 #define API_VIS __attribute__((visibility("default"))) __attribute__((noinline)) // TODO: synergize with decaf.h
 #define WARN_UNUSED __attribute__((warn_unused_result))
@@ -34,12 +36,23 @@ typedef unsigned char decaf_448_public_key_t[DECAF_448_SER_BYTES];
 /** A signature. */
 typedef unsigned char decaf_448_signature_t[DECAF_448_SER_BYTES + DECAF_448_SCALAR_BYTES];
 
-/** A private key. */
 typedef struct {
+    /** @cond intetrnal */
+    /** The symmetric key from which everything is expanded */
     decaf_448_symmetric_key_t sym;
+    
+    /** The scalar x */
     decaf_448_scalar_t secret_scalar;
+    
+    /** x*Base */
     decaf_448_public_key_t pub;
-} decaf_448_private_key_t[1];
+    /** @endcond */
+} 
+    /** Private key structure for pointers. */
+    decaf_448_private_key_s,
+
+    /** A private key (gmp array[1] style). */
+    decaf_448_private_key_t[1];
 
 #ifdef __cplusplus
 extern "C" {
@@ -47,7 +60,7 @@ extern "C" {
     
 /**
  * @brief Derive a key from its compressed form.
- * @param [out] privkey The derived private key.
+ * @param [out] priv The derived private key.
  * @param [in] proto The compressed or proto-key, which must be 32 random bytes.
  */
 void decaf_448_derive_private_key (

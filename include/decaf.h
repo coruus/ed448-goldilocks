@@ -51,11 +51,16 @@ typedef uint64_t decaf_word_t, decaf_bool_t;
 #define DECAF_WORD_BITS 32
 typedef uint32_t decaf_word_t, decaf_bool_t;
 #endif
-/** @endcond */
 
 #define DECAF_448_LIMBS (512/DECAF_WORD_BITS)
 #define DECAF_448_SCALAR_BITS 446
 #define DECAF_448_SCALAR_LIMBS (448/DECAF_WORD_BITS)
+
+/** Galois field element internal structure */
+typedef struct gf_s {
+    decaf_word_t limb[DECAF_448_LIMBS];
+} __attribute__((aligned(32))) gf_s, gf[1];
+/** @endcond */
 
 /** Number of bytes in a serialized point. */
 #define DECAF_448_SER_BYTES 56
@@ -63,16 +68,13 @@ typedef uint32_t decaf_word_t, decaf_bool_t;
 /** Number of bytes in a serialized scalar. */
 #define DECAF_448_SCALAR_BYTES 56
 
-/** Galois field element internal structure */
-typedef struct gf_s {
-    decaf_word_t limb[DECAF_448_LIMBS];
-} __attribute__((aligned(32))) gf_s, gf[1];
-
 /** Twisted Edwards (-1,d-1) extended homogeneous coordinates */
-typedef struct decaf_448_point_s { gf x,y,z,t; } decaf_448_point_t[1];
+typedef struct decaf_448_point_s { /**@cond internal*/gf x,y,z,t;/**@endcond*/ } decaf_448_point_t[1];
 
 /** Precomputed table based on a point.  Can be trivial implementation. */
 struct decaf_448_precomputed_s;
+
+/** Precomputed table based on a point.  Can be trivial implementation. */
 typedef struct decaf_448_precomputed_s decaf_448_precomputed_s; 
 
 /** Size and alignment of precomputed point tables. */
@@ -80,7 +82,9 @@ extern const size_t sizeof_decaf_448_precomputed_s API_VIS, alignof_decaf_448_pr
 
 /** Scalar is stored packed, because we don't need the speed. */
 typedef struct decaf_448_scalar_s {
+    /** @cond internal */
     decaf_word_t limb[DECAF_448_SCALAR_LIMBS];
+    /** @endcond */
 } decaf_448_scalar_t[1];
 
 /** DECAF_TRUE = -1 so that DECAF_TRUE & x = x */
@@ -129,7 +133,7 @@ extern "C" {
  * and has been reduced modulo that modulus.
  */
 decaf_bool_t decaf_448_scalar_decode (
-    decaf_448_scalar_t s,
+    decaf_448_scalar_t out,
     const unsigned char ser[DECAF_448_SCALAR_BYTES]
 ) API_VIS WARN_UNUSED NONNULL2 NOINLINE;
 
@@ -142,7 +146,7 @@ decaf_bool_t decaf_448_scalar_decode (
  * @param [out] out Deserialized form.
  */
 void decaf_448_scalar_decode_long (
-    decaf_448_scalar_t s,
+    decaf_448_scalar_t out,
     const unsigned char *ser,
     size_t ser_len
 ) API_VIS NONNULL2 NOINLINE;
@@ -223,7 +227,6 @@ decaf_bool_t decaf_448_scalar_invert (
  * @param [in] a A scalar.
  * @param [out] out Will become a copy of a.
  */
-    /* PERF: make this memcpy */
 static inline void NONNULL2 decaf_448_scalar_copy (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a
@@ -235,11 +238,12 @@ static inline void NONNULL2 decaf_448_scalar_copy (
  * @brief Set a scalar to an integer.
  * @param [in] a An integer.
  * @param [out] out Will become equal to a.
+ * @todo Make inline?
  */  
-void decaf_448_scalar_set (
+void decaf_448_scalar_set API_VIS NONNULL1 (
     decaf_448_scalar_t out,
-    decaf_word_t w
-) API_VIS NONNULL1;
+    decaf_word_t a
+);
 
 /**
  * @brief Encode a point as a sequence of bytes.
@@ -261,6 +265,7 @@ void decaf_448_point_encode (
  *
  * @param [out] pt The decoded point.
  * @param [in] ser The serialized version of the point.
+ * @param [in] allow_identity DECAF_TRUE if the identity is a legal input.
  * @retval DECAF_SUCCESS The decoding succeeded.
  * @retval DECAF_FAILURE The decoding didn't succeed, because
  * ser does not represent a point.
@@ -318,7 +323,7 @@ void decaf_448_point_add (
  * @brief Double a point.  Equivalent to
  * decaf_448_point_add(two_a,a,a), but potentially faster.
  *
- * @param [out] sum The sum a+a.
+ * @param [out] two_a The sum a+a.
  * @param [in] a A point.
  */
 void decaf_448_point_double (
@@ -416,7 +421,7 @@ void decaf_448_precompute (
  * @param [in] base The point to be scaled.
  * @param [in] scalar The scalar to multiply by.
  *
- * @TODO: precomputed dsmul? const or variable time?
+ * @todo precomputed dsmul? const or variable time?
  */
 void decaf_448_precomputed_scalarmul (
     decaf_448_point_t scaled,
@@ -431,12 +436,11 @@ void decaf_448_precomputed_scalarmul (
  * Equivalent to two calls to decaf_448_point_scalarmul, but may be
  * faster.
  *
- * @param [out] scaled The scaled point base*scalar
+ * @param [out] combo The linear combination scalar1*base1 + scalar2*base2.
  * @param [in] base1 A first point to be scaled.
  * @param [in] scalar1 A first scalar to multiply by.
  * @param [in] base2 A second point to be scaled.
  * @param [in] scalar2 A second scalar to multiply by.
- * @fixme This function isn't tested!
  */
 void decaf_448_point_double_scalarmul (
     decaf_448_point_t combo,
@@ -453,7 +457,7 @@ void decaf_448_point_double_scalarmul (
  * Otherwise equivalent to decaf_448_point_double_scalarmul, but may be
  * faster.
  *
- * @param [out] scaled The scaled point base*scalar
+ * @param [out] combo The linear combination scalar1*base + scalar2*base2.
  * @param [in] scalar1 A first scalar to multiply by.
  * @param [in] base2 A second point to be scaled.
  * @param [in] scalar2 A second scalar to multiply by.
@@ -471,7 +475,7 @@ void decaf_448_base_double_scalarmul_non_secret (
 /**
  * @brief Test that a point is valid, for debugging purposes.
  *
- * @param [in] point The number to test.
+ * @param [in] toTest The number to test.
  * @retval DECAF_TRUE The point is valid.
  * @retval DECAF_FALSE The point is invalid.
  */

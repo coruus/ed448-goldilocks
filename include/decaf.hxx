@@ -22,7 +22,8 @@
 #ifndef __DECAF_448_HXX__
 #define __DECAF_448_HXX__ 1
 
-#define _XOPEN_SOURCE 600 /* for posix_memalign */
+/** This code uses posix_memalign. */
+#define _XOPEN_SOURCE 600 
 #include <stdlib.h>
 #include <string.h> /* for memcpy */
 
@@ -34,6 +35,7 @@
 /* TODO: This is incomplete */
 /* TODO: attribute nonnull */
 
+/** @cond internal */
 #if __cplusplus >= 201103L
 #define NOEXCEPT noexcept
 #define EXPLICIT_CON explicit
@@ -43,6 +45,7 @@
 #define EXPLICIT_CON
 #define GET_DATA(str) ((const unsigned char *)((str).data()))
 #endif
+/** @endcond */
 
 namespace decaf {
 
@@ -82,6 +85,7 @@ class Scalar {
 public:
     /** @brief access to the underlying scalar object */
     decaf_448_scalar_t s;
+    
     /** @brief Set to an unsigned word */
     inline Scalar(const decaf_word_t w=0) NOEXCEPT { *this = w; }
 
@@ -123,7 +127,7 @@ public:
     /** Destructor securely erases the scalar. */
     inline ~Scalar() NOEXCEPT { decaf_448_scalar_destroy(s); }
     
-    /** @briefAssign from arbitrary-length little-endian byte sequence in C++ string. */
+    /** @brief Assign from arbitrary-length little-endian byte sequence in C++ string. */
     inline Scalar &operator=(const std::string &str) NOEXCEPT {
         decaf_448_scalar_decode_long(s,GET_DATA(str),str.length()); return *this;
     }
@@ -158,20 +162,26 @@ public:
         decaf_448_scalar_encode(buffer, s);
     }
     
-    /* Arithmetic */
+    /** Add. */
     inline Scalar operator+ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_add(r.s,s,q.s); return r; }
+    
+    /** Add to this. */
     inline Scalar operator+=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_add(s,s,q.s); return *this; }
+    
+    /** Subtract. */
     inline Scalar operator- (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_sub(r.s,s,q.s); return r; }
+    
+    /** Subtract from this. */
     inline Scalar operator-=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_sub(s,s,q.s); return *this; }
+    
+    /** Multiply */
     inline Scalar operator* (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.s); return r; }
+    
+    /** Multiply into this. */
     inline Scalar operator*=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.s); return *this; }
+    
+    /** Negate */
     inline Scalar operator- ()                const NOEXCEPT { Scalar r; decaf_448_scalar_sub(r.s,decaf_448_scalar_zero,s); return r; }
-    
-    /** @brief Compare in constant time */
-    inline bool   operator!=(const Scalar &q) const NOEXCEPT { return ! decaf_448_scalar_eq(s,q.s); }
-    
-    /** @brief Compare in constant time */
-    inline bool   operator==(const Scalar &q) const NOEXCEPT { return !!decaf_448_scalar_eq(s,q.s); }
     
     /** @brief Invert with Fermat's Little Theorem (slow!).  If *this == 0, return 0. */
     inline Scalar inverse() const NOEXCEPT { Scalar r; decaf_448_scalar_invert(r.s,s); return r; }
@@ -181,6 +191,12 @@ public:
     
     /** @brief Divide by inverting q. If q == 0, return 0.  */
     inline Scalar operator/=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.inverse().s); return *this; }
+    
+    /** @brief Compare in constant time */
+    inline bool   operator!=(const Scalar &q) const NOEXCEPT { return ! decaf_448_scalar_eq(s,q.s); }
+    
+    /** @brief Compare in constant time */
+    inline bool   operator==(const Scalar &q) const NOEXCEPT { return !!decaf_448_scalar_eq(s,q.s); }
     
     /** @brief Scalarmul with scalar on left. */
     inline Point operator* (const Point &q) const NOEXCEPT { return q * (*this); }
@@ -194,6 +210,7 @@ public:
  */
 class Point {
 public:
+    /** The c-level object. */
     decaf_448_point_t p;
     
     /** @brief Constructor sets to identity by default. */
@@ -491,6 +508,8 @@ public:
 }; /* struct decaf<448> */
 
 #undef NOEXCEPT
+#undef EXPLICIT_CON
+#undef GET_DATA
 } /* namespace decaf */
 
 #endif /* __DECAF_448_HXX__ */

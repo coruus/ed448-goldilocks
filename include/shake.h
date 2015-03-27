@@ -16,13 +16,18 @@
 #include <sys/types.h>
 
 /* TODO: unify with other headers (maybe all into one??); add nonnull attributes */
+/** @cond internal */
 #define API_VIS __attribute__((visibility("default")))
 #define WARN_UNUSED __attribute__((warn_unused_result))
+/** @endcond */
 
 /* TODO: different containing structs for each primitive? */
 #ifndef INTERNAL_SPONGE_STRUCT
+    /** Sponge container object for the various primitives. */
     typedef struct keccak_sponge_s {
+        /** @cond internal */
         uint64_t opaque[26];
+        /** @endcond */
     } keccak_sponge_t[1];
     struct kparams_s;
 #endif
@@ -59,7 +64,7 @@ void sha3_update (
  * sha3 output can be called more times.
  *
  * @param [inout] sponge The context.
- * @param [out] in The output data.
+ * @param [out] out The output data.
  * @param [in] len The requested output data length in bytes.
  */  
 void sha3_output (
@@ -94,6 +99,7 @@ void sponge_hash (
 
 /* TODO: expand/doxygenate individual SHAKE/SHA3 instances? */
 
+/** @cond internal */
 #define DECSHAKE(n) \
     extern const struct kparams_s SHAKE##n##_params_s API_VIS; \
     static inline void shake##n##_init(keccak_sponge_t sponge) { \
@@ -131,6 +137,7 @@ void sponge_hash (
     static inline void sha3_##n##_destroy( keccak_sponge_t sponge ) { \
         sponge_destroy(sponge); \
     }
+/** @endcond */
 
 DECSHAKE(128)
 DECSHAKE(256)
@@ -203,7 +210,7 @@ int spongerng_init_from_dev_urandom (
  *
  * @param [inout] sponge The sponge object.
  * @param [out] out The output buffer.
- * @param [in] out The output buffer's length.
+ * @param [in] len The output buffer's length.
  */
 void spongerng_next (
     keccak_sponge_t sponge,
