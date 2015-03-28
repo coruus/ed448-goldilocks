@@ -60,6 +60,9 @@ void really_bzero(void *data, size_t size);
  */
 template<unsigned int bits = 448> struct decaf;
 
+/** @brief Passed to constructors to avoid (conservative) initialization */
+static const class NOINIT { public: NOINIT(){} } NI;
+
 /**
  * @brief Ed448-Goldilocks/Decaf instantiation of group.
  */
@@ -85,6 +88,9 @@ class Scalar {
 public:
     /** @brief access to the underlying scalar object */
     decaf_448_scalar_t s;
+    
+    /** @brief Don't initialize. */
+    inline Scalar(const NOINIT &) {}
     
     /** @brief Set to an unsigned word */
     inline Scalar(const decaf_word_t w) NOEXCEPT { *this = w; }
@@ -163,31 +169,31 @@ public:
     }
     
     /** Add. */
-    inline Scalar  operator+ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_add(r.s,s,q.s); return r; }
+    inline Scalar  operator+ (const Scalar &q) const NOEXCEPT { Scalar r(NI); decaf_448_scalar_add(r.s,s,q.s); return r; }
     
     /** Add to this. */
     inline Scalar &operator+=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_add(s,s,q.s); return *this; }
     
     /** Subtract. */
-    inline Scalar  operator- (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_sub(r.s,s,q.s); return r; }
+    inline Scalar  operator- (const Scalar &q) const NOEXCEPT { Scalar r(NI); decaf_448_scalar_sub(r.s,s,q.s); return r; }
     
     /** Subtract from this. */
     inline Scalar &operator-=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_sub(s,s,q.s); return *this; }
     
     /** Multiply */
-    inline Scalar  operator* (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.s); return r; }
+    inline Scalar  operator* (const Scalar &q) const NOEXCEPT { Scalar r(NI); decaf_448_scalar_mul(r.s,s,q.s); return r; }
     
     /** Multiply into this. */
     inline Scalar &operator*=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.s); return *this; }
     
     /** Negate */
-    inline Scalar operator- ()                const NOEXCEPT { Scalar r; decaf_448_scalar_sub(r.s,decaf_448_scalar_zero,s); return r; }
+    inline Scalar operator- ()                const NOEXCEPT { Scalar r(NI); decaf_448_scalar_sub(r.s,decaf_448_scalar_zero,s); return r; }
     
     /** @brief Invert with Fermat's Little Theorem (slow!).  If *this == 0, return 0. */
     inline Scalar inverse() const NOEXCEPT { Scalar r; decaf_448_scalar_invert(r.s,s); return r; }
     
     /** @brief Divide by inverting q. If q == 0, return 0.  */
-    inline Scalar operator/ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.inverse().s); return r; }
+    inline Scalar operator/ (const Scalar &q) const NOEXCEPT { Scalar r(NI); decaf_448_scalar_mul(r.s,s,q.inverse().s); return r; }
     
     /** @brief Divide by inverting q. If q == 0, return 0.  */
     inline Scalar &operator/=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.inverse().s); return *this; }
@@ -203,6 +209,34 @@ public:
     
     /** @brief Scalarmul-precomputed with scalar on left. */
     inline Point operator* (const Precomputed &q) const NOEXCEPT { return q * (*this); }
+    
+    /** @brief Direct scalar multiplication.
+     * @todo Fix up bools.
+     */
+    inline decaf_bool_t direct_scalarmul(
+        unsigned char out[DECAF_448_SER_BYTES],
+        const unsigned char in[DECAF_448_SER_BYTES],
+        decaf_bool_t allow_identity=DECAF_FALSE,
+        decaf_bool_t short_circuit=DECAF_TRUE    
+    ) const NOEXCEPT {
+        return decaf_448_direct_scalarmul(out, in, s, allow_identity, short_circuit);
+    }
+    
+   /** @brief Direct scalar multiplication.
+    * @todo Fix up bools.
+    */
+   inline std::string direct_scalarmul(
+       const std::string in,
+       decaf_bool_t allow_identity=DECAF_FALSE,
+       decaf_bool_t short_circuit=DECAF_TRUE    
+   ) const NOEXCEPT {
+       unsigned char out[DECAF_448_SER_BYTES];
+       if (decaf_448_direct_scalarmul(out, GET_DATA(in), s, allow_identity, short_circuit)) {
+           return std::string((char *)out,sizeof(out));
+       } else {
+           return "";
+       }
+   }
 };
 
 /**
@@ -212,6 +246,9 @@ class Point {
 public:
     /** The c-level object. */
     decaf_448_point_t p;
+    
+    /** @brief Don't initialize. */
+    inline Point(const NOINIT &) {}
     
     /** @brief Constructor sets to identity by default. */
     inline Point(const decaf_448_point_t &q = decaf_448_point_identity) { decaf_448_point_copy(p,q); }
@@ -280,7 +317,7 @@ public:
      * The all-zero buffer maps to the identity, as does the buffer {1,0...}
      */
     static inline Point from_hash_nonuniform ( const unsigned char buffer[DECAF_448_SER_BYTES] ) NOEXCEPT {
-        Point p; decaf_448_point_from_hash_nonuniform(p.p,buffer); return p;
+        Point p(NI); decaf_448_point_from_hash_nonuniform(p.p,buffer); return p;
     }
     
     /**
@@ -291,7 +328,7 @@ public:
     static inline Point from_hash_nonuniform ( const std::string &s ) NOEXCEPT {
         std::string t = s;
         if (t.size() < DECAF_448_SER_BYTES) t.insert(t.size(),DECAF_448_SER_BYTES-t.size(),0);
-        Point p; decaf_448_point_from_hash_nonuniform(p.p,GET_DATA(t)); return p;
+        Point p(NI); decaf_448_point_from_hash_nonuniform(p.p,GET_DATA(t)); return p;
     }
     
    
@@ -300,7 +337,7 @@ public:
      * The all-zero buffer maps to the identity, as does the buffer {1,0...}.
      */
     static inline Point from_hash ( const unsigned char buffer[2*DECAF_448_SER_BYTES] ) NOEXCEPT {
-        Point p; decaf_448_point_from_hash_uniform(p.p,buffer); return p;
+        Point p(NI); decaf_448_point_from_hash_uniform(p.p,buffer); return p;
     }
    
     /**
@@ -313,7 +350,7 @@ public:
         std::string t = s;
         if (t.size() <= DECAF_448_SER_BYTES) return from_hash_nonuniform(s);
         if (t.size() < 2*DECAF_448_SER_BYTES) t.insert(t.size(),2*DECAF_448_SER_BYTES-t.size(),0);
-        Point p; decaf_448_point_from_hash_uniform(p.p,GET_DATA(t)); return p;
+        Point p(NI); decaf_448_point_from_hash_uniform(p.p,GET_DATA(t)); return p;
     }
     
     /**
@@ -333,22 +370,22 @@ public:
     }
     
     /** @brief Point add. */
-    inline Point  operator+ (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_add(r.p,p,q.p); return r; }
+    inline Point  operator+ (const Point &q)  const NOEXCEPT { Point r(NI); decaf_448_point_add(r.p,p,q.p); return r; }
     
     /** @brief Point add. */
     inline Point &operator+=(const Point &q)        NOEXCEPT { decaf_448_point_add(p,p,q.p); return *this; }
     
     /** @brief Point subtract. */
-    inline Point  operator- (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_sub(r.p,p,q.p); return r; }
+    inline Point  operator- (const Point &q)  const NOEXCEPT { Point r(NI); decaf_448_point_sub(r.p,p,q.p); return r; }
     
     /** @brief Point subtract. */
     inline Point &operator-=(const Point &q)        NOEXCEPT { decaf_448_point_sub(p,p,q.p); return *this; }
     
     /** @brief Point negate. */
-    inline Point  operator- ()                const NOEXCEPT { Point r; decaf_448_point_negate(r.p,p); return r; }
+    inline Point  operator- ()                const NOEXCEPT { Point r(NI); decaf_448_point_negate(r.p,p); return r; }
     
     /** @brief Double the point out of place. */
-    inline Point  times_two ()                const NOEXCEPT { Point r; decaf_448_point_double(r.p,p); return r; }
+    inline Point  times_two ()                const NOEXCEPT { Point r(NI); decaf_448_point_double(r.p,p); return r; }
     
     /** @brief Double the point in place. */
     inline Point &double_in_place()                NOEXCEPT { decaf_448_point_double(p,p); return *this; }
@@ -360,7 +397,7 @@ public:
     inline bool  operator==(const Point &q)  const NOEXCEPT { return !!decaf_448_point_eq(p,q.p); }
     
     /** @brief Scalar multiply. */
-    inline Point  operator* (const Scalar &s) const NOEXCEPT { Point r; decaf_448_point_scalarmul(r.p,p,s.s); return r; }
+    inline Point  operator* (const Scalar &s) const NOEXCEPT { Point r(NI); decaf_448_point_scalarmul(r.p,p,s.s); return r; }
     
     /** @brief Scalar multiply in place. */
     inline Point &operator*=(const Scalar &s)       NOEXCEPT { decaf_448_point_scalarmul(p,p,s.s); return *this; }
@@ -375,7 +412,7 @@ public:
     static inline Point double_scalarmul (
         const Point &q, const Scalar &qs, const Point &r, const Scalar &rs
     ) NOEXCEPT {
-        Point p; decaf_448_point_double_scalarmul(p.p,q.p,qs.s,r.p,rs.s); return p;
+        Point p(NI); decaf_448_point_double_scalarmul(p.p,q.p,qs.s,r.p,rs.s); return p;
     }
     
     /**
@@ -385,7 +422,7 @@ public:
     static inline Point double_scalarmul (
         const Scalar &qs, const Point &q, const Scalar &rs, const Point &r
     ) NOEXCEPT {
-        Point p; decaf_448_point_double_scalarmul(p.p,q.p,qs.s,r.p,rs.s); return p;
+        Point p(NI); decaf_448_point_double_scalarmul(p.p,q.p,qs.s,r.p,rs.s); return p;
     }
     
     /**
@@ -394,7 +431,7 @@ public:
      * it doesn't).
      */
     inline Point non_secret_combo_with_base(const Scalar &s, const Scalar &s_base) {
-        Point r; decaf_448_base_double_scalarmul_non_secret(r.p,s_base.s,p,s.s); return r;
+        Point r(NI); decaf_448_base_double_scalarmul_non_secret(r.p,s_base.s,p,s.s); return r;
     }
     
     /** @brief Return the base point */

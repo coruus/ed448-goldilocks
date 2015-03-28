@@ -164,6 +164,7 @@ siv gf_sub_nr ( gf_s *__restrict__ c, const gf a, const gf b ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_sub_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
     gf_bias(c, 2);
+    if (WBITS==32) field_weak_reduce((field_t*) c); // HACK FIXME
 }
 
 /** Subtract mod p. Bias by amt but don't reduce.  */
@@ -171,6 +172,7 @@ siv gf_sub_nr_x ( gf c, const gf a, const gf b, int amt ) {
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_sub_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
     gf_bias(c, amt);
+    if (WBITS==32) field_weak_reduce((field_t*) c); // HACK FIXME
 }
 
 /** Add mod p.  Don't reduce. */
@@ -663,7 +665,7 @@ void decaf_bzero (
 #else
     const size_t sw = sizeof(decaf_word_t);
     volatile uint8_t *destroy = (volatile uint8_t *)s;
-    for (; size && ((decaf_word_t)destroy)%sw; size--, destroy++)
+    for (; size && ((uintptr_t)destroy)%sw; size--, destroy++)
         *destroy = 0;
     for (; size >= sw; size -= sw, destroy += sw)
         *(volatile decaf_word_t *)destroy = 0;
@@ -845,9 +847,9 @@ extern const decaf_448_scalar_t decaf_448_point_scalarmul_adjustment;
 siv constant_time_lookup_xx (
     void *__restrict__ out_,
     const void *table_,
-    word_t elem_bytes,
-    word_t n_table,
-    word_t idx
+    decaf_word_t elem_bytes,
+    decaf_word_t n_table,
+    decaf_word_t idx
 ) {
     big_register_t big_one = br_set_to_mask(1), big_i = br_set_to_mask(idx);
     big_register_t *out = (big_register_t *)out_;

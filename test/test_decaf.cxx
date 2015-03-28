@@ -91,13 +91,17 @@ static bool point_check(
     const Point &R,
     const Scalar &x,
     const Scalar &y,
-    const Point &r,
     const Point &l,
+    const Point &r,
     const char *name
 ) {
     if (l == r) return true;
     test.fail();
     printf("  %s", name);
+    if (!decaf_448_point_valid(p.p)) printf("  p invalid\n");
+    if (!decaf_448_point_valid(q.p)) printf("  q invalid\n");
+    if (!decaf_448_point_valid(r.p)) printf("  r invalid\n");
+    if (!decaf_448_point_valid(l.p)) printf("  l invalid\n");
     print("x", x);
     print("y", y);
     print("p", p);
@@ -190,8 +194,9 @@ static void test_ec() {
             +Point::from_hash_nonuniform(&buffer[DECAF_448_SCALAR_BYTES]),
             "unih = hash+add"
         );
-        
-        // TODO: test hash_u(x+x) == hash_nu(x) + hash_nu(x)???
+            
+
+        point_check(test,p,q,r,x,0,Point(x.direct_scalarmul(p)),x*p,"direct mul");
     }
 }
 
