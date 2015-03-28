@@ -47,12 +47,10 @@ typedef struct {
     /** x*Base */
     decaf_448_public_key_t pub;
     /** @endcond */
-} 
-    /** Private key structure for pointers. */
-    decaf_448_private_key_s,
-
-    /** A private key (gmp array[1] style). */
-    decaf_448_private_key_t[1];
+} /** Private key structure for pointers. */
+  decaf_448_private_key_s,
+  /** A private key (gmp array[1] style). */
+  decaf_448_private_key_t[1];
 
 #ifdef __cplusplus
 extern "C" {
@@ -179,7 +177,7 @@ decaf_448_verify (
 #undef NONNULL5
 
 #ifdef __cplusplus
-}; /* extern "C" */
+} /* extern "C" */
 #endif
 
 #endif /* __DECAF_CRYPTO_H__ */

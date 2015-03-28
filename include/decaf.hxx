@@ -87,13 +87,13 @@ public:
     decaf_448_scalar_t s;
     
     /** @brief Set to an unsigned word */
-    inline Scalar(const decaf_word_t w=0) NOEXCEPT { *this = w; }
+    inline Scalar(const decaf_word_t w) NOEXCEPT { *this = w; }
 
     /** @brief Set to a signed word */
     inline Scalar(const int w) NOEXCEPT { *this = w; } 
     
     /** @brief Construct from decaf_scalar_t object. */
-    inline Scalar(const decaf_448_scalar_t &t) NOEXCEPT {  decaf_448_scalar_copy(s,t); } 
+    inline Scalar(const decaf_448_scalar_t &t = decaf_448_scalar_zero) NOEXCEPT {  decaf_448_scalar_copy(s,t); } 
     
     /** @brief Copy constructor. */
     inline Scalar(const Scalar &x) NOEXCEPT {  decaf_448_scalar_copy(s,x.s); }
@@ -385,6 +385,15 @@ public:
         Point p; decaf_448_point_double_scalarmul(p.p,q.p,qs.s,r.p,rs.s); return p;
     }
     
+    /**
+     * @brief Double-scalar multiply: this point by the first scalar and base by the second scalar.
+     * @warning This function takes variable time, and may leak the scalars (or points, but currently
+     * it doesn't).
+     */
+    inline Point non_secret_combo_with_base(const Scalar &s, const Scalar &s_base) {
+        Point r; decaf_448_base_double_scalarmul_non_secret(r.p,s_base.s,p,s.s); return r;
+    }
+    
     /** @brief Return the base point */
     static inline const Point base() NOEXCEPT { return Point(decaf_448_point_base); }
     
@@ -438,7 +447,8 @@ public:
      *
      * By default, initializes to the table for the base point.
      *
-     * @todo: FIXME Harmonize with Point(), which initializes to the identity.
+     * @warning The empty initializer makes this equal to base, unlike the empty
+     * initializer for points which makes this equal to the identity.
      */ 
     inline Precomputed(
         const decaf_448_precomputed_s &yours = *decaf_448_precomputed_base

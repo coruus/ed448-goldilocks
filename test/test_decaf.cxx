@@ -157,7 +157,7 @@ static void test_ec() {
     Test test("EC");
     
 
-    Point id;
+    Point id = Point::identity(), base = Point::base();
     point_check(test,id,id,id,0,0,Point::from_hash(std::string("")),id,"fh0");
     point_check(test,id,id,id,0,0,Point::from_hash(std::string("\x01")),id,"fh1");
     
@@ -183,6 +183,7 @@ static void test_ec() {
         point_check(test,p,q,r,x,0,x*(p+q),x*p+x*q,"distr mul");
         point_check(test,p,q,r,x,y,(x*y)*p,x*(y*p),"assoc mul");
         point_check(test,p,q,r,x,y,x*p+y*q,Point::double_scalarmul(x,p,y,q),"ds mul");
+        point_check(test,base,q,r,x,y,x*base+y*q,q.non_secret_combo_with_base(y,x),"ds vt mul");
         point_check(test,p,q,r,x,0,Precomputed(p)*x,p*x,"precomp mul");
     }
 }

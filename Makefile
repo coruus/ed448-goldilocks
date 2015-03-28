@@ -66,7 +66,7 @@ CXXFLAGS = $(LANGXXFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENF
 LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS)
 ASFLAGS = $(ARCHFLAGS) $(XASFLAGS)
 
-.PHONY: clean all test bench todo doc lib bat
+.PHONY: clean all test bench test_decaf bench_decaf todo doc lib bat
 .PRECIOUS: build/%.s
 
 HEADERS= Makefile $(shell find . -name "*.h") $(shell find . -name "*.hxx") build/timestamp
@@ -87,6 +87,7 @@ TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
 	build/shake.o
 
 TESTDECAFCOMPONENTS=build/test_decaf.o
+BENCHDECAFCOMPONENTS=build/bench_decaf.o
 
 BENCHCOMPONENTS = build/bench.o build/shake.o
 
@@ -108,7 +109,10 @@ build/test: $(LIBCOMPONENTS) $(TESTCOMPONENTS) $(DECAFCOMPONENTS)
 	$(LD) $(LDFLAGS) -o $@ $^ -lgmp
 
 build/test_decaf: $(TESTDECAFCOMPONENTS) decaf_lib
-	$(LDXX) $(LDFLAGS) -o $@ $< -lgmp -Lbuild -ldecaf
+	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -Wl,-rpath=`pwd`/build -ldecaf
+
+build/bench_decaf: $(BENCHDECAFCOMPONENTS) decaf_lib
+	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -Wl,-rpath=`pwd`/build -ldecaf
 	
 build/shakesum: build/shakesum.o build/shake.o
 	$(LD) $(LDFLAGS) -o $@ $^
@@ -223,7 +227,10 @@ test: build/test test_decaf
 	build/test
 	
 test_decaf: build/test_decaf
-	LD_LIBRARY_PATH=`pwd`/build:$(LD_LIBRARY_PATH) build/test_decaf
+	build/test_decaf
+	
+bench_decaf: build/bench_decaf
+	build/bench_decaf
 
 clean:
 	rm -fr build doc $(BATNAME)

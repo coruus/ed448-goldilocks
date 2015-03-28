@@ -240,10 +240,10 @@ static inline void NONNULL2 decaf_448_scalar_copy (
  * @param [out] out Will become equal to a.
  * @todo Make inline?
  */  
-void decaf_448_scalar_set API_VIS NONNULL1 (
+void decaf_448_scalar_set(
     decaf_448_scalar_t out,
     decaf_word_t a
-);
+) API_VIS NONNULL1;
 
 /**
  * @brief Encode a point as a sequence of bytes.
@@ -317,7 +317,7 @@ void decaf_448_point_add (
     decaf_448_point_t sum,
     const decaf_448_point_t a,
     const decaf_448_point_t b
-) API_VIS NONNULL3; // TODO: NOINLINE?
+) API_VIS NONNULL3;
 
 /**
  * @brief Double a point.  Equivalent to
@@ -329,7 +329,7 @@ void decaf_448_point_add (
 void decaf_448_point_double (
     decaf_448_point_t two_a,
     const decaf_448_point_t a
-) API_VIS NONNULL2; // TODO: NOINLINE?
+) API_VIS NONNULL2;
 
 /**
  * @brief Subtract two points to produce a third point.  The
@@ -455,7 +455,7 @@ void decaf_448_point_double_scalarmul (
  * scaled = scalar1*decaf_448_point_base + scalar2*base2.
  *
  * Otherwise equivalent to decaf_448_point_double_scalarmul, but may be
- * faster.
+ * faster at the expense of being variable time.
  *
  * @param [out] combo The linear combination scalar1*base + scalar2*base2.
  * @param [in] scalar1 A first scalar to multiply by.
