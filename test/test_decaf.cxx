@@ -95,13 +95,15 @@ static bool point_check(
     const Point &r,
     const char *name
 ) {
-    if (l == r) return true;
+    bool good = l==r;
+    if (!p.validate()) { good = false; printf("  p invalid\n"); }
+    if (!q.validate()) { good = false; printf("  q invalid\n"); }
+    if (!r.validate()) { good = false; printf("  r invalid\n"); }
+    if (!l.validate()) { good = false; printf("  l invalid\n"); }
+    if (good) return true;
+    
     test.fail();
     printf("  %s", name);
-    if (!decaf_448_point_valid(p.p)) printf("  p invalid\n");
-    if (!decaf_448_point_valid(q.p)) printf("  q invalid\n");
-    if (!decaf_448_point_valid(r.p)) printf("  r invalid\n");
-    if (!decaf_448_point_valid(l.p)) printf("  l invalid\n");
     print("x", x);
     print("y", y);
     print("p", p);

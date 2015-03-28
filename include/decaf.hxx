@@ -102,7 +102,7 @@ public:
     inline Scalar(const decaf_448_scalar_t &t = decaf_448_scalar_zero) NOEXCEPT {  decaf_448_scalar_copy(s,t); } 
     
     /** @brief Copy constructor. */
-    inline Scalar(const Scalar &x) NOEXCEPT {  decaf_448_scalar_copy(s,x.s); }
+    inline Scalar(const Scalar &x) NOEXCEPT {  *this = x; }
     
     /** @brief Construct from arbitrary-length little-endian byte sequence. */
     inline explicit Scalar(const std::string &str) NOEXCEPT { *this = str; }
@@ -407,6 +407,9 @@ public:
     
     /** @brief Multiply by s.inverse().  If s=0, maps to the identity. */
     inline Point &operator/=(const Scalar &s)       NOEXCEPT { return (*this) *= s.inverse(); }
+    
+    /** @brief Validate / sanity check */
+    inline bool validate() const NOEXCEPT { return !!decaf_448_point_valid(p); }
     
     /** @brief Double-scalar multiply, equivalent to q*qs + r*rs but faster. */
     static inline Point double_scalarmul (
