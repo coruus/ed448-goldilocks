@@ -311,7 +311,7 @@ public:
      */
     static inline Point from_hash ( const std::string &s ) NOEXCEPT {
         std::string t = s;
-        if (t.size() < DECAF_448_SER_BYTES) return from_hash_nonuniform(s);
+        if (t.size() <= DECAF_448_SER_BYTES) return from_hash_nonuniform(s);
         if (t.size() < 2*DECAF_448_SER_BYTES) t.insert(t.size(),2*DECAF_448_SER_BYTES-t.size(),0);
         Point p; decaf_448_point_from_hash_uniform(p.p,GET_DATA(t)); return p;
     }

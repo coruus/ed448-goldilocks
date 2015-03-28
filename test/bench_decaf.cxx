@@ -44,8 +44,27 @@ static inline uint64_t rdtsc(void) {
 }
 #endif
 
+static void printSI(double x, const char *unit, const char *spacer = " ") {
+    const char *small[] = {" ","m","µ","n","p"};
+    const char *big[] = {" ","k","M","G","T"};
+    if (x < 1) {
+        unsigned di=0;
+        for (di=0; di<sizeof(small)/sizeof(*small)-1 && x && x < 1; di++) { 
+            x *= 1000.0;
+        }
+        printf("%6.2f%s%s%s", x, spacer, small[di], unit);
+    } else {
+        unsigned di=0;
+        for (di=0; di<sizeof(big)/sizeof(*big)-1 && x && x >= 1000; di++) { 
+            x /= 1000.0;
+        }
+        printf("%6.2f%s%s%s", x, spacer, big[di], unit);
+    }
+}
+
 class Benchmark {
     static const int NTESTS = 1000;
+    static double totalCy, totalS;
 public:
     int i, ntests;
     double begin;
@@ -60,24 +79,34 @@ public:
         tsc_begin = rdtsc();
     }
     ~Benchmark() {
-        double tsc = (rdtsc() - tsc_begin) * 1.0 / ntests;
-        double t = (now() - begin)/ntests;
-        const char *small[] = {" ","m","µ","n","p"};
-        const char *big[] = {" ","k","M","G","T"};
-        unsigned di=0;
-        for (di=0; di<sizeof(small)/sizeof(*small)-1 && t && t < 1; di++) {
-            t *= 1000.0;
-        }
-        unsigned bi=0;
-        for (bi=0; bi<sizeof(big)/sizeof(*big)-1 && tsc && tsc >= 1000; bi++) {
-            tsc /= 1000.0;
-        }
-        printf("%7.2f %ss", t, small[di]);
-        if (tsc) printf("   %7.2f %scy", tsc, big[bi]);
+        double tsc = (rdtsc() - tsc_begin) * 1.0;
+        double t = (now() - begin);
+        
+        totalCy += tsc;
+        totalS += t;
+        
+        t /= ntests;
+        tsc /= ntests;
+        
+        printSI(t,"s");
+        printf("    ");
+        printSI(1/t,"/s");
+        if (tsc) { printf("    "); printSI(tsc, "cy"); }
         printf("\n");
     }
     inline bool iter() { return i++ < ntests; }
+    static void calib() {
+        if (totalS && totalCy) {
+            const char *s = "Cycle calibration";
+            printf("%s:", s);
+            if (strlen(s) < 25) printf("%*s",int(25-strlen(s)),"");
+            printSI(totalCy / totalS, "Hz");
+            printf("\n");
+        }
+    }
 };
+
+double Benchmark::totalCy = 0, Benchmark::totalS = 0;
 
 int main(int argc, char **argv) {
     bool micro = false;
@@ -96,23 +125,29 @@ int main(int argc, char **argv) {
     unsigned char umessage[] = {1,2,3,4,5};
     size_t lmessage = sizeof(umessage);
     
+    printf("\n");
 
     if (micro) {
         Precomputed pBase;
         Point p,q;
         Scalar s,t;
+        std::string ep;
         
-        printf("Micro:\n");
+        printf("Micro-benchmarks:\n");
         for (Benchmark b("Scalar add", 1000); b.iter(); ) { s+t; }
         for (Benchmark b("Scalar times", 100); b.iter(); ) { s*t; }
         for (Benchmark b("Scalar inv", 10); b.iter(); ) { s.inverse(); }
         for (Benchmark b("Point add", 100); b.iter(); ) { p + q; }
         for (Benchmark b("Point double", 100); b.iter(); ) { p.double_in_place(); }
         for (Benchmark b("Point scalarmul"); b.iter(); ) { p * s; }
+        for (Benchmark b("Point encode"); b.iter(); ) { ep = std::string(p); }
+        for (Benchmark b("Point decode"); b.iter(); ) { p = Point(ep); }
+        for (Benchmark b("Point hash nonuniform"); b.iter(); ) { Point::from_hash(ep); }
+        for (Benchmark b("Point hash uniform"); b.iter(); ) { Point::from_hash(ep+ep); }
         for (Benchmark b("Point double scalarmul"); b.iter(); ) { Point::double_scalarmul(p,s,q,t); }
         for (Benchmark b("Point precmp scalarmul"); b.iter(); ) { pBase * s; }
-        /* TODO: scalarmul for verif */
-        printf("\nMacro:\n");
+        /* TODO: scalarmul for verif, etc */
+        printf("\nMacro-benchmarks:\n");
     }
     
     for (Benchmark b("Keygen"); b.iter(); ) {
@@ -136,9 +171,12 @@ int main(int argc, char **argv) {
     for (Benchmark b("Verify"); b.iter(); ) {
         decaf_bool_t ret = decaf_448_verify(sig1,p1,umessage,lmessage);
         umessage[0]++;
+        umessage[1]^=umessage[0];
         ignore_result(ret);
     }
     
+    printf("\n");
+    Benchmark::calib();
     printf("\n");
     
     return 0;

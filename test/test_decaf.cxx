@@ -185,6 +185,13 @@ static void test_ec() {
         point_check(test,p,q,r,x,y,x*p+y*q,Point::double_scalarmul(x,p,y,q),"ds mul");
         point_check(test,base,q,r,x,y,x*base+y*q,q.non_secret_combo_with_base(y,x),"ds vt mul");
         point_check(test,p,q,r,x,0,Precomputed(p)*x,p*x,"precomp mul");
+        point_check(test,p,q,r,0,0,r,
+            Point::from_hash_nonuniform(buffer)
+            +Point::from_hash_nonuniform(&buffer[DECAF_448_SCALAR_BYTES]),
+            "unih = hash+add"
+        );
+        
+        // TODO: test hash_u(x+x) == hash_nu(x) + hash_nu(x)???
     }
 }
 

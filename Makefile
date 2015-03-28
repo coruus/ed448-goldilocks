@@ -231,6 +231,9 @@ test_decaf: build/test_decaf
 	
 bench_decaf: build/bench_decaf
 	build/bench_decaf
+	
+microbench_decaf: build/bench_decaf
+	build/bench_decaf --micro
 
 clean:
 	rm -fr build doc $(BATNAME)
