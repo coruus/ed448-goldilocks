@@ -134,14 +134,15 @@ int main(int argc, char **argv) {
         std::string ep;
         
         printf("Micro-benchmarks:\n");
-        for (Benchmark b("Scalar add", 1000); b.iter(); ) { s+t; }
-        for (Benchmark b("Scalar times", 100); b.iter(); ) { s*t; }
+        for (Benchmark b("Scalar add", 1000); b.iter(); ) { s+=t; }
+        for (Benchmark b("Scalar times", 100); b.iter(); ) { s*=t; }
         for (Benchmark b("Scalar inv", 10); b.iter(); ) { s.inverse(); }
-        for (Benchmark b("Point add", 100); b.iter(); ) { p + q; }
+        for (Benchmark b("Point add", 100); b.iter(); ) { p += q; }
         for (Benchmark b("Point double", 100); b.iter(); ) { p.double_in_place(); }
         for (Benchmark b("Point scalarmul"); b.iter(); ) { p * s; }
         for (Benchmark b("Point encode"); b.iter(); ) { ep = std::string(p); }
         for (Benchmark b("Point decode"); b.iter(); ) { p = Point(ep); }
+        for (Benchmark b("Point create/destroy"); b.iter(); ) { Point r; }
         for (Benchmark b("Point hash nonuniform"); b.iter(); ) { Point::from_hash(ep); }
         for (Benchmark b("Point hash uniform"); b.iter(); ) { Point::from_hash(ep+ep); }
         for (Benchmark b("Point double scalarmul"); b.iter(); ) { Point::double_scalarmul(p,s,q,t); }

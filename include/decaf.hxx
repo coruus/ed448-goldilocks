@@ -163,22 +163,22 @@ public:
     }
     
     /** Add. */
-    inline Scalar operator+ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_add(r.s,s,q.s); return r; }
+    inline Scalar  operator+ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_add(r.s,s,q.s); return r; }
     
     /** Add to this. */
-    inline Scalar operator+=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_add(s,s,q.s); return *this; }
+    inline Scalar &operator+=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_add(s,s,q.s); return *this; }
     
     /** Subtract. */
-    inline Scalar operator- (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_sub(r.s,s,q.s); return r; }
+    inline Scalar  operator- (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_sub(r.s,s,q.s); return r; }
     
     /** Subtract from this. */
-    inline Scalar operator-=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_sub(s,s,q.s); return *this; }
+    inline Scalar &operator-=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_sub(s,s,q.s); return *this; }
     
     /** Multiply */
-    inline Scalar operator* (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.s); return r; }
+    inline Scalar  operator* (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.s); return r; }
     
     /** Multiply into this. */
-    inline Scalar operator*=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.s); return *this; }
+    inline Scalar &operator*=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.s); return *this; }
     
     /** Negate */
     inline Scalar operator- ()                const NOEXCEPT { Scalar r; decaf_448_scalar_sub(r.s,decaf_448_scalar_zero,s); return r; }
@@ -190,7 +190,7 @@ public:
     inline Scalar operator/ (const Scalar &q) const NOEXCEPT { Scalar r; decaf_448_scalar_mul(r.s,s,q.inverse().s); return r; }
     
     /** @brief Divide by inverting q. If q == 0, return 0.  */
-    inline Scalar operator/=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.inverse().s); return *this; }
+    inline Scalar &operator/=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.inverse().s); return *this; }
     
     /** @brief Compare in constant time */
     inline bool   operator!=(const Scalar &q) const NOEXCEPT { return ! decaf_448_scalar_eq(s,q.s); }
@@ -333,22 +333,22 @@ public:
     }
     
     /** @brief Point add. */
-    inline Point operator+ (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_add(r.p,p,q.p); return r; }
+    inline Point  operator+ (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_add(r.p,p,q.p); return r; }
     
     /** @brief Point add. */
-    inline Point operator+=(const Point &q)        NOEXCEPT { decaf_448_point_add(p,p,q.p); return *this; }
+    inline Point &operator+=(const Point &q)        NOEXCEPT { decaf_448_point_add(p,p,q.p); return *this; }
     
     /** @brief Point subtract. */
-    inline Point operator- (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_sub(r.p,p,q.p); return r; }
+    inline Point  operator- (const Point &q)  const NOEXCEPT { Point r; decaf_448_point_sub(r.p,p,q.p); return r; }
     
     /** @brief Point subtract. */
-    inline Point operator-=(const Point &q)        NOEXCEPT { decaf_448_point_sub(p,p,q.p); return *this; }
+    inline Point &operator-=(const Point &q)        NOEXCEPT { decaf_448_point_sub(p,p,q.p); return *this; }
     
     /** @brief Point negate. */
-    inline Point operator- ()                const NOEXCEPT { Point r; decaf_448_point_negate(r.p,p); return r; }
+    inline Point  operator- ()                const NOEXCEPT { Point r; decaf_448_point_negate(r.p,p); return r; }
     
     /** @brief Double the point out of place. */
-    inline Point times_two ()                const NOEXCEPT { Point r; decaf_448_point_double(r.p,p); return r; }
+    inline Point  times_two ()                const NOEXCEPT { Point r; decaf_448_point_double(r.p,p); return r; }
     
     /** @brief Double the point in place. */
     inline Point &double_in_place()                NOEXCEPT { decaf_448_point_double(p,p); return *this; }
@@ -360,13 +360,16 @@ public:
     inline bool  operator==(const Point &q)  const NOEXCEPT { return !!decaf_448_point_eq(p,q.p); }
     
     /** @brief Scalar multiply. */
-    inline Point operator* (const Scalar &s) const NOEXCEPT { Point r; decaf_448_point_scalarmul(r.p,p,s.s); return r; }
+    inline Point  operator* (const Scalar &s) const NOEXCEPT { Point r; decaf_448_point_scalarmul(r.p,p,s.s); return r; }
     
     /** @brief Scalar multiply in place. */
-    inline Point operator*=(const Scalar &s)       NOEXCEPT { decaf_448_point_scalarmul(p,p,s.s); return *this; }
+    inline Point &operator*=(const Scalar &s)       NOEXCEPT { decaf_448_point_scalarmul(p,p,s.s); return *this; }
     
     /** @brief Multiply by s.inverse().  If s=0, maps to the identity. */
-    inline Point operator/ (const Scalar &s) const NOEXCEPT { return (*this) * s.inverse(); }
+    inline Point  operator/ (const Scalar &s) const NOEXCEPT { return (*this) * s.inverse(); }
+    
+    /** @brief Multiply by s.inverse().  If s=0, maps to the identity. */
+    inline Point &operator/=(const Scalar &s)       NOEXCEPT { return (*this) *= s.inverse(); }
     
     /** @brief Double-scalar multiply, equivalent to q*qs + r*rs but faster. */
     static inline Point double_scalarmul (
