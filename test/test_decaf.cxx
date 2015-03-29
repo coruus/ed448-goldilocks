@@ -10,7 +10,7 @@
  */
 
 #include "decaf.hxx"
-#include "shake.h"
+#include "shake.hxx"
 #include <stdio.h>
 
 typedef decaf::decaf<448>::Scalar Scalar;

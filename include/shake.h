@@ -74,6 +74,18 @@ void sha3_output (
 ) API_VIS;
 
 /**
+ * @brief Return the default output length of the sponge construction,
+ * for the purpose of C++ default operators.
+ *
+ * Returns n/8 for SHA3-n and 2n/8 for SHAKE-n.
+ *
+ * @param [inout] sponge The context.
+ */  
+size_t sponge_default_output_bytes (
+    const keccak_sponge_t sponge
+) API_VIS;
+
+/**
  * @brief Destroy a SHA3 or SHAKE sponge context by overwriting it with 0.
  * @param [out] sponge The context.
  */  

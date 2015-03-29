@@ -135,7 +135,7 @@ public:
     
     /** @brief Assign from arbitrary-length little-endian byte sequence in C++ string. */
     inline Scalar &operator=(const std::string &str) NOEXCEPT {
-        decaf_448_scalar_decode_long(s,GET_DATA(str),str.length()); return *this;
+        decaf_448_scalar_decode_long(s,GET_DATA(str),str.size()); return *this;
     }
     
     /**
