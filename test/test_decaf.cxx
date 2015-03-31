@@ -115,9 +115,7 @@ static bool point_check(
 }
 
 static void test_arithmetic() {
-    keccak_sponge_t sponge;
-    unsigned char buffer[DECAF_448_SCALAR_BYTES+8];
-    spongerng_init_from_buffer(sponge, (const uint8_t *)"test_arithmetic", 16, 1);
+    decaf::SpongeRng rng(decaf::SpongeRng::FROM_BUFFER(), "test_arithmetic");
     
     Test test("Arithmetic");
     Scalar x(0),y(0),z(0);
@@ -126,13 +124,10 @@ static void test_arithmetic() {
         
     for (int i=0; i<NTESTS*10 && test.passing_now; i++) {
         /* TODO: pathological cases */
-        size_t sob = sizeof(buffer) - (i%16);
-        spongerng_next(sponge, buffer, sob);
-        Scalar x(buffer, sob);
-        spongerng_next(sponge, buffer, sob);
-        Scalar y(buffer, sob);
-        spongerng_next(sponge, buffer, sob);
-        Scalar z(buffer, sob);
+        size_t sob = DECAF_448_SCALAR_BYTES + 8 - (i%16);
+        Scalar x(rng.read(sob));
+        Scalar y(rng.read(sob));
+        Scalar z(rng.read(sob));
         
 
         arith_check(test,x,y,z,x+y,y+x,"commute add");
@@ -156,12 +151,10 @@ static void test_arithmetic() {
 
 
 static void test_ec() {
-    keccak_sponge_t sponge;
-    unsigned char buffer[2*DECAF_448_SCALAR_BYTES];
-    spongerng_init_from_buffer(sponge, (const uint8_t *)"test_ec", 8, 1);
+    decaf::SpongeRng rng(decaf::SpongeRng::FROM_BUFFER(), "test_ec");
+    unsigned char buffer[2*DECAF_448_SER_BYTES];
     
     Test test("EC");
-    
 
     Point id = Point::identity(), base = Point::base();
     point_check(test,id,id,id,0,0,Point::from_hash(std::string("")),id,"fh0");
@@ -169,16 +162,12 @@ static void test_ec() {
     
     for (int i=0; i<NTESTS && test.passing_now; i++) {
         /* TODO: pathological cases */
-        size_t sob = sizeof(buffer);
-        spongerng_next(sponge, buffer, sob);
-        Scalar x(buffer, sob);
-        spongerng_next(sponge, buffer, sob);
-        Scalar y(buffer, sob);
-        spongerng_next(sponge, buffer, sob);
-        Point p = Point::from_hash(buffer);
-        spongerng_next(sponge, buffer, sob);
-        Point q = Point::from_hash(buffer);
-        spongerng_next(sponge, buffer, sob);
+        Scalar x(rng);
+        Scalar y(rng);
+        Point p(rng);
+        Point q(rng);
+        
+        rng.read(buffer, 2*DECAF_448_SER_BYTES);
         Point r = Point::from_hash(buffer);
         
         point_check(test,p,q,r,0,0,p,Point((std::string)p),"round-trip");

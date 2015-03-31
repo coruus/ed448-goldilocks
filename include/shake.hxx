@@ -9,6 +9,8 @@
  * @warning EXPERIMENTAL!  The names, parameter orders etc are likely to change.
  */
 
+/** TODO: Crypto++ style secure auto-erasing strings?? */
+
 #ifndef __SHAKE_HXX__
 #define __SHAKE_HXX__
 
@@ -18,10 +20,12 @@
 
 /** @cond internal */
 #if __cplusplus >= 201103L
+#define DELETE = delete
 #define NOEXCEPT noexcept
 #define EXPLICIT_CON explicit
 #define GET_DATA(str) ((const unsigned char *)&(str)[0])
 #else
+#define DELETE
 #define NOEXCEPT throw()
 #define EXPLICIT_CON
 #define GET_DATA(str) ((const unsigned char *)((str).data()))
@@ -126,27 +130,95 @@ template<> const struct kparams_s *SHA3<256>::get_params() { return &SHA3_256_pa
 template<> const struct kparams_s *SHA3<384>::get_params() { return &SHA3_384_params_s; }
 template<> const struct kparams_s *SHA3<512>::get_params() { return &SHA3_512_params_s; }
 /** @endcond */
-
+    
 /** Sponge-based random-number generator */
-class SpongeRng : public KeccakSponge {
+class SpongeRng : private KeccakSponge {
 public:
+    class RngException : public std::exception {
+    private:
+        const char *const what_;
+    public:
+        const int err_code;
+        const char *what() const NOEXCEPT { return what_; }
+        RngException(int err_code, const char *what_) NOEXCEPT : what_(what_), err_code(err_code) {}
+    };
+    struct FROM_BUFFER {};
+    struct FROM_FILE {};
+    
     /** Initialize, deterministically by default, from C buffer */
-    inline SpongeRng( const uint8_t *in, size_t len, bool deterministic = true ) NOEXCEPT
-    : KeccakSponge(NI) {
+    inline SpongeRng( const FROM_BUFFER &, const uint8_t *in, size_t len, bool deterministic = true ) NOEXCEPT
+    : KeccakSponge((NOINIT())) {
         spongerng_init_from_buffer(sp,in,len,deterministic);
     }
     
     /** Initialize, deterministically by default, from C++ string */
-    inline SpongeRng( const std::string &in, bool deterministic = true ) NOEXCEPT
-    : KeccakSponge(NI) {
+    inline SpongeRng( const FROM_BUFFER &, const std::string &in, bool deterministic = true )
+    : KeccakSponge((NOINIT())) {
         spongerng_init_from_buffer(sp,GET_DATA(in),in.size(),deterministic);
     }
+    
+    /** Initialize, non-deterministically by default, from C/C++ filename */
+    inline SpongeRng( const FROM_FILE &, const std::string &in = "/dev/urandom", size_t len = 32, bool deterministic = false )
+        throw(RngException)
+    : KeccakSponge((NOINIT())) {
+        int ret = spongerng_init_from_file(sp,in.c_str(),len,deterministic);
+        if (ret) {
+            throw RngException(ret, "Couldn't load from file");
+        }
+    }
+    
+    /** Read data to a C buffer.
+     * @warning TODO Future versions of this function may throw RngException if a
+     * nondeterministic RNG fails a reseed.
+     */
+    inline void read(uint8_t *buffer, size_t length) {
+        spongerng_next(sp,buffer,length);
+    }
+    
+    /** Read data to a C++ string 
+     * @warning TODO Future versions of this function may throw RngException if a
+     * nondeterministic RNG fails a reseed.
+     */
+    inline std::string read(size_t length) throw(std::bad_alloc) {
+        uint8_t *buffer = new uint8_t[length];
+        spongerng_next(sp,buffer,length);
+        std::string out((const char *)buffer, length);
+        delete[] buffer;
+        return out;
+    }
+    
+private:
+    SpongeRng(const SpongeRng &) DELETE;
+    SpongeRng &operator=(const SpongeRng &) DELETE;
 };
+
+/**@cond internal*/
+ /* FIXME: MAGIC; should use buffer or erase temporary string */
+/* FIXME: multiple sizes */
+decaf<448>::Scalar::Scalar(SpongeRng &rng) {
+    uint8_t buffer[SER_BYTES];
+    rng.read(buffer, sizeof(buffer));
+    decaf_448_scalar_decode_long(s,buffer,sizeof(buffer));
+    really_bzero(buffer, sizeof(buffer));
+}
+
+decaf<448>::Point::Point(SpongeRng &rng, bool uniform) {
+    uint8_t buffer[2*HASH_BYTES];
+    rng.read(buffer, (uniform ? 2 : 1) * HASH_BYTES);
+    if (uniform) {
+        decaf_448_point_from_hash_uniform(p,buffer);
+    } else {
+        decaf_448_point_from_hash_nonuniform(p,buffer);
+    }
+    really_bzero(buffer, sizeof(buffer));
+}
+/**@endcond*/
   
 } /* namespace decaf */
 
 #undef NOEXCEPT
 #undef EXPLICIT_CON
 #undef GET_DATA
+#undef DELETE
 
 #endif /* __SHAKE_HXX__ */
