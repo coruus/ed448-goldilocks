@@ -65,13 +65,13 @@ public:
     inline void update(const uint8_t *__restrict__ in, size_t len) { sha3_update(sp,in,len); }
 
     /** Add more data to running hash, C++ version. */
-    inline void update(const std::string &s) { sha3_update(sp,GET_DATA(s),s.size()); }
+    inline void update(const Block &s) { sha3_update(sp,s.data(),s.size()); }
     
     /** Add more data, stream version. */
-    inline KeccakHash &operator<<(const std::string &s) { update(s); return *this; }
+    inline KeccakHash &operator<<(const Block &s) { update(s); return *this; }
     
     /** Same as <<. */
-    inline KeccakHash &operator+=(const std::string &s) { return *this << s; }
+    inline KeccakHash &operator+=(const Block &s) { return *this << s; }
     
     /**
      * @brief Output bytes from the sponge.
@@ -82,12 +82,10 @@ public:
     }
     
     /** @brief Output bytes from the sponge. */
-    inline std::string output(size_t len) {
-        unsigned char *buffer = new unsigned char[len];
+    inline SecureBuffer output(size_t len) {
+	SecureBuffer buffer(len);
         sha3_output(sp,buffer,len);
-        std::string out((char *)buffer, len);
-        delete[] buffer;
-        return out;
+	return buffer;
     }
     
     /** @brief Return the sponge's default output size. */
@@ -96,7 +94,7 @@ public:
     }
     
     /** Output the default number of bytes. */
-    inline std::string output() {
+    inline SecureBuffer output() {
         return output(default_output_size());
     }
 };
@@ -157,6 +155,12 @@ public:
         spongerng_init_from_buffer(sp,GET_DATA(in),in.size(),deterministic);
     }
     
+    /** Initialize, deterministically by default, from block */
+    inline SpongeRng( const FROM_BUFFER &, const Block &in, bool deterministic = true )
+    : KeccakSponge((NOINIT())) {
+        spongerng_init_from_buffer(sp,in.data(),in.size(),deterministic);
+    }
+    
     /** Initialize, non-deterministically by default, from C/C++ filename */
     inline SpongeRng( const FROM_FILE &, const std::string &in = "/dev/urandom", size_t len = 32, bool deterministic = false )
         throw(RngException)
@@ -179,12 +183,8 @@ public:
      * @warning TODO Future versions of this function may throw RngException if a
      * nondeterministic RNG fails a reseed.
      */
-    inline std::string read(size_t length) throw(std::bad_alloc) {
-        uint8_t *buffer = new uint8_t[length];
-        spongerng_next(sp,buffer,length);
-        std::string out((const char *)buffer, length);
-        delete[] buffer;
-        return out;
+    inline SecureBuffer read(size_t length) throw(std::bad_alloc) {
+        SecureBuffer out(length); spongerng_next(sp,out,length); return out;
     }
     
 private:
@@ -193,7 +193,6 @@ private:
 };
 
 /**@cond internal*/
- /* FIXME: MAGIC; should use buffer or erase temporary string */
 /* FIXME: multiple sizes */
 decaf<448>::Scalar::Scalar(SpongeRng &rng) {
     uint8_t buffer[SER_BYTES];

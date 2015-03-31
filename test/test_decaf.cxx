@@ -170,7 +170,7 @@ static void test_ec() {
         rng.read(buffer, 2*DECAF_448_SER_BYTES);
         Point r = Point::from_hash(buffer);
         
-        point_check(test,p,q,r,0,0,p,Point((std::string)p),"round-trip");
+        point_check(test,p,q,r,0,0,p,Point((decaf::SecureBuffer)p),"round-trip");
         point_check(test,p,q,r,0,0,p+q,q+p,"commute add");
         point_check(test,p,q,r,0,0,p+(q+r),(p+q)+r,"assoc add");
         
@@ -187,7 +187,7 @@ static void test_ec() {
         );
             
 
-        point_check(test,p,q,r,x,0,Point(x.direct_scalarmul(p)),x*p,"direct mul");
+        point_check(test,p,q,r,x,0,Point(x.direct_scalarmul(decaf::SecureBuffer(p))),x*p,"direct mul");
     }
 }
 

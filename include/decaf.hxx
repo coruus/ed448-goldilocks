@@ -49,16 +49,141 @@
 
 namespace decaf {
 
+typedef uint32_t GroupId;
+
+static const GroupId Ed448Goldilocks = 448;
+
 /**
  * Securely erase contents of memory.
  */
 static inline void really_bzero(void *data, size_t size) { decaf_bzero(data,size); }
+
+/** Block object */
+class Block {
+protected:
+    unsigned char *data_;
+    size_t size_;
+
+public:
+    /** Empty init */
+    inline Block() : data_(NULL), size_(0) {}
+
+    /** Unowned init */
+    inline Block(const unsigned char *data, size_t size) NOEXCEPT : data_((unsigned char *)data), size_(size) {}
     
-/**
- * @brief Group with prime order.
- * @todo Move declarations of functions up here?
- */
-template<unsigned int bits = 448> struct decaf;
+    /** Block from std::string */
+    inline Block(const std::string &s) : data_((unsigned char *)GET_DATA(s)), size_(s.size()) {}
+
+    /** Get const data */
+    inline const unsigned char *data() const NOEXCEPT { return data_; }
+
+    /** Get the size */
+    inline size_t size() const NOEXCEPT { return size_; }
+
+    /** Autocast to const unsigned char * */
+    inline operator const unsigned char*() const NOEXCEPT { return data_; }
+
+    /** Convert to C++ string */
+    inline std::string get_string() const {
+        return std::string((const char *)data_,size_);
+    }
+
+    /** Virtual destructor for SecureBlock. TODO: probably means vtable?  Make bool? */
+    inline virtual ~Block() {};
+};
+
+class Buffer : public Block {
+public:
+    /** Null init */
+    inline Buffer() : Block() {}
+
+    /** Unowned init */
+    inline Buffer(unsigned char *data, size_t size) NOEXCEPT : Block(data,size) {}
+
+    /** Get unconst data */
+    inline unsigned char *data() NOEXCEPT { return data_; }
+
+    /** Get const data */
+    inline const unsigned char *data() const NOEXCEPT { return data_; }
+
+    /** Autocast to const unsigned char * */
+    inline operator const unsigned char*() const NOEXCEPT { return data_; }
+
+    /** Autocast to unsigned char */
+    inline operator unsigned char*() NOEXCEPT { return data_; }
+};
+
+/** A self-erasing block of data */
+class SecureBuffer : public Buffer {
+public:
+    /** Null secure block */
+    inline SecureBuffer() NOEXCEPT : Buffer() {}
+
+    /** Construct empty from size */
+    inline SecureBuffer(size_t size) {
+        data_ = new unsigned char[size_ = size];
+        memset(data_,0,size);
+    }
+
+    /** Construct from data */
+    inline SecureBuffer(const unsigned char *data, size_t size){
+        data_ = new unsigned char[size_ = size];
+        memcpy(data_, data, size);
+    }
+
+    /** Copy constructor */
+    inline SecureBuffer(const Block &copy) : Buffer() { *this = copy; }
+
+    /** Copy-assign constructor */
+    inline SecureBuffer& operator=(const Block &copy) throw(std::bad_alloc) {
+        if (&copy == this) return *this;
+        clear();
+        data_ = new unsigned char[size_ = copy.size()];
+        memcpy(data_,copy.data(),size_);
+        return *this;
+    }
+
+    /** Copy-assign constructor */
+    inline SecureBuffer& operator=(const SecureBuffer &copy) throw(std::bad_alloc) {
+        if (&copy == this) return *this;
+        clear();
+        data_ = new unsigned char[size_ = copy.size()];
+        memcpy(data_,copy.data(),size_);
+        return *this;
+    }
+
+    /** Destructor erases data */
+    ~SecureBuffer() NOEXCEPT { clear(); }
+
+    /** Clear data */
+    inline void clear() NOEXCEPT {
+        if (data_ == NULL) return;
+        really_bzero(data_,size_);
+        delete[] data_;
+        data_ = NULL;
+        size_ = 0;
+    }
+
+#if __cplusplus >= 201103L
+    /** Move constructor */
+    inline SecureBuffer(SecureBuffer &&move) { *this = move; }
+
+    /** Move non-constructor */
+    inline SecureBuffer(const Block &&move) { *this = (Block &)move; }
+
+    /** Move-assign constructor */
+    inline SecureBuffer& operator=(SecureBuffer &&move) {
+        clear();
+        data_ = move.data_; move.data_ = NULL;
+        size_ = move.size_; move.size_ = 0;
+        return *this;
+    }
+
+    /** C++11-only explicit cast */
+    inline explicit operator std::string() const { return get_string(); }
+#endif
+};
+
 
 /** @brief Passed to constructors to avoid (conservative) initialization */
 struct NOINIT {};
@@ -68,10 +193,17 @@ struct NOINIT {};
 class SpongeRng;
 /**@endcond*/
 
+
+/**
+ * @brief Group with prime order.
+ * @todo Move declarations of functions up here?
+ */
+template<GroupId group = Ed448Goldilocks> struct decaf;
+
 /**
  * @brief Ed448-Goldilocks/Decaf instantiation of group.
  */
-template<> struct decaf<448> {
+template<> struct decaf<Ed448Goldilocks> {
 
 /** @brief An exception for when crypto (ie point decode) has failed. */
 class CryptoException : public std::exception {
@@ -116,16 +248,13 @@ public:
     inline Scalar(const Scalar &x) NOEXCEPT {  *this = x; }
     
     /** @brief Construct from arbitrary-length little-endian byte sequence. */
-    inline explicit Scalar(const std::string &str) NOEXCEPT { *this = str; }
+    inline Scalar(const unsigned char *buffer, size_t n) NOEXCEPT { decode(buffer,n); }
     
     /** @brief Construct from arbitrary-length little-endian byte sequence. */
-    inline Scalar(const unsigned char *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,buffer,n); }
-    
-    /** @brief Construct from arbitrary-length little-endian byte sequence. */
-    inline Scalar(const char *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,(const unsigned char *)buffer,n); }
-    
-    /** @brief Construct from arbitrary-length little-endian byte sequence. */
-    inline Scalar(const void *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,(const unsigned char *)buffer,n); }
+    inline Scalar(const Block &buffer) NOEXCEPT { decode(buffer.data(),buffer.size()); }
+
+    /** @brief Decode from long buffer. */
+    inline void decode(const unsigned char *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,buffer,n); }
     
     /** @brief Assignment. */
     inline Scalar& operator=(const Scalar &x) NOEXCEPT {  decaf_448_scalar_copy(s,x.s); return *this; }
@@ -144,9 +273,9 @@ public:
     /** Destructor securely erases the scalar. */
     inline ~Scalar() NOEXCEPT { decaf_448_scalar_destroy(s); }
     
-    /** @brief Assign from arbitrary-length little-endian byte sequence in C++ string. */
-    inline Scalar &operator=(const std::string &str) NOEXCEPT {
-        decaf_448_scalar_decode_long(s,GET_DATA(str),str.size()); return *this;
+    /** @brief Assign from arbitrary-length little-endian byte sequence in a Block. */
+    inline Scalar &operator=(const Block &bl) NOEXCEPT {
+        decaf_448_scalar_decode_long(s,bl.data(),bl.size()); return *this;
     }
     
     /**
@@ -161,17 +290,15 @@ public:
     
     /** @brief Decode from correct-length little-endian byte sequence in C++ string. */
     static inline decaf_bool_t __attribute__((warn_unused_result)) decode (
-        Scalar &sc, const std::string buffer
+        Scalar &sc, const Block &buffer
     ) NOEXCEPT {
         if (buffer.size() != SER_BYTES) return DECAF_FAILURE;
-        return decaf_448_scalar_decode(sc.s,GET_DATA(buffer));
+        return decaf_448_scalar_decode(sc.s,buffer);
     }
     
     /** @brief Encode to fixed-length string */
-    inline EXPLICIT_CON operator std::string() const NOEXCEPT {
-        unsigned char buffer[SER_BYTES];
-        decaf_448_scalar_encode(buffer, s);
-        return std::string((char*)buffer,sizeof(buffer));
+    inline EXPLICIT_CON operator SecureBuffer() const NOEXCEPT {
+        SecureBuffer buf(SER_BYTES); decaf_448_scalar_encode(buf,s); return buf;
     }
     
     /** @brief Encode to fixed-length buffer */
@@ -204,13 +331,13 @@ public:
     inline Scalar inverse() const NOEXCEPT { Scalar r; decaf_448_scalar_invert(r.s,s); return r; }
     
     /** @brief Divide by inverting q. If q == 0, return 0.  */
-    inline Scalar operator/ (const Scalar &q) const NOEXCEPT { Scalar r((NOINIT())); decaf_448_scalar_mul(r.s,s,q.inverse().s); return r; }
+    inline Scalar operator/ (const Scalar &q) const NOEXCEPT { return *this * q.inverse(); }
     
     /** @brief Divide by inverting q. If q == 0, return 0.  */
-    inline Scalar &operator/=(const Scalar &q)       NOEXCEPT { decaf_448_scalar_mul(s,s,q.inverse().s); return *this; }
+    inline Scalar &operator/=(const Scalar &q)       NOEXCEPT { return *this *= q.inverse(); }
     
     /** @brief Compare in constant time */
-    inline bool   operator!=(const Scalar &q) const NOEXCEPT { return ! decaf_448_scalar_eq(s,q.s); }
+    inline bool   operator!=(const Scalar &q) const NOEXCEPT { return !(*this == q); }
     
     /** @brief Compare in constant time */
     inline bool   operator==(const Scalar &q) const NOEXCEPT { return !!decaf_448_scalar_eq(s,q.s); }
@@ -221,33 +348,17 @@ public:
     /** @brief Scalarmul-precomputed with scalar on left. */
     inline Point operator* (const Precomputed &q) const NOEXCEPT { return q * (*this); }
     
-    /** @brief Direct scalar multiplication.
-     * @todo Fix up bools.
-     */
-    inline decaf_bool_t direct_scalarmul(
-        unsigned char out[SER_BYTES],
-        const unsigned char in[SER_BYTES],
+    /** @brief Direct scalar multiplication. */
+    inline SecureBuffer direct_scalarmul(
+        const Block &in,
         decaf_bool_t allow_identity=DECAF_FALSE,
         decaf_bool_t short_circuit=DECAF_TRUE    
-    ) const NOEXCEPT {
-        return decaf_448_direct_scalarmul(out, in, s, allow_identity, short_circuit);
+    ) const throw(CryptoException) {
+        SecureBuffer out(/*FIXME Point::*/SER_BYTES);
+        if (!decaf_448_direct_scalarmul(out, in.data(), s, allow_identity, short_circuit))
+            throw CryptoException();
+        return out;
     }
-    
-   /** @brief Direct scalar multiplication.
-    * @todo Fix up bools.
-    */
-   inline std::string direct_scalarmul(
-       const std::string in,
-       decaf_bool_t allow_identity=DECAF_FALSE,
-       decaf_bool_t short_circuit=DECAF_TRUE    
-   ) const NOEXCEPT {
-       unsigned char out[SER_BYTES];
-       if (decaf_448_direct_scalarmul(out, GET_DATA(in), s, allow_identity, short_circuit)) {
-           return std::string((char *)out,sizeof(out));
-       } else {
-           return "";
-       }
-   }
 };
 
 /**
@@ -289,7 +400,7 @@ public:
      * @throw CryptoException the string was the wrong length, or wasn't the encoding of a point,
      * or was the identity and allow_identity was DECAF_FALSE.
      */
-    inline explicit Point(const std::string &s, decaf_bool_t allow_identity=DECAF_TRUE) throw(CryptoException) {
+    inline explicit Point(const Block &s, decaf_bool_t allow_identity=DECAF_TRUE) throw(CryptoException) {
         if (!decode(*this,s,allow_identity)) throw CryptoException();
     }
    
@@ -326,15 +437,16 @@ public:
      * or was the identity and allow_identity was DECAF_FALSE.  Contents of the buffer are undefined.
      */    
     static inline decaf_bool_t __attribute__((warn_unused_result)) decode (
-        Point &p, const std::string &buffer, decaf_bool_t allow_identity=DECAF_TRUE
+        Point &p, const Block &buffer, decaf_bool_t allow_identity=DECAF_TRUE
     ) NOEXCEPT {
         if (buffer.size() != SER_BYTES) return DECAF_FAILURE;
-        return decaf_448_point_decode(p.p,GET_DATA(buffer),allow_identity);
+        return decaf_448_point_decode(p.p,buffer.data(),allow_identity);
     }
 
     /**
      * @brief Map to the curve from a C buffer.
      * The all-zero buffer maps to the identity, as does the buffer {1,0...}
+     * @todo remove?
      */
     static inline Point from_hash_nonuniform ( const unsigned char buffer[SER_BYTES] ) NOEXCEPT {
         Point p((NOINIT())); decaf_448_point_from_hash_nonuniform(p.p,buffer); return p;
@@ -345,10 +457,16 @@ public:
      * The empty or all-zero string maps to the identity, as does the string "\x01".
      * If the buffer is shorter than (TODO) SER_BYTES, it will be zero-padded on the right.
      */
-    static inline Point from_hash_nonuniform ( const std::string &s ) NOEXCEPT {
-        std::string t = s;
-        if (t.size() < SER_BYTES) t.insert(t.size(),SER_BYTES-t.size(),0);
-        Point p((NOINIT())); decaf_448_point_from_hash_nonuniform(p.p,GET_DATA(t)); return p;
+    static inline Point from_hash_nonuniform ( const Block &s ) NOEXCEPT {
+        Point p((NOINIT()));
+        if (s.size() < SER_BYTES) {
+            SecureBuffer b(SER_BYTES);
+            memcpy(b.data(), s.data(), s.size());
+            decaf_448_point_from_hash_nonuniform(p.p,b);
+        } else {
+            decaf_448_point_from_hash_nonuniform(p.p,s);
+        }
+        return p;
     }
     
    
@@ -366,20 +484,29 @@ public:
      * If the buffer is shorter than (TODO) 2*SER_BYTES, well, it won't be as uniform,
      * but the buffer will be zero-padded on the right.
      */
-    static inline Point from_hash ( const std::string &s ) NOEXCEPT {
-        std::string t = s;
-        if (t.size() <= SER_BYTES) return from_hash_nonuniform(s);
-        if (t.size() < 2*SER_BYTES) t.insert(t.size(),2*SER_BYTES-t.size(),0);
-        Point p((NOINIT())); decaf_448_point_from_hash_uniform(p.p,GET_DATA(t)); return p;
+    static inline Point from_hash ( const Block &s ) NOEXCEPT {
+        if (s.size() <= SER_BYTES) {
+            return from_hash_nonuniform(s);
+        }
+        
+        Point p((NOINIT()));
+        if (s.size() < 2*SER_BYTES) {
+            SecureBuffer b(SER_BYTES);
+            memcpy(b.data(), s.data(), s.size());
+            decaf_448_point_from_hash_nonuniform(p.p,b);
+        } else {
+            decaf_448_point_from_hash_nonuniform(p.p,s);
+        }
+        return p;
     }
     
     /**
      * @brief Encode to string.  The identity encodes to the all-zero string.
      */
-    inline EXPLICIT_CON operator std::string() const NOEXCEPT {
-        unsigned char buffer[SER_BYTES];
+    inline EXPLICIT_CON operator SecureBuffer() const NOEXCEPT {
+        SecureBuffer buffer(SER_BYTES);
         decaf_448_point_encode(buffer, p);
-        return std::string((char*)buffer,sizeof(buffer));
+        return buffer;
     }
    
    /**
