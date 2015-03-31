@@ -9,8 +9,6 @@
  * @warning EXPERIMENTAL!  The names, parameter orders etc are likely to change.
  */
 
-/** TODO: Crypto++ style secure auto-erasing strings?? */
-
 #ifndef __SHAKE_HXX__
 #define __SHAKE_HXX__
 
@@ -140,29 +138,15 @@ public:
         const char *what() const NOEXCEPT { return what_; }
         RngException(int err_code, const char *what_) NOEXCEPT : what_(what_), err_code(err_code) {}
     };
-    struct FROM_BUFFER {};
-    struct FROM_FILE {};
-    
-    /** Initialize, deterministically by default, from C buffer */
-    inline SpongeRng( const FROM_BUFFER &, const uint8_t *in, size_t len, bool deterministic = true ) NOEXCEPT
-    : KeccakSponge((NOINIT())) {
-        spongerng_init_from_buffer(sp,in,len,deterministic);
-    }
-    
-    /** Initialize, deterministically by default, from C++ string */
-    inline SpongeRng( const FROM_BUFFER &, const std::string &in, bool deterministic = true )
-    : KeccakSponge((NOINIT())) {
-        spongerng_init_from_buffer(sp,GET_DATA(in),in.size(),deterministic);
-    }
     
     /** Initialize, deterministically by default, from block */
-    inline SpongeRng( const FROM_BUFFER &, const Block &in, bool deterministic = true )
+    inline SpongeRng( const Block &in, bool deterministic = true )
     : KeccakSponge((NOINIT())) {
         spongerng_init_from_buffer(sp,in.data(),in.size(),deterministic);
     }
     
     /** Initialize, non-deterministically by default, from C/C++ filename */
-    inline SpongeRng( const FROM_FILE &, const std::string &in = "/dev/urandom", size_t len = 32, bool deterministic = false )
+    inline SpongeRng( const std::string &in = "/dev/urandom", size_t len = 32, bool deterministic = false )
         throw(RngException)
     : KeccakSponge((NOINIT())) {
         int ret = spongerng_init_from_file(sp,in.c_str(),len,deterministic);
@@ -171,20 +155,18 @@ public:
         }
     }
     
-    /** Read data to a C buffer.
-     * @warning TODO Future versions of this function may throw RngException if a
-     * nondeterministic RNG fails a reseed.
-     */
-    inline void read(uint8_t *buffer, size_t length) {
-        spongerng_next(sp,buffer,length);
-    }
+    /** Read data to a buffer. */
+    inline void read(Buffer &buffer) { spongerng_next(sp,buffer.data(),buffer.size()); }
+    
+    /** Read data to a buffer. */
+    inline void read(TmpBuffer buffer) { read((Buffer &)buffer); }
     
     /** Read data to a C++ string 
      * @warning TODO Future versions of this function may throw RngException if a
      * nondeterministic RNG fails a reseed.
      */
     inline SecureBuffer read(size_t length) throw(std::bad_alloc) {
-        SecureBuffer out(length); spongerng_next(sp,out,length); return out;
+        SecureBuffer out(length); read(out); return out;
     }
     
 private:
@@ -195,21 +177,17 @@ private:
 /**@cond internal*/
 /* FIXME: multiple sizes */
 decaf<448>::Scalar::Scalar(SpongeRng &rng) {
-    uint8_t buffer[SER_BYTES];
-    rng.read(buffer, sizeof(buffer));
-    decaf_448_scalar_decode_long(s,buffer,sizeof(buffer));
-    really_bzero(buffer, sizeof(buffer));
+    *this = rng.read(SER_BYTES);
 }
 
 decaf<448>::Point::Point(SpongeRng &rng, bool uniform) {
-    uint8_t buffer[2*HASH_BYTES];
-    rng.read(buffer, (uniform ? 2 : 1) * HASH_BYTES);
+    SecureBuffer buffer((uniform ? 2 : 1) * HASH_BYTES);
+    rng.read(buffer);
     if (uniform) {
         decaf_448_point_from_hash_uniform(p,buffer);
     } else {
         decaf_448_point_from_hash_nonuniform(p,buffer);
     }
-    really_bzero(buffer, sizeof(buffer));
 }
 /**@endcond*/
   

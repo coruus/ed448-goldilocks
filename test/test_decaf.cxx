@@ -115,7 +115,7 @@ static bool point_check(
 }
 
 static void test_arithmetic() {
-    decaf::SpongeRng rng(decaf::SpongeRng::FROM_BUFFER(), "test_arithmetic");
+    decaf::SpongeRng rng(decaf::Block("test_arithmetic"));
     
     Test test("Arithmetic");
     Scalar x(0),y(0),z(0);
@@ -151,14 +151,13 @@ static void test_arithmetic() {
 
 
 static void test_ec() {
-    decaf::SpongeRng rng(decaf::SpongeRng::FROM_BUFFER(), "test_ec");
-    unsigned char buffer[2*DECAF_448_SER_BYTES];
+    decaf::SpongeRng rng(decaf::Block("test_ec"));
     
     Test test("EC");
 
     Point id = Point::identity(), base = Point::base();
-    point_check(test,id,id,id,0,0,Point::from_hash(std::string("")),id,"fh0");
-    point_check(test,id,id,id,0,0,Point::from_hash(std::string("\x01")),id,"fh1");
+    point_check(test,id,id,id,0,0,Point::from_hash(""),id,"fh0");
+    point_check(test,id,id,id,0,0,Point::from_hash("\x01"),id,"fh1");
     
     for (int i=0; i<NTESTS && test.passing_now; i++) {
         /* TODO: pathological cases */
@@ -167,7 +166,8 @@ static void test_ec() {
         Point p(rng);
         Point q(rng);
         
-        rng.read(buffer, 2*DECAF_448_SER_BYTES);
+        decaf::SecureBuffer buffer(2*Point::HASH_BYTES);
+        rng.read(buffer);
         Point r = Point::from_hash(buffer);
         
         point_check(test,p,q,r,0,0,p,Point((decaf::SecureBuffer)p),"round-trip");
@@ -181,8 +181,8 @@ static void test_ec() {
         point_check(test,base,q,r,x,y,x*base+y*q,q.non_secret_combo_with_base(y,x),"ds vt mul");
         point_check(test,p,q,r,x,0,Precomputed(p)*x,p*x,"precomp mul");
         point_check(test,p,q,r,0,0,r,
-            Point::from_hash_nonuniform(buffer)
-            +Point::from_hash_nonuniform(&buffer[DECAF_448_SCALAR_BYTES]),
+            Point::from_hash(buffer.slice(0,Point::HASH_BYTES))
+            + Point::from_hash(buffer.slice(Point::HASH_BYTES,Point::HASH_BYTES)),
             "unih = hash+add"
         );
             

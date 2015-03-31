@@ -53,6 +53,20 @@ typedef uint32_t GroupId;
 
 static const GroupId Ed448Goldilocks = 448;
 
+/** @brief An exception for when crypto (ie point decode) has failed. */
+class CryptoException : public std::exception {
+public:
+    /** @return "CryptoException" */
+    virtual const char * what() const NOEXCEPT { return "CryptoException"; }
+};
+
+/** @brief An exception for when crypto (ie point decode) has failed. */
+class LengthException : public std::exception {
+public:
+    /** @return "CryptoException" */
+    virtual const char * what() const NOEXCEPT { return "LengthException"; }
+};
+
 /**
  * Securely erase contents of memory.
  */
@@ -66,7 +80,10 @@ protected:
 
 public:
     /** Empty init */
-    inline Block() : data_(NULL), size_(0) {}
+    inline Block() NOEXCEPT : data_(NULL), size_(0) {}
+    
+    /** Init from C string */
+    inline Block(const char *data) NOEXCEPT : data_((unsigned char *)data), size_(strlen(data)) {}
 
     /** Unowned init */
     inline Block(const unsigned char *data, size_t size) NOEXCEPT : data_((unsigned char *)data), size_(size) {}
@@ -88,14 +105,23 @@ public:
         return std::string((const char *)data_,size_);
     }
 
+    /** Slice the buffer*/
+    inline Block slice(size_t off, size_t length) const throw(LengthException) {
+        if (off > size() || length > size() - off)
+            throw LengthException();
+        return Block(data()+off, length);
+    }
+
     /** Virtual destructor for SecureBlock. TODO: probably means vtable?  Make bool? */
     inline virtual ~Block() {};
 };
 
+class TmpBuffer;
+
 class Buffer : public Block {
 public:
     /** Null init */
-    inline Buffer() : Block() {}
+    inline Buffer() NOEXCEPT : Block() {}
 
     /** Unowned init */
     inline Buffer(unsigned char *data, size_t size) NOEXCEPT : Block(data,size) {}
@@ -111,7 +137,21 @@ public:
 
     /** Autocast to unsigned char */
     inline operator unsigned char*() NOEXCEPT { return data_; }
+
+    /** Slice the buffer*/
+    inline TmpBuffer slice(size_t off, size_t length) throw(LengthException);
 };
+
+class TmpBuffer : public Buffer {
+public:
+    /** Unowned init */
+    inline TmpBuffer(unsigned char *data, size_t size) NOEXCEPT : Buffer(data,size) {}
+};
+
+TmpBuffer Buffer::slice(size_t off, size_t length) throw(LengthException) {
+    if (off > size() || length > size() - off) throw LengthException();
+    return TmpBuffer(data()+off, length);
+}
 
 /** A self-erasing block of data */
 class SecureBuffer : public Buffer {
@@ -169,7 +209,7 @@ public:
     inline SecureBuffer(SecureBuffer &&move) { *this = move; }
 
     /** Move non-constructor */
-    inline SecureBuffer(const Block &&move) { *this = (Block &)move; }
+    inline SecureBuffer(Block &&move) { *this = (Block &)move; }
 
     /** Move-assign constructor */
     inline SecureBuffer& operator=(SecureBuffer &&move) {
@@ -204,13 +244,6 @@ template<GroupId group = Ed448Goldilocks> struct decaf;
  * @brief Ed448-Goldilocks/Decaf instantiation of group.
  */
 template<> struct decaf<Ed448Goldilocks> {
-
-/** @brief An exception for when crypto (ie point decode) has failed. */
-class CryptoException : public std::exception {
-public:
-    /** @return "CryptoException" */
-    virtual const char * what() const NOEXCEPT { return "CryptoException"; }
-};
 
 /** @cond internal */
 class Point;
@@ -442,62 +475,37 @@ public:
         if (buffer.size() != SER_BYTES) return DECAF_FAILURE;
         return decaf_448_point_decode(p.p,buffer.data(),allow_identity);
     }
-
-    /**
-     * @brief Map to the curve from a C buffer.
-     * The all-zero buffer maps to the identity, as does the buffer {1,0...}
-     * @todo remove?
-     */
-    static inline Point from_hash_nonuniform ( const unsigned char buffer[SER_BYTES] ) NOEXCEPT {
-        Point p((NOINIT())); decaf_448_point_from_hash_nonuniform(p.p,buffer); return p;
-    }
-    
-    /**
-     * @brief Map to the curve from a C++ string buffer.
-     * The empty or all-zero string maps to the identity, as does the string "\x01".
-     * If the buffer is shorter than (TODO) SER_BYTES, it will be zero-padded on the right.
-     */
-    static inline Point from_hash_nonuniform ( const Block &s ) NOEXCEPT {
-        Point p((NOINIT()));
-        if (s.size() < SER_BYTES) {
-            SecureBuffer b(SER_BYTES);
-            memcpy(b.data(), s.data(), s.size());
-            decaf_448_point_from_hash_nonuniform(p.p,b);
-        } else {
-            decaf_448_point_from_hash_nonuniform(p.p,s);
-        }
-        return p;
-    }
-    
    
     /**
-     * @brief Map uniformly to the curve from a C buffer.
-     * The all-zero buffer maps to the identity, as does the buffer {1,0...}.
-     */
-    static inline Point from_hash ( const unsigned char buffer[2*SER_BYTES] ) NOEXCEPT {
-        Point p((NOINIT())); decaf_448_point_from_hash_uniform(p.p,buffer); return p;
-    }
-   
-    /**
-     * @brief Map uniformly to the curve from a C++ buffer.
+     * @brief Map uniformly to the curve from a hash buffer.
      * The empty or all-zero string maps to the identity, as does the string "\x01".
-     * If the buffer is shorter than (TODO) 2*SER_BYTES, well, it won't be as uniform,
+     * If the buffer is shorter than 2*HASH_BYTES, well, it won't be as uniform,
      * but the buffer will be zero-padded on the right.
      */
     static inline Point from_hash ( const Block &s ) NOEXCEPT {
-        if (s.size() <= SER_BYTES) {
-            return from_hash_nonuniform(s);
-        }
-        
-        Point p((NOINIT()));
-        if (s.size() < 2*SER_BYTES) {
-            SecureBuffer b(SER_BYTES);
+        Point p((NOINIT())); p.set_to_hash(s); return p;
+    }
+
+   /**
+    * @brief Map to the curve from a hash buffer.
+    * The empty or all-zero string maps to the identity, as does the string "\x01".
+    * If the buffer is shorter than 2*HASH_BYTES, well, it won't be as uniform,
+    * but the buffer will be zero-padded on the right.
+    */
+    inline void set_to_hash( const Block &s ) NOEXCEPT {
+        if (s.size() < HASH_BYTES) {
+            SecureBuffer b(HASH_BYTES);
             memcpy(b.data(), s.data(), s.size());
-            decaf_448_point_from_hash_nonuniform(p.p,b);
+            decaf_448_point_from_hash_nonuniform(p,b);
+        } else if (s.size() == HASH_BYTES) {
+            decaf_448_point_from_hash_nonuniform(p,s);
+        } else if (s.size() < 2*HASH_BYTES) {
+            SecureBuffer b(2*HASH_BYTES);
+            memcpy(b.data(), s.data(), s.size());
+            decaf_448_point_from_hash_uniform(p,b);
         } else {
-            decaf_448_point_from_hash_nonuniform(p.p,s);
+            decaf_448_point_from_hash_uniform(p,s);
         }
-        return p;
     }
     
     /**
