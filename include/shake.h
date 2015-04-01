@@ -15,6 +15,8 @@
 #include <stdint.h>
 #include <sys/types.h>
 
+#include "decaf.h" /* TODO: orly? */
+
 /* TODO: unify with other headers (maybe all into one??); add nonnull attributes */
 /** @cond internal */
 #define API_VIS __attribute__((visibility("default")))
@@ -30,7 +32,13 @@
         /** @endcond */
     } keccak_sponge_t[1];
     struct kparams_s;
+    typedef struct { uint64_t opaque; } strobe_params_t[1];
 #endif
+
+typedef struct strobe_s {
+    keccak_sponge_t sponge;
+    strobe_params_t params;
+} strobe_s, strobe_t[1];
 
 #ifdef __cplusplus
 extern "C" {
@@ -242,6 +250,84 @@ void spongerng_stir (
     const uint8_t * __restrict__ in,
     size_t len
 ) API_VIS;
+
+/**
+ * @brief Initialize Strobe protocol context.
+ * @param [out] The initialized strobe object.
+ * @param [in] Strobe parameter descriptor
+ * @param [in] am_client Nonzero if this party
+ * is the client.
+ */
+void strobe_init(
+    strobe_t strobe,
+    const struct kparams_s *params,
+    uint8_t am_client
+);
+    
+/**
+ * @brief Produce an authenticator.
+ * @param [inout] strobe The Strobe protocol context
+ * @param [out] out The authenticator
+ * @param len The length, which must be no more than
+ * @todo 32?
+ */
+void strobe_produce_auth (
+   strobe_t strobe,
+   unsigned char *out,
+   size_t len
+);
+
+/**
+ * @brief Produce a session-bound pseudorandom value.
+ *
+ * @warning This "prng" value is NOT suitable for
+ * refreshing forward secrecy!  It's to replace things
+ * like TCP session hash.
+ *
+ * @todo Figure out how to treat this wrt anti-rollback.
+ *
+ * @param [inout] strobe The Strobe protocol context
+ * @param [out] out The authenticator
+ * @param len The length.
+ */   
+void strobe_prng (
+   strobe_t strobe,
+   unsigned char *out,
+   size_t len
+);
+
+/**
+ * @brief Verify an authenticator.
+ * @param [inout] strobe The Strobe protocol context
+ * @param [in] in The authenticator
+ * @param len The length, which must be no more than
+ * @todo 32?
+ */
+decaf_bool_t strobe_verify_auth (
+    strobe_t strobe,
+    const unsigned char *in,
+    size_t len
+);
+
+/**
+ * @brief Respecify Strobe protocol object's crypto.
+ * @param [inout] The initialized strobe context.
+ * @param [in] Strobe parameter descriptor
+ * @param [in] am_client Nonzero if this party
+ * is the client.
+ */
+void strobe_respec (
+    strobe_t strobe,
+    const struct kparams_s *params
+);
+
+/**
+ * @brief Destroy a Strobe context.
+ * @param [out] strobe The object to destroy.
+ */
+void strobe_destroy (
+    strobe_t strobe
+);
 
 #ifdef __cplusplus
 } /* extern "C" */

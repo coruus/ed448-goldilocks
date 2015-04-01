@@ -17,12 +17,10 @@
 
 #if WBITS == 64
 #define LBITS 56
-typedef __uint128_t decaf_dword_t;
 typedef __int128_t decaf_sdword_t;
 #define LIMB(x) (x##ull)
 #define SC_LIMB(x) (x##ull)
 #elif WBITS == 32
-typedef uint64_t decaf_dword_t;
 typedef int64_t decaf_sdword_t;
 #define LBITS 28
 #define LIMB(x) (x##ull)&((1ull<<LBITS)-1), (x##ull)>>LBITS

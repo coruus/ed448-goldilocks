@@ -47,9 +47,11 @@
 	 && !defined(DECAF_FORCE_32_BIT)
 #define DECAF_WORD_BITS 64
 typedef uint64_t decaf_word_t, decaf_bool_t;
+typedef __uint128_t decaf_dword_t;
 #else
 #define DECAF_WORD_BITS 32
 typedef uint32_t decaf_word_t, decaf_bool_t;
+typedef uint64_t decaf_dword_t;
 #endif
 
 #define DECAF_448_LIMBS (512/DECAF_WORD_BITS)

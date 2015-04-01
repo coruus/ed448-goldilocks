@@ -10,6 +10,7 @@
  */
 
 #include "decaf.hxx"
+#include "shake.hxx"
 #include "shake.h"
 #include "decaf_crypto.h"
 #include <stdio.h>
@@ -134,9 +135,16 @@ int main(int argc, char **argv) {
         decaf::SecureBuffer ep, ep2(Point::SER_BYTES*2);
         
         printf("Micro-benchmarks:\n");
+        decaf::SHAKE<128> shake1;
+        decaf::SHAKE<256> shake2;
+        decaf::SHA3<512> sha5;
+        unsigned char b1024[1024] = {1};
+        for (Benchmark b("SHAKE128 1kiB", 30); b.iter(); ) { shake1 += decaf::TmpBuffer(b1024,1024); }
+        for (Benchmark b("SHAKE256 1kiB", 30); b.iter(); ) { shake2 += decaf::TmpBuffer(b1024,1024); }
+        for (Benchmark b("SHA3-512 1kiB", 30); b.iter(); ) { sha5 += decaf::TmpBuffer(b1024,1024); }
         for (Benchmark b("Scalar add", 1000); b.iter(); ) { s+=t; }
         for (Benchmark b("Scalar times", 100); b.iter(); ) { s*=t; }
-        for (Benchmark b("Scalar inv", 10); b.iter(); ) { s.inverse(); }
+        for (Benchmark b("Scalar inv", 1); b.iter(); ) { s.inverse(); }
         for (Benchmark b("Point add", 100); b.iter(); ) { p += q; }
         for (Benchmark b("Point double", 100); b.iter(); ) { p.double_in_place(); }
         for (Benchmark b("Point scalarmul"); b.iter(); ) { p * s; }

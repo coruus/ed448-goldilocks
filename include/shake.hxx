@@ -75,15 +75,19 @@ public:
      * @brief Output bytes from the sponge.
      * @todo make this throw exceptions.
      */
-    inline void output(unsigned char *c, size_t len) {
-        sha3_output(sp,c,len);
-    }
+    inline void output(TmpBuffer b) { sha3_output(sp,b.data(),b.size()); }
+    
+    /**
+     * @brief Output bytes from the sponge.
+     * @todo make this throw exceptions.
+     */
+    inline void output(Buffer &b) { sha3_output(sp,b.data(),b.size()); }
     
     /** @brief Output bytes from the sponge. */
     inline SecureBuffer output(size_t len) {
-	SecureBuffer buffer(len);
+        SecureBuffer buffer(len);
         sha3_output(sp,buffer,len);
-	return buffer;
+        return buffer;
     }
     
     /** @brief Return the sponge's default output size. */
@@ -98,7 +102,7 @@ public:
 };
 
 /** Fixed-output-length SHA3 */
-template<int bits> class SHA3 : public KeccakSponge {
+template<int bits> class SHA3 : public KeccakHash {
 private:
     /** Get the parameter template block for this hash */
     const struct kparams_s *get_params();
@@ -109,7 +113,7 @@ public:
 
 /** Variable-output-length SHAKE */
 template<int bits>
-class SHAKE : public KeccakSponge {
+class SHAKE : public KeccakHash {
 private:
     /** Get the parameter template block for this hash */
     const struct kparams_s *get_params();

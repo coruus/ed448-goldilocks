@@ -281,13 +281,7 @@ public:
     inline Scalar(const Scalar &x) NOEXCEPT {  *this = x; }
     
     /** @brief Construct from arbitrary-length little-endian byte sequence. */
-    inline Scalar(const unsigned char *buffer, size_t n) NOEXCEPT { decode(buffer,n); }
-    
-    /** @brief Construct from arbitrary-length little-endian byte sequence. */
-    inline Scalar(const Block &buffer) NOEXCEPT { decode(buffer.data(),buffer.size()); }
-
-    /** @brief Decode from long buffer. */
-    inline void decode(const unsigned char *buffer, size_t n) NOEXCEPT { decaf_448_scalar_decode_long(s,buffer,n); }
+    inline Scalar(const Block &buffer) NOEXCEPT { *this = buffer; }
     
     /** @brief Assignment. */
     inline Scalar& operator=(const Scalar &x) NOEXCEPT {  decaf_448_scalar_copy(s,x.s); return *this; }
