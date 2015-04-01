@@ -130,6 +130,13 @@ template<> const struct kparams_s *SHA3<256>::get_params() { return &SHA3_256_pa
 template<> const struct kparams_s *SHA3<384>::get_params() { return &SHA3_384_params_s; }
 template<> const struct kparams_s *SHA3<512>::get_params() { return &SHA3_512_params_s; }
 /** @endcond */
+
+/** @brief An exception for misused protocol, eg encrypt with no key. */
+class ProtocolException : public std::exception {
+public:
+    /** @return "ProtocolException" */
+    virtual const char * what() const NOEXCEPT { return "ProtocolException"; }
+};
     
 /** Sponge-based random-number generator */
 class SpongeRng : private KeccakSponge {
@@ -194,6 +201,157 @@ decaf<448>::Point::Point(SpongeRng &rng, bool uniform) {
     }
 }
 /**@endcond*/
+
+class Strobe : private KeccakSponge {
+public:
+    /* TODO: pull out parameters */
+    
+    /** Am I a server or a client? */
+    enum client_or_server { SERVER, CLIENT };
+    
+    inline Strobe (
+        client_or_server whoami,
+        const kparams_s &params = STROBE_256
+    ) NOEXCEPT : KeccakSponge(NOINIT()) {
+        strobe_init(sp, &params, whoami == CLIENT);
+    }
+
+    inline void key (
+        const Block &data, bool more = false
+    ) throw(ProtocolException) {
+        if (!strobe_key(sp, data, data.size(), more)) throw ProtocolException();
+    }
+
+    inline void nonce(const Block &data, bool more = false
+    ) throw(ProtocolException) {
+        if (!strobe_nonce(sp, data, data.size(), more)) throw ProtocolException();
+    }
+
+    inline void plaintext(const Block &data, bool iSent, bool more = false
+    ) throw(ProtocolException) {
+        if (!strobe_plaintext(sp, data, data.size(), iSent, more))
+            throw(ProtocolException());
+    }
+
+    inline void ad(const Block &data, bool more = false
+    ) throw(ProtocolException) {
+        if (!strobe_ad(sp, data, data.size(), more))
+            throw(ProtocolException());
+    }
+    
+    inline void encrypt_no_auth(
+        Buffer &out, const Block &data, bool more = false
+    ) throw(LengthException,ProtocolException) {
+        if (out.size() != data.size()) throw LengthException();
+        if (!strobe_encrypt(sp, out, data, data.size(), more)) throw(ProtocolException());
+    }
+    
+    inline void encrypt_no_auth(
+        TmpBuffer out, const Block &data, bool more = false
+    ) throw(LengthException,ProtocolException) {
+        encrypt_no_auth((Buffer &)out, data, more);
+    }
+    
+    inline SecureBuffer encrypt_no_auth(const Block &data, bool more = false
+    ) throw(ProtocolException) {
+        SecureBuffer out(data.size()); encrypt_no_auth(out, data, more); return out;
+    }
+    
+    inline void decrypt_no_auth(
+        Buffer &out, const Block &data, bool more = false
+    ) throw(LengthException,ProtocolException) {
+        if (out.size() != data.size()) throw LengthException();
+        if (!strobe_decrypt(sp, out, data, data.size(), more)) throw ProtocolException();
+    }
+    
+    inline void decrypt_no_auth(
+        TmpBuffer out, const Block &data, bool more = false
+    ) throw(LengthException,ProtocolException) {
+        decrypt_no_auth((Buffer &)out, data, more);
+    }
+    
+    inline SecureBuffer decrypt_no_auth(const Block &data, bool more = false
+    ) throw(ProtocolException) {
+        SecureBuffer out(data.size()); decrypt_no_auth(out, data, more); return out;
+    }
+    
+    inline void produce_auth(Buffer &out) throw(LengthException,ProtocolException) {
+        if (out.size() > STROBE_MAX_AUTH_BYTES) throw LengthException();
+        if (!strobe_produce_auth(sp, out, out.size())) throw ProtocolException();
+    }
+    
+    inline void produce_auth(TmpBuffer out) throw(LengthException,ProtocolException) {
+        produce_auth((Buffer &)out);
+    }
+    
+    inline SecureBuffer produce_auth(
+        uint8_t bytes = 8
+    ) throw(ProtocolException) {
+        SecureBuffer out(bytes); produce_auth(out); return out;
+    }
+    
+    inline void encrypt(
+        Buffer &out, const Block &data, uint8_t auth = 8
+    ) throw(LengthException,ProtocolException) {
+        if (out.size() < data.size() || out.size() != data.size() + auth) throw LengthException();
+        encrypt(out.slice(0,data.size()), data);
+        produce_auth(out.slice(data.size(),auth));
+    }
+    
+    inline void encrypt (
+        TmpBuffer out, const Block &data, uint8_t auth = 8
+    ) throw(LengthException,ProtocolException) {
+        encrypt((Buffer &)out, data, auth);
+    }
+    
+    inline SecureBuffer encrypt (
+        const Block &data, uint8_t auth = 8
+    ) throw(LengthException,ProtocolException,std::bad_alloc ){
+        SecureBuffer out(data.size() + auth); encrypt(out, data, auth); return out;
+    }
+    
+    inline void decrypt (
+        Buffer &out, const Block &data, uint8_t bytes = 8
+    ) throw(LengthException, CryptoException, ProtocolException) {
+        if (out.size() > data.size() || out.size() != data.size() - bytes) throw LengthException();
+        decrypt(out, data.slice(0,out.size()));
+        verify_auth(data.slice(out.size(),bytes));
+    }
+    
+    inline void decrypt (
+        TmpBuffer out, const Block &data, uint8_t bytes = 8
+    ) throw(LengthException,CryptoException,ProtocolException) {
+        decrypt((Buffer &)out, data, bytes);
+    }
+    
+    inline SecureBuffer decrypt (
+        const Block &data, uint8_t bytes = 8
+    ) throw(LengthException,CryptoException,ProtocolException,std::bad_alloc) {
+        if (data.size() < bytes) throw LengthException();
+        SecureBuffer out(data.size() - bytes); decrypt(out, data, bytes); return out;
+    }
+    
+    inline void verify_auth(const Block &auth) throw(LengthException,CryptoException) {
+        if (auth.size() == 0 || auth.size() > STROBE_MAX_AUTH_BYTES) throw LengthException();
+        if (!strobe_verify_auth(sp, auth, auth.size())) throw CryptoException();
+    }
+    
+    inline void prng(Buffer &out, bool more = false) NOEXCEPT {
+        (void)strobe_prng(sp, out, out.size(), more);
+    }
+    
+    inline void prng(TmpBuffer out, bool more = false) NOEXCEPT {
+        prng((Buffer &)out, more);
+    }
+    
+    inline SecureBuffer prng(size_t bytes, bool more = false) {
+        SecureBuffer out(bytes); prng(out, more); return out;
+    }
+    
+    inline void respec(const kparams_s &params) throw(ProtocolException) {
+        if (!strobe_respec(sp, &params)) throw(ProtocolException());
+    }
+};
   
 } /* namespace decaf */
 

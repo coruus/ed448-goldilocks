@@ -58,12 +58,8 @@ typedef union {
 } kdomain_t[1];
 
 typedef struct kparams_s {
-    uint8_t position, flags, rate, startRound, pad, ratePad, maxOut, _;
+    uint8_t position, flags, rate, startRound, pad, ratePad, maxOut, client;
 } kparams_t[1];
-
-typedef struct strobe_params_s {
-    uint8_t client, _[7];
-} strobe_params_t[1];
 
 typedef struct keccak_sponge_s {
     kdomain_t state;
@@ -451,14 +447,18 @@ int spongerng_init_from_dev_urandom (
     return spongerng_init_from_file(sponge, "/dev/urandom", 64, 0);
 }
 
+const struct kparams_s STROBE_256 = { 0, 0, 200-256/4, 0, 0, 0, 0, 0 };
+const struct kparams_s STROBE_KEYED_256 = { 0, 0, 200-256/4, 12, 0, 0, 0, 0 };
+const struct kparams_s STROBE_KEYED_128 = { 0, 0, 200-128/4, 12, 0, 0, 0, 0 };
+
 /* Strobe is different in that its rate is padded by one byte. */
 void strobe_init(
-    strobe_t strobe,
+    keccak_sponge_t sponge,
     const struct kparams_s *params,
     uint8_t am_client
 ) {
-    sponge_init(strobe->sponge,params);
-    strobe->params->client = !!am_client;
+    sponge_init(sponge,params);
+    sponge->params->client = !!am_client;
 }
 
 static void strobe_duplex (
@@ -490,6 +490,28 @@ static void strobe_duplex (
             dokeccak(sponge);
             len -= cando;
         }
+    }
+}
+
+static void strobe_forget (
+    keccak_sponge_t sponge,
+    size_t len
+) {
+    assert(sponge->params->rate < sizeof(sponge->state));
+    assert(sponge->params->position <= sizeof(sponge->params->rate));
+    if (sizeof(sponge->state) - sponge->params->rate < len) {
+        /** Tiny case */
+        unsigned char tmp[len];
+        strobe_duplex(sponge,tmp,NULL,len);
+        if (sponge->params->position) dokeccak(sponge);
+        strobe_duplex(sponge,tmp,NULL,len);
+        decaf_bzero(tmp,len);
+    } else {
+        if (sponge->params->rate < len + sponge->params->position) {
+            dokeccak(sponge);
+        }
+        memset(sponge->state->b, 0, len);
+        sponge->params->position = len;
     }
 }
 
@@ -525,138 +547,190 @@ static void strobe_unduplex (
     }
 }
 
-enum { KEY, NONCE, AD, PLAINTEXT, CIPHERTEXT, TAGFORGET, DIVERSIFIER, PRNG, FORK, JOIN, RESPEC };
+enum { KEY=1, NONCE, AD, PLAINTEXT, CIPHERTEXT, TAGFORGET, DIVERSIFIER, PRNG, FORK, JOIN, RESPEC };
 
 #define CLIENT_TO_SERVER 0
-#define SERVER_TO_CLIENT 1
+#define SERVER_TO_CLIENT 0x80
 
-struct strobe_control {
-    uint8_t next;
-    uint8_t bytes;
-    uint8_t flags;
-} __attribute__((packed));
-
-static void strobe_control_word (
-    strobe_t strobe,
-    const struct strobe_control *control
+static decaf_bool_t strobe_control_word (
+    keccak_sponge_t sponge,
+    const unsigned char *control,
+    size_t len,
+    uint8_t more
 ) {
-    assert(strobe->sponge->params->rate < sizeof(strobe->sponge->state));
-    strobe_duplex(strobe->sponge,NULL,(const unsigned char *)control,sizeof(*control));
-    strobe->sponge->state->b[strobe->sponge->params->position] ^= 0x1;
-    strobe->sponge->state->b[strobe->sponge->params->rate] ^= 0x2;
-    dokeccak(strobe->sponge);
+    assert(sponge->params->rate < sizeof(sponge->state));
+    decaf_bool_t ret = DECAF_SUCCESS;
+    if (!more) {
+        strobe_duplex(sponge,NULL,control,len);
+        sponge->state->b[sponge->params->position] ^= 0x1;
+        sponge->state->b[sponge->params->rate] ^= 0x2;
+        dokeccak(sponge);
+        sponge->params->flags = control[len-1];
+    } else if (sponge->params->flags && sponge->params->flags != control[len-1]) {
+        ret = DECAF_FAILURE;
+    }
+    sponge->params->flags = control[len-1];
+    return ret;
 }
 
-void strobe_encrypt (
-    strobe_t strobe,
+decaf_bool_t strobe_encrypt (
+    keccak_sponge_t sponge,
     unsigned char *out,
-    const unsigned char *in,
-    size_t len
-) {
-    struct strobe_control cont = { CIPHERTEXT, 0,
-        strobe->params->client ? CLIENT_TO_SERVER : SERVER_TO_CLIENT };
-    strobe_control_word(strobe, &cont);
-    strobe_duplex(strobe->sponge, out, in, len);
-}
-
-void strobe_decrypt (
-    strobe_t strobe,
-    unsigned char *out,
-    const unsigned char *in,
-    size_t len
-) {
-    struct strobe_control cont = { CIPHERTEXT, 0,
-        strobe->params->client ? SERVER_TO_CLIENT : CLIENT_TO_SERVER };
-    strobe_control_word(strobe, &cont);
-    strobe_duplex(strobe->sponge, out, in, len);
-}
-
-void strobe_plaintext (
-    strobe_t strobe,
     const unsigned char *in,
     size_t len,
-    uint8_t iSent
+    uint8_t more
 ) {
-    struct strobe_control cont = { CIPHERTEXT, 0,
-        (strobe->params->client == !!iSent) ? CLIENT_TO_SERVER : SERVER_TO_CLIENT };
-    strobe_control_word(strobe, &cont);
-    strobe_duplex(strobe->sponge, NULL, in, len);
+    unsigned char control[] = { CIPHERTEXT |
+        (sponge->params->client ? CLIENT_TO_SERVER : SERVER_TO_CLIENT)
+    };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), more);
+    strobe_duplex(sponge, out, in, len);
+    if (!sponge->params->pad/*keyed*/) ret = DECAF_FAILURE;
+    return ret;
+}
+
+decaf_bool_t strobe_decrypt (
+    keccak_sponge_t sponge,
+    unsigned char *out,
+    const unsigned char *in,
+    size_t len,
+    uint8_t more
+) {
+    unsigned char control[] = { CIPHERTEXT |
+        (sponge->params->client ? SERVER_TO_CLIENT : CLIENT_TO_SERVER)
+    };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), more);
+    strobe_duplex(sponge, out, in, len);
+    if (!sponge->params->pad/*keyed*/) ret = DECAF_FAILURE;
+    return ret;
+}
+
+decaf_bool_t strobe_plaintext (
+    keccak_sponge_t sponge,
+    const unsigned char *in,
+    size_t len,
+    uint8_t iSent,
+    uint8_t more
+) {
+    unsigned char control[] = { PLAINTEXT |
+        ((sponge->params->client == !!iSent) ? CLIENT_TO_SERVER : SERVER_TO_CLIENT)
+    };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), more);
+    strobe_duplex(sponge, NULL, in, len);
+    return ret;
+}
+
+decaf_bool_t strobe_key (
+    keccak_sponge_t sponge,
+    const unsigned char *in,
+    size_t len,
+    uint8_t more
+) {
+    unsigned char control[] = { KEY };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), more);
+    strobe_duplex(sponge, NULL, in, len);
+    sponge->params->pad/*=keyed*/ = 1;
+    return ret;
+}
+
+decaf_bool_t strobe_nonce (
+    keccak_sponge_t sponge,
+    const unsigned char *in,
+    size_t len,
+    uint8_t more
+) {
+    unsigned char control[] = { NONCE };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), more);
+    strobe_duplex(sponge, NULL, in, len);
+    return ret;
+}
+
+decaf_bool_t strobe_ad (
+    keccak_sponge_t sponge,
+    const unsigned char *in,
+    size_t len,
+    uint8_t more
+) {
+    unsigned char control[] = { AD };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), more);
+    strobe_duplex(sponge, NULL, in, len);
+    return ret;
 }
 
 #define STROBE_FORGET_BYTES 32
 
-void strobe_produce_auth (
-    strobe_t strobe,
+decaf_bool_t strobe_produce_auth (
+    keccak_sponge_t sponge,
     unsigned char *out,
     size_t len
 ) {
-    assert(len < strobe->sponge->params->rate - STROBE_FORGET_BYTES);
-    struct strobe_control cont = { TAGFORGET, len,
-        strobe->params->client ? CLIENT_TO_SERVER : SERVER_TO_CLIENT };
-    strobe_control_word(strobe, &cont);
-    strobe_duplex(strobe->sponge, out, NULL, len);
-    strobe_duplex(strobe->sponge, NULL,
-        &strobe->sponge->state->b[strobe->sponge->params->position],
-        STROBE_FORGET_BYTES
-    );
+    unsigned char control[] = {
+        (unsigned char)len,
+        (unsigned char)STROBE_FORGET_BYTES,
+        TAGFORGET | (sponge->params->client ? CLIENT_TO_SERVER : SERVER_TO_CLIENT)
+    };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), 0);
+    strobe_duplex(sponge, out, NULL, len);
+    strobe_forget(sponge, STROBE_FORGET_BYTES);
+    if (!sponge->params->pad/*keyed*/) ret = DECAF_FAILURE;
+    return ret;
 }
 
-void strobe_prng (
-    strobe_t strobe,
+decaf_bool_t strobe_prng (
+    keccak_sponge_t sponge,
     unsigned char *out,
-    size_t len
+    size_t len,
+    uint8_t more
 ) {
-    struct strobe_control cont = { PRNG, 0, 0 };
-    strobe_control_word(strobe, &cont);
-    strobe_duplex(strobe->sponge, out, NULL, len);
-    
-    /* Forget.  TODO: ORLY? */
-    cont.next = TAGFORGET;
-    strobe_control_word(strobe, &cont);
-    strobe_duplex(strobe->sponge, NULL,
-        &strobe->sponge->state->b[0],
-        STROBE_FORGET_BYTES
-    );
+    /* FIXME: length?? */
+    unsigned char control[] = { PRNG };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), more);
+    strobe_duplex(sponge, out, NULL, len);
+    // /** TODO: orly? */
+    // unsigned char control2[] = { 0, STROBE_FORGET_BYTES, TAGFORGET };
+    // ret &= strobe_control_word(sponge, control2, sizeof(control2));
+    // strobe_forget(sponge, STROBE_FORGET_BYTES);
+    if (!sponge->params->pad/*keyed*/) ret = DECAF_FAILURE;
+    return ret;
 }
 
 /* TODO: remove reliance on decaf? */
 decaf_bool_t strobe_verify_auth (
-    strobe_t strobe,
+    keccak_sponge_t sponge,
     const unsigned char *in,
     size_t len
 ) {
+    unsigned char control[] = {
+        (unsigned char)len,
+        (unsigned char)STROBE_FORGET_BYTES,
+        TAGFORGET | (sponge->params->client ? SERVER_TO_CLIENT : CLIENT_TO_SERVER)
+    };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), 0);
     unsigned char zero[len];
-    decaf_bool_t chain=0;
-    assert(len < strobe->sponge->params->rate - STROBE_FORGET_BYTES);
-    struct strobe_control cont = { TAGFORGET, len,
-        strobe->params->client ? CLIENT_TO_SERVER : SERVER_TO_CLIENT };
-    strobe_control_word(strobe, &cont);
-    strobe_unduplex(strobe->sponge, zero, in, len);
-    strobe_duplex(strobe->sponge, NULL,
-        &strobe->sponge->state->b[strobe->sponge->params->position],
-        STROBE_FORGET_BYTES);
+    strobe_unduplex(sponge, zero, in, len);
+    strobe_forget(sponge, STROBE_FORGET_BYTES);
     
     /* Check for 0 */
+    decaf_bool_t chain=0;
     unsigned i;
     for (i=0; i<len; i++) {
         chain |= zero[i];
     }
-    return ((decaf_dword_t)chain-1)>>(8*sizeof(decaf_word_t));
+    ret &= ((decaf_dword_t)chain-1)>>(8*sizeof(decaf_word_t));
+    if (!sponge->params->pad/*keyed*/) ret = DECAF_FAILURE;
+    return ret;
 }
 
-void strobe_destroy (
-    strobe_t strobe
-) {
-    decaf_bzero(strobe,sizeof(strobe_t));
-}
-
-void strobe_respec (
-    strobe_t strobe,
+decaf_bool_t strobe_respec (
+    keccak_sponge_t sponge,
     const struct kparams_s *params
 ) {
-    struct strobe_control cont = { RESPEC, params->rate, params->startRound };
-    strobe_control_word(strobe, &cont);
-    strobe->sponge->params[0] = params[0];
+    unsigned char control[] = { params->rate, params->startRound, RESPEC };
+    decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), 0);
+    if (!sponge->params->pad/*keyed*/) ret = DECAF_FAILURE;
+    sponge->params->rate = params->rate;
+    sponge->params->startRound = params->startRound;
+    return ret;
 }
 
 /* TODO: Keyak instances, etc */

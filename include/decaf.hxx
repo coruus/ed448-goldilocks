@@ -211,7 +211,7 @@ public:
     /** Move non-constructor */
     inline SecureBuffer(Block &&move) { *this = (Block &)move; }
 
-    /** Move-assign constructor */
+    /** Move-assign constructor. TODO: check that this actually gets used.*/ 
     inline SecureBuffer& operator=(SecureBuffer &&move) {
         clear();
         data_ = move.data_; move.data_ = NULL;

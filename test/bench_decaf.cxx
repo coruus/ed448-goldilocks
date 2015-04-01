@@ -66,6 +66,7 @@ static void printSI(double x, const char *unit, const char *spacer = " ") {
 class Benchmark {
     static const int NTESTS = 1000;
     static double totalCy, totalS;
+    /* FIXME Tcy if get descheduled */
 public:
     int i, ntests;
     double begin;
@@ -138,10 +139,19 @@ int main(int argc, char **argv) {
         decaf::SHAKE<128> shake1;
         decaf::SHAKE<256> shake2;
         decaf::SHA3<512> sha5;
+        decaf::Strobe strobe(decaf::Strobe::CLIENT);
         unsigned char b1024[1024] = {1};
         for (Benchmark b("SHAKE128 1kiB", 30); b.iter(); ) { shake1 += decaf::TmpBuffer(b1024,1024); }
         for (Benchmark b("SHAKE256 1kiB", 30); b.iter(); ) { shake2 += decaf::TmpBuffer(b1024,1024); }
         for (Benchmark b("SHA3-512 1kiB", 30); b.iter(); ) { sha5 += decaf::TmpBuffer(b1024,1024); }
+        strobe.key(decaf::TmpBuffer(b1024,1024));
+        for (Benchmark b("STROBE256 1kiB", 30); b.iter(); ) {
+            strobe.encrypt_no_auth(decaf::TmpBuffer(b1024,1024),decaf::TmpBuffer(b1024,1024),b.i>1);
+        }
+        strobe.respec(STROBE_KEYED_128);
+        for (Benchmark b("STROBEk128 1kiB", 30); b.iter(); ) {
+            strobe.encrypt_no_auth(decaf::TmpBuffer(b1024,1024),decaf::TmpBuffer(b1024,1024),b.i>1);
+        }
         for (Benchmark b("Scalar add", 1000); b.iter(); ) { s+=t; }
         for (Benchmark b("Scalar times", 100); b.iter(); ) { s*=t; }
         for (Benchmark b("Scalar inv", 1); b.iter(); ) { s.inverse(); }
