@@ -498,7 +498,7 @@ static void strobe_forget (
     size_t len
 ) {
     assert(sponge->params->rate < sizeof(sponge->state));
-    assert(sponge->params->position <= sizeof(sponge->params->rate));
+    assert(sponge->params->position <= sponge->params->rate);
     if (sizeof(sponge->state) - sponge->params->rate < len) {
         /** Tiny case */
         unsigned char tmp[len];
@@ -600,7 +600,7 @@ decaf_bool_t strobe_decrypt (
         (sponge->params->client ? SERVER_TO_CLIENT : CLIENT_TO_SERVER)
     };
     decaf_bool_t ret = strobe_control_word(sponge, control, sizeof(control), more);
-    strobe_duplex(sponge, out, in, len);
+    strobe_unduplex(sponge, out, in, len);
     if (!sponge->params->pad/*keyed*/) ret = DECAF_FAILURE;
     return ret;
 }

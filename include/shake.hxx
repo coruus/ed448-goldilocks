@@ -109,6 +109,9 @@ private:
 public:
     /** Initializer */
     inline SHA3() NOEXCEPT : KeccakHash(get_params()) {}
+
+    /** Reset the hash to the empty string */
+    inline void reset() NOEXCEPT { sponge_init(sp, get_params()); }
 };
 
 /** Variable-output-length SHAKE */
@@ -120,6 +123,9 @@ private:
 public:
     /** Initializer */
     inline SHAKE() NOEXCEPT : KeccakHash(get_params()) {}
+
+    /** Reset the hash to the empty string */
+    inline void reset() NOEXCEPT { sponge_init(sp, get_params()); }
 };
 
 /** @cond internal */
@@ -294,7 +300,7 @@ public:
         Buffer &out, const Block &data, uint8_t auth = 8
     ) throw(LengthException,ProtocolException) {
         if (out.size() < data.size() || out.size() != data.size() + auth) throw LengthException();
-        encrypt(out.slice(0,data.size()), data);
+        encrypt_no_auth(out.slice(0,data.size()), data);
         produce_auth(out.slice(data.size(),auth));
     }
     
@@ -314,7 +320,7 @@ public:
         Buffer &out, const Block &data, uint8_t bytes = 8
     ) throw(LengthException, CryptoException, ProtocolException) {
         if (out.size() > data.size() || out.size() != data.size() - bytes) throw LengthException();
-        decrypt(out, data.slice(0,out.size()));
+        decrypt_no_auth(out, data.slice(0,out.size()));
         verify_auth(data.slice(out.size(),bytes));
     }
     
