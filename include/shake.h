@@ -249,6 +249,7 @@ void spongerng_stir (
     size_t len
 ) NONNULL2 API_VIS;
 
+extern const struct kparams_s STROBE_128 API_VIS;
 extern const struct kparams_s STROBE_256 API_VIS;
 extern const struct kparams_s STROBE_KEYED_128 API_VIS;
 extern const struct kparams_s STROBE_KEYED_256 API_VIS;

@@ -447,6 +447,7 @@ int spongerng_init_from_dev_urandom (
     return spongerng_init_from_file(sponge, "/dev/urandom", 64, 0);
 }
 
+const struct kparams_s STROBE_128 = { 0, 0, 200-128/4, 0, 0, 0, 0, 0 };
 const struct kparams_s STROBE_256 = { 0, 0, 200-256/4, 0, 0, 0, 0, 0 };
 const struct kparams_s STROBE_KEYED_256 = { 0, 0, 200-256/4, 12, 0, 0, 0, 0 };
 const struct kparams_s STROBE_KEYED_128 = { 0, 0, 200-128/4, 12, 0, 0, 0, 0 };
