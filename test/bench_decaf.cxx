@@ -18,9 +18,11 @@
 #include <assert.h>
 #include <stdint.h>
 
-typedef decaf::decaf<448>::Scalar Scalar;
-typedef decaf::decaf<448>::Point Point;
-typedef decaf::decaf<448>::Precomputed Precomputed;
+using namespace decaf;
+typedef decaf<448>::Scalar Scalar;
+typedef decaf<448>::Point Point;
+typedef decaf<448>::Precomputed Precomputed;
+
 
 static __inline__ void __attribute__((unused)) ignore_result ( int result ) { (void)result; }
 static double now(void) {
@@ -111,28 +113,28 @@ public:
 double Benchmark::totalCy = 0, Benchmark::totalS = 0;
 
 static void tdh (
-    decaf::SpongeRng &rng,
-    Scalar x, const decaf::Block &gx,
-    Scalar y, const decaf::Block &gy
+    SpongeRng &rng,
+    Scalar x, const Block &gx,
+    Scalar y, const Block &gy
 ) {
-    decaf::Strobe client(decaf::Strobe::CLIENT), server(decaf::Strobe::SERVER);
+    Strobe client(Strobe::CLIENT), server(Strobe::SERVER);
     
     Scalar xe(rng);
-    decaf::SecureBuffer gxe = Precomputed::base() * xe;
+    SecureBuffer gxe = Precomputed::base() * xe;
     client.plaintext(gxe,true);
     server.plaintext(gxe,false);
     
     Scalar ye(rng);
-    decaf::SecureBuffer gye = Precomputed::base() * ye;
+    SecureBuffer gye = Precomputed::base() * ye;
     server.plaintext(gye,true);
     client.plaintext(gye,false);
     
     Point pgxe(gxe);
     server.key(pgxe*ye);
-    decaf::SecureBuffer tag1 = server.produce_auth();
-    decaf::SecureBuffer ct = server.encrypt(gy);
+    SecureBuffer tag1 = server.produce_auth();
+    SecureBuffer ct = server.encrypt(gy);
     server.key(pgxe*y);
-    decaf::SecureBuffer tag2 = server.produce_auth();
+    SecureBuffer tag2 = server.produce_auth();
     
     Point pgye(gye);
     client.key(pgye*xe);
@@ -150,30 +152,30 @@ static void tdh (
 }
 
 static void fhmqv (
-    decaf::SpongeRng &rng,
-    Scalar x, const decaf::Block &gx,
-    Scalar y, const decaf::Block &gy
+    SpongeRng &rng,
+    Scalar x, const Block &gx,
+    Scalar y, const Block &gy
 ) {
-    decaf::Strobe client(decaf::Strobe::CLIENT), server(decaf::Strobe::SERVER);
+    Strobe client(Strobe::CLIENT), server(Strobe::SERVER);
     
     Scalar xe(rng);
     client.plaintext(gx,true);
     server.plaintext(gx,false);
-    decaf::SecureBuffer gxe = Precomputed::base() * xe;
+    SecureBuffer gxe = Precomputed::base() * xe;
     client.plaintext(gxe,true);
     server.plaintext(gxe,false);
 
     Scalar ye(rng);
     server.plaintext(gy,true);
     client.plaintext(gy,false);
-    decaf::SecureBuffer gye = Precomputed::base() * ye;
+    SecureBuffer gye = Precomputed::base() * ye;
     server.plaintext(gye,true);
     
     Scalar schx(server.prng(Scalar::SER_BYTES));
     Scalar schy(server.prng(Scalar::SER_BYTES));
     Scalar yec = y + ye*schy;
     server.key(Point::double_scalarmul(Point(gx),yec,Point(gxe),yec*schx));
-    decaf::SecureBuffer as = server.produce_auth();
+    SecureBuffer as = server.produce_auth();
     
     client.plaintext(gye,false);
     Scalar cchx(client.prng(Scalar::SER_BYTES));
@@ -181,35 +183,23 @@ static void fhmqv (
     Scalar xec = x + xe*schx;
     client.key(Point::double_scalarmul(Point(gy),xec,Point(gye),xec*schy));
     client.verify_auth(as);
-    decaf::SecureBuffer ac = client.produce_auth();
+    SecureBuffer ac = client.produce_auth();
     client.respec(STROBE_KEYED_128);
     
     server.verify_auth(ac);
     server.respec(STROBE_KEYED_128);
 }
 
-static void spake2ee(const decaf::Block &hashed_password, decaf::SpongeRng &rng, bool aug) {
-    decaf::Strobe client(decaf::Strobe::CLIENT), server(decaf::Strobe::SERVER);
+static void spake2ee(const Block &hashed_password, SpongeRng &rng, bool aug) {
+    Strobe client(Strobe::CLIENT), server(Strobe::SERVER);
     
     Scalar x(rng);
     
-    decaf::SHAKE<256> shake;
-    unsigned char whose[1] = {0};
+    SHAKE<256> shake;
     shake.update(hashed_password);
-    shake.update(decaf::Block(whose,1));
-    decaf::SecureBuffer h0 = shake.output(Point::HASH_BYTES);
-    
-    shake.reset();
-    whose[0] = 1;
-    shake.update(hashed_password);
-    shake.update(decaf::Block(whose,1));
-    decaf::SecureBuffer h1 = shake.output(Point::HASH_BYTES);
-    
-    shake.reset();
-    whose[0] = 2;
-    shake.update(hashed_password);
-    shake.update(decaf::Block(whose,1));
-    decaf::SecureBuffer h2 = shake.output(Scalar::SER_BYTES);
+    SecureBuffer h0 = shake.output(Point::HASH_BYTES);
+    SecureBuffer h1 = shake.output(Point::HASH_BYTES);
+    SecureBuffer h2 = shake.output(Scalar::SER_BYTES);
     Scalar gs(h2);
     
     Point hc = Point::from_hash(h0);
@@ -217,12 +207,12 @@ static void spake2ee(const decaf::Block &hashed_password, decaf::SpongeRng &rng,
     Point hs = Point::from_hash(h1);
     hs = Point::from_hash(h1); // double-count
     
-    decaf::SecureBuffer gx(Precomputed::base() * x + hc);
+    SecureBuffer gx(Precomputed::base() * x + hc);
     client.plaintext(gx,true);
     server.plaintext(gx,false);
     
     Scalar y(rng);
-    decaf::SecureBuffer gy(Precomputed::base() * y + hs);
+    SecureBuffer gy(Precomputed::base() * y + hs);
     server.plaintext(gy,true);
     client.plaintext(gy,false);
     
@@ -230,10 +220,10 @@ static void spake2ee(const decaf::Block &hashed_password, decaf::SpongeRng &rng,
     server.key((Point(gx) - hc)*y);
     if(aug) {
         /* This step isn't actually online but whatever, it's fastish */
-        decaf::SecureBuffer serverAug(Precomputed::base() * gs);
+        SecureBuffer serverAug(Precomputed::base() * gs);
         server.key(Point(serverAug)*y);
     }
-    decaf::SecureBuffer tag = server.produce_auth();
+    SecureBuffer tag = server.produce_auth();
     
     client.key(h1);
     Point pgy(gy); pgy -= hs;
@@ -270,24 +260,24 @@ int main(int argc, char **argv) {
         Precomputed pBase;
         Point p,q;
         Scalar s,t;
-        decaf::SecureBuffer ep, ep2(Point::SER_BYTES*2);
+        SecureBuffer ep, ep2(Point::SER_BYTES*2);
         
         printf("\nMicro-benchmarks:\n");
-        decaf::SHAKE<128> shake1;
-        decaf::SHAKE<256> shake2;
-        decaf::SHA3<512> sha5;
-        decaf::Strobe strobe(decaf::Strobe::CLIENT);
+        SHAKE<128> shake1;
+        SHAKE<256> shake2;
+        SHA3<512> sha5;
+        Strobe strobe(Strobe::CLIENT);
         unsigned char b1024[1024] = {1};
-        for (Benchmark b("SHAKE128 1kiB", 30); b.iter(); ) { shake1 += decaf::TmpBuffer(b1024,1024); }
-        for (Benchmark b("SHAKE256 1kiB", 30); b.iter(); ) { shake2 += decaf::TmpBuffer(b1024,1024); }
-        for (Benchmark b("SHA3-512 1kiB", 30); b.iter(); ) { sha5 += decaf::TmpBuffer(b1024,1024); }
-        strobe.key(decaf::TmpBuffer(b1024,1024));
+        for (Benchmark b("SHAKE128 1kiB", 30); b.iter(); ) { shake1 += TmpBuffer(b1024,1024); }
+        for (Benchmark b("SHAKE256 1kiB", 30); b.iter(); ) { shake2 += TmpBuffer(b1024,1024); }
+        for (Benchmark b("SHA3-512 1kiB", 30); b.iter(); ) { sha5 += TmpBuffer(b1024,1024); }
+        strobe.key(TmpBuffer(b1024,1024));
         for (Benchmark b("STROBE256 1kiB", 30); b.iter(); ) {
-            strobe.encrypt_no_auth(decaf::TmpBuffer(b1024,1024),decaf::TmpBuffer(b1024,1024),b.i>1);
+            strobe.encrypt_no_auth(TmpBuffer(b1024,1024),TmpBuffer(b1024,1024),b.i>1);
         }
         strobe.respec(STROBE_KEYED_128);
         for (Benchmark b("STROBEk128 1kiB", 30); b.iter(); ) {
-            strobe.encrypt_no_auth(decaf::TmpBuffer(b1024,1024),decaf::TmpBuffer(b1024,1024),b.i>1);
+            strobe.encrypt_no_auth(TmpBuffer(b1024,1024),TmpBuffer(b1024,1024),b.i>1);
         }
         for (Benchmark b("Scalar add", 1000); b.iter(); ) { s+=t; }
         for (Benchmark b("Scalar times", 100); b.iter(); ) { s*=t; }
@@ -295,7 +285,7 @@ int main(int argc, char **argv) {
         for (Benchmark b("Point add", 100); b.iter(); ) { p += q; }
         for (Benchmark b("Point double", 100); b.iter(); ) { p.double_in_place(); }
         for (Benchmark b("Point scalarmul"); b.iter(); ) { p * s; }
-        for (Benchmark b("Point encode"); b.iter(); ) { ep = decaf::SecureBuffer(p); }
+        for (Benchmark b("Point encode"); b.iter(); ) { ep = SecureBuffer(p); }
         for (Benchmark b("Point decode"); b.iter(); ) { p = Point(ep); }
         for (Benchmark b("Point create/destroy"); b.iter(); ) { Point r; }
         for (Benchmark b("Point hash nonuniform"); b.iter(); ) { Point::from_hash(ep); }
@@ -332,8 +322,8 @@ int main(int argc, char **argv) {
     }
 
     printf("\nProtocol benchmarks:\n");
-    decaf::SpongeRng rng(decaf::Block("my rng seed"));
-    decaf::SecureBuffer hashedPassword("hello world");
+    SpongeRng rng(Block("my rng seed"));
+    SecureBuffer hashedPassword("hello world");
     for (Benchmark b("Spake2ee c+s",0.1); b.iter(); ) {
         spake2ee(hashedPassword,rng,false);
     }
@@ -343,9 +333,9 @@ int main(int argc, char **argv) {
     }
     
     Scalar x(rng);
-    decaf::SecureBuffer gx(Precomputed::base() * x);
+    SecureBuffer gx(Precomputed::base() * x);
     Scalar y(rng);
-    decaf::SecureBuffer gy(Precomputed::base() * y);
+    SecureBuffer gy(Precomputed::base() * y);
     
     for (Benchmark b("FHMQV c+s",0.1); b.iter(); ) {
         fhmqv(rng,x,gx,y,gy);
