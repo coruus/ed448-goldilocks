@@ -156,6 +156,7 @@ static void fhmqv (
     Scalar x, const Block &gx,
     Scalar y, const Block &gy
 ) {
+    /* Don't use this, it's probably patented */
     Strobe client(Strobe::CLIENT), server(Strobe::SERVER);
     
     Scalar xe(rng);
