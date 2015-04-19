@@ -8,6 +8,7 @@
  * @brief Decaf high-level functions.
  */
 
+#define _XOPEN_SOURCE 600 /* for posix_memalign */
 #define __STDC_WANT_LIB_EXT1__ 1 /* for memset_s */
 #include "decaf.h"
 #include <string.h>
@@ -80,20 +81,28 @@ static const decaf_word_t DECAF_MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae91
 
 /** base = twist of Goldilocks base point (~,19). */
 
+#ifndef FIELD_LITERAL
+#  define FIELD_LITERAL(a,b,c,d,e,f,g,h) \
+    LIMB(a),LIMB(b),LIMB(c),LIMB(d),LIMB(e),LIMB(f),LIMB(g),LIMB(h)
+#endif
+
 const decaf_448_point_t decaf_448_point_base = {{
-    {{{ LIMB(0xb39a2d57e08c7b),LIMB(0xb38639c75ff281),
-        LIMB(0x2ec981082b3288),LIMB(0x99fe8607e5237c),
-        LIMB(0x0e33fbb1fadd1f),LIMB(0xe714f67055eb4a),
-        LIMB(0xc9ae06d64067dd),LIMB(0xf7be45054760fa) }}},
-    {{{ LIMB(0xbd8715f551617f),LIMB(0x8c17fbeca8f5fc),
-        LIMB(0xaae0eec209c06f),LIMB(0xce41ad80cbe6b8),
-        LIMB(0xdf360b5c828c00),LIMB(0xaf25b6bbb40e3b),
-        LIMB(0x8ed37f0ce4ed31),LIMB(0x72a1c3214557b9) }}},
-    {{{ 1 }}},
-    {{{ LIMB(0x97ca9c8ed8bde9),LIMB(0xf0b780da83304c),
-        LIMB(0x0d79c0a7729a69),LIMB(0xc18d3f24aebc1c),
-        LIMB(0x1fbb5389b3fda5),LIMB(0xbb24f674635948),
-        LIMB(0x723a55709a3983),LIMB(0xe1c0107a823dd4) }}}
+    {{{ FIELD_LITERAL(
+        0xb39a2d57e08c7b,0xb38639c75ff281,
+        0x2ec981082b3288,0x99fe8607e5237c,
+        0x0e33fbb1fadd1f,0xe714f67055eb4a,
+        0xc9ae06d64067dd,0xf7be45054760fa )}}},
+    {{{ FIELD_LITERAL(  
+        0xbd8715f551617f,0x8c17fbeca8f5fc,
+        0xaae0eec209c06f,0xce41ad80cbe6b8,
+        0xdf360b5c828c00,0xaf25b6bbb40e3b,
+        0x8ed37f0ce4ed31,0x72a1c3214557b9 )}}},
+    {{{ 1 }}},          
+    {{{ FIELD_LITERAL(  
+        0x97ca9c8ed8bde9,0xf0b780da83304c,
+        0x0d79c0a7729a69,0xc18d3f24aebc1c,
+        0x1fbb5389b3fda5,0xbb24f674635948,
+        0x723a55709a3983,0xe1c0107a823dd4 )}}}
 }};
 
 /* Projective Niels coordinates */

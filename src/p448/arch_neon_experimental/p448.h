@@ -15,6 +15,13 @@ typedef struct p448_t {
 
 #define LIMBPERM(x) (((x)<<1 | (x)>>3) & 15)
 #define USE_NEON_PERM 1
+#define LIMBHI(x) ((x##ull)>>LBITS)
+#define LIMBLO(x) ((x##ull)&((1ull<<LBITS)-1))
+#  define FIELD_LITERAL(a,b,c,d,e,f,g,h) \
+    LIMBLO(a),LIMBLO(e), LIMBHI(a),LIMBHI(e), \
+    LIMBLO(b),LIMBLO(f), LIMBHI(b),LIMBHI(f), \
+    LIMBLO(c),LIMBLO(g), LIMBHI(c),LIMBHI(g), \
+    LIMBLO(d),LIMBLO(h), LIMBHI(d),LIMBHI(h)
 
 #ifdef __cplusplus
 extern "C" {
