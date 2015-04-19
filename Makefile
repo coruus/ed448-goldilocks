@@ -109,10 +109,10 @@ build/test: $(LIBCOMPONENTS) $(TESTCOMPONENTS) $(DECAFCOMPONENTS)
 	$(LD) $(LDFLAGS) -o $@ $^ -lgmp
 
 build/test_decaf: $(TESTDECAFCOMPONENTS) decaf_lib
-	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -Wl,-rpath=`pwd`/build -ldecaf
+	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -ldecaf
 
 build/bench_decaf: $(BENCHDECAFCOMPONENTS) decaf_lib
-	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -Wl,-rpath=`pwd`/build -ldecaf
+	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -ldecaf
 	
 build/shakesum: build/shakesum.o build/shake.o
 	$(LD) $(LDFLAGS) -o $@ $^

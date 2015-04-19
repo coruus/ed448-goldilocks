@@ -214,19 +214,22 @@ void sha3_output (
 }
 
 /** TODO: unify with decaf_bzero? */
-void sponge_destroy (
-    keccak_sponge_t sponge
-) {
+static void sponge_bzero(void *s, size_t size) {
 #ifdef __STDC_LIB_EXT1__
-    memset_s(sponge, sizeof(sponge), 0, sizeof(sponge));
+    memset_s(s, size, 0, size);
 #else
-    volatile uint64_t *destroy = (volatile uint64_t *)sponge;
-    unsigned i;
-    for (i=0; i<sizeof(keccak_sponge_t)/8; i++) {
-        destroy[i] = 0;
-    }
+    const size_t sw = sizeof(decaf_word_t);
+    volatile uint8_t *destroy = (volatile uint8_t *)s;
+    for (; size && ((uintptr_t)destroy)%sw; size--, destroy++)
+        *destroy = 0;
+    for (; size >= sw; size -= sw, destroy += sw)
+        *(volatile decaf_word_t *)destroy = 0;
+    for (; size; size--, destroy++)
+        *destroy = 0;
 #endif
 }
+
+void sponge_destroy (keccak_sponge_t sponge) { sponge_bzero(sponge, sizeof(keccak_sponge_t)); }
 
 void sponge_init (
     keccak_sponge_t sponge,
@@ -505,7 +508,7 @@ static void strobe_forget (
         strobe_duplex(sponge,tmp,NULL,len);
         if (sponge->params->position) dokeccak(sponge);
         strobe_duplex(sponge,tmp,NULL,len);
-        decaf_bzero(tmp,len);
+        sponge_bzero(tmp,len);
     } else {
         if (sponge->params->rate < len + sponge->params->position) {
             dokeccak(sponge);

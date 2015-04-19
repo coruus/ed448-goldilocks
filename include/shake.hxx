@@ -233,9 +233,15 @@ public:
         if (!strobe_nonce(sp, data, data.size(), more)) throw ProtocolException();
     }
 
-    inline void plaintext(const Block &data, bool iSent, bool more = false
+    inline void send_plaintext(const Block &data, bool more = false
     ) throw(ProtocolException) {
-        if (!strobe_plaintext(sp, data, data.size(), iSent, more))
+        if (!strobe_plaintext(sp, data, data.size(), true, more))
+            throw(ProtocolException());
+    }
+
+    inline void recv_plaintext(const Block &data, bool more = false
+    ) throw(ProtocolException) {
+        if (!strobe_plaintext(sp, data, data.size(), false, more))
             throw(ProtocolException());
     }
 

@@ -121,13 +121,13 @@ static void tdh (
     
     Scalar xe(rng);
     SecureBuffer gxe = Precomputed::base() * xe;
-    client.plaintext(gxe,true);
-    server.plaintext(gxe,false);
+    client.send_plaintext(gxe);
+    server.recv_plaintext(gxe);
     
     Scalar ye(rng);
     SecureBuffer gye = Precomputed::base() * ye;
-    server.plaintext(gye,true);
-    client.plaintext(gye,false);
+    server.send_plaintext(gye);
+    client.recv_plaintext(gye);
     
     Point pgxe(gxe);
     server.key(pgxe*ye);
@@ -160,17 +160,17 @@ static void fhmqv (
     Strobe client(Strobe::CLIENT), server(Strobe::SERVER);
     
     Scalar xe(rng);
-    client.plaintext(gx,true);
-    server.plaintext(gx,false);
+    client.send_plaintext(gx);
+    server.recv_plaintext(gx);
     SecureBuffer gxe = Precomputed::base() * xe;
-    client.plaintext(gxe,true);
-    server.plaintext(gxe,false);
+    server.send_plaintext(gxe);
+    client.recv_plaintext(gxe);
 
     Scalar ye(rng);
-    server.plaintext(gy,true);
-    client.plaintext(gy,false);
+    server.send_plaintext(gy);
+    client.recv_plaintext(gy);
     SecureBuffer gye = Precomputed::base() * ye;
-    server.plaintext(gye,true);
+    server.send_plaintext(gye);
     
     Scalar schx(server.prng(Scalar::SER_BYTES));
     Scalar schy(server.prng(Scalar::SER_BYTES));
@@ -178,7 +178,7 @@ static void fhmqv (
     server.key(Point::double_scalarmul(Point(gx),yec,Point(gxe),yec*schx));
     SecureBuffer as = server.produce_auth();
     
-    client.plaintext(gye,false);
+    client.recv_plaintext(gye);
     Scalar cchx(client.prng(Scalar::SER_BYTES));
     Scalar cchy(client.prng(Scalar::SER_BYTES));
     Scalar xec = x + xe*schx;
@@ -209,13 +209,13 @@ static void spake2ee(const Block &hashed_password, SpongeRng &rng, bool aug) {
     hs = Point::from_hash(h1); // double-count
     
     SecureBuffer gx(Precomputed::base() * x + hc);
-    client.plaintext(gx,true);
-    server.plaintext(gx,false);
+    client.send_plaintext(gx);
+    server.recv_plaintext(gx);
     
     Scalar y(rng);
     SecureBuffer gy(Precomputed::base() * y + hs);
-    server.plaintext(gy,true);
-    client.plaintext(gy,false);
+    server.send_plaintext(gy);
+    client.recv_plaintext(gy);
     
     server.key(h1);
     server.key((Point(gx) - hc)*y);
