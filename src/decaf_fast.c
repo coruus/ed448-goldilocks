@@ -38,12 +38,12 @@ typedef int64_t decaf_sdword_t;
 static const gf ZERO = {{{0}}}, ONE = {{{1}}}, TWO = {{{2}}};
 
 #define LMASK ((((decaf_word_t)1)<<LBITS)-1)
-#if WBITS == 64
-static const gf P = {{{ LMASK, LMASK, LMASK, LMASK, LMASK-1, LMASK, LMASK, LMASK }}};
-#else
-static const gf P = {{{ LMASK,   LMASK, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK,
-	LMASK-1, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK }}};
-#endif
+// #if WBITS == 64
+// static const gf P = {{{ LMASK, LMASK, LMASK, LMASK, LMASK-1, LMASK, LMASK, LMASK }}};
+// #else
+// static const gf P = {{{ LMASK,   LMASK, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK,
+//     LMASK-1, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK }}};
+// #endif
 static const int EDWARDS_D = -39081;
 
 const decaf_448_scalar_t decaf_448_scalar_p = {{{
@@ -404,7 +404,7 @@ void decaf_448_scalar_add (
     decaf_448_subx(out, out->limb, decaf_448_scalar_p, decaf_448_scalar_p, chain);
 }
 
-snv decaf_448_halve (
+snv decaf_448_scalar_halve (
     decaf_448_scalar_t out,
     const decaf_448_scalar_t a,
     const decaf_448_scalar_t p
@@ -449,6 +449,7 @@ decaf_bool_t decaf_448_scalar_eq (
 const decaf_448_point_t decaf_448_point_identity = {{{{{0}}},{{{1}}},{{{1}}},{{{0}}}}};
 
 static void gf_encode ( unsigned char ser[DECAF_448_SER_BYTES], gf a ) {
+    /*
     gf_canon(a);
     int i, k=0, bits=0;
     decaf_dword_t buf=0;
@@ -458,6 +459,8 @@ static void gf_encode ( unsigned char ser[DECAF_448_SER_BYTES], gf a ) {
             ser[k++]=buf;
         }
     }
+    */
+    field_serialize(ser, (field_t *)a);
 }
 
 void decaf_448_point_encode( unsigned char ser[DECAF_448_SER_BYTES], const decaf_448_point_t p ) {
@@ -488,6 +491,7 @@ void decaf_448_point_encode( unsigned char ser[DECAF_448_SER_BYTES], const decaf
  * Deserialize a bool, return TRUE if < p.
  */
 static decaf_bool_t gf_deser(gf s, const unsigned char ser[DECAF_448_SER_BYTES]) {
+    /*
     unsigned int i, k=0, bits=0;
     decaf_dword_t buf=0;
     for (i=0; i<DECAF_448_SER_BYTES; i++) {
@@ -500,6 +504,8 @@ static decaf_bool_t gf_deser(gf s, const unsigned char ser[DECAF_448_SER_BYTES])
     decaf_sdword_t accum = 0;
     FOR_LIMB(i, accum = (accum + s->limb[i] - P->limb[i]) >> WBITS );
     return accum;
+    */
+    return field_deserialize((field_t *)s, ser);
 }
     
 decaf_bool_t decaf_448_point_decode (
@@ -897,7 +903,7 @@ void decaf_448_point_scalarmul (
         
     decaf_448_scalar_t scalar1x;
     decaf_448_scalar_add(scalar1x, scalar, decaf_448_point_scalarmul_adjustment);
-    decaf_448_halve(scalar1x,scalar1x,decaf_448_scalar_p);
+    decaf_448_scalar_halve(scalar1x,scalar1x,decaf_448_scalar_p);
     
     /* Set up a precomputed table with odd multiples of b. */
     pniels_t pn, multiples[NTABLE];
@@ -954,9 +960,9 @@ void decaf_448_point_double_scalarmul (
         
     decaf_448_scalar_t scalar1x, scalar2x;
     decaf_448_scalar_add(scalar1x, scalarb, decaf_448_point_scalarmul_adjustment);
-    decaf_448_halve(scalar1x,scalar1x,decaf_448_scalar_p);
+    decaf_448_scalar_halve(scalar1x,scalar1x,decaf_448_scalar_p);
     decaf_448_scalar_add(scalar2x, scalarc, decaf_448_point_scalarmul_adjustment);
-    decaf_448_halve(scalar2x,scalar2x,decaf_448_scalar_p);
+    decaf_448_scalar_halve(scalar2x,scalar2x,decaf_448_scalar_p);
     
     /* Set up a precomputed table with odd multiples of b. */
     pniels_t pn, multiples1[NTABLE], multiples2[NTABLE];
@@ -1227,7 +1233,7 @@ void decaf_448_precomputed_scalarmul (
     
     decaf_448_scalar_t scalar1x;
     decaf_448_scalar_add(scalar1x, scalar, decaf_448_precomputed_scalarmul_adjustment);
-    decaf_448_halve(scalar1x,scalar1x,decaf_448_scalar_p);
+    decaf_448_scalar_halve(scalar1x,scalar1x,decaf_448_scalar_p);
     
     niels_t ni;
     
