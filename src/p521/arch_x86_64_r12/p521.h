@@ -23,12 +23,6 @@ extern "C" {
 #endif
 
 static __inline__ void
-p521_set_ui (
-    p521_t *out,
-    uint64_t x
-) __attribute__((unused));
-
-static __inline__ void
 p521_add_RAW (
     p521_t *out,
     const p521_t *a,
@@ -40,24 +34,6 @@ p521_sub_RAW (
     p521_t *out,
     const p521_t *a,
     const p521_t *b
-) __attribute__((unused));
-             
-static __inline__ void
-p521_neg_RAW (
-    p521_t *out,
-    const p521_t *a
-) __attribute__((unused));
-
-static __inline__ void
-p521_addw (
-    p521_t *a,
-    uint64_t x
-) __attribute__((unused));
-             
-static __inline__ void
-p521_subw (
-    p521_t *a,
-    uint64_t x
 ) __attribute__((unused));
              
 static __inline__ void
@@ -74,11 +50,6 @@ p521_weak_reduce (
 void
 p521_strong_reduce (
     p521_t *inout
-);
-
-mask_t
-p521_is_zero (
-    const p521_t *in
 );
 
 static __inline__ void
@@ -135,18 +106,6 @@ timesW (
 }
 
 void
-p521_set_ui (
-    p521_t *out,
-    uint64_t x
-) {
-    int i;
-    out->limb[0] = x;
-    for (i=1; i<12; i++) {
-      out->limb[i] = 0;
-    }
-}
-
-void
 p521_add_RAW (
     p521_t *out,
     const p521_t *a,
@@ -168,33 +127,6 @@ p521_sub_RAW (
     for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
         ((uint64xn_t*)out)[i] = ((const uint64xn_t*)a)[i] - ((const uint64xn_t*)b)[i];
     }
-}
-
-void
-p521_neg_RAW (
-    struct p521_t *out,
-    const p521_t *a
-) {
-    unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
-        ((uint64xn_t*)out)[i] = -((const uint64xn_t*)a)[i];
-    }
-}
-
-void
-p521_addw (
-    p521_t *a,
-    uint64_t x
-) {
-    a->limb[0] += x;
-}
-             
-void
-p521_subw (
-    p521_t *a,
-    uint64_t x
-) {
-    a->limb[0] -= x;
 }
 
 void

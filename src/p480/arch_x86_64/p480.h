@@ -18,12 +18,6 @@ extern "C" {
 #endif
 
 static __inline__ void
-p480_set_ui (
-    p480_t *out,
-    uint64_t x
-) __attribute__((unused,always_inline));
-
-static __inline__ void
 p480_add_RAW (
     p480_t *out,
     const p480_t *a,
@@ -35,24 +29,6 @@ p480_sub_RAW (
     p480_t *out,
     const p480_t *a,
     const p480_t *b
-) __attribute__((unused,always_inline));
-             
-static __inline__ void
-p480_neg_RAW (
-    p480_t *out,
-    const p480_t *a
-) __attribute__((unused,always_inline));
-
-static __inline__ void
-p480_addw (
-    p480_t *a,
-    uint64_t x
-) __attribute__((unused,always_inline));
-             
-static __inline__ void
-p480_subw (
-    p480_t *a,
-    uint64_t x
 ) __attribute__((unused,always_inline));
              
 static __inline__ void
@@ -69,11 +45,6 @@ p480_weak_reduce (
 void
 p480_strong_reduce (
     p480_t *inout
-);
-
-mask_t
-p480_is_zero (
-    const p480_t *in
 );
   
 static __inline__ void
@@ -117,18 +88,6 @@ p480_deserialize (
 /* -------------- Inline functions begin here -------------- */
 
 void
-p480_set_ui (
-    p480_t *out,
-    uint64_t x
-) {
-    int i;
-    out->limb[0] = x;
-    for (i=1; i<8; i++) {
-      out->limb[i] = 0;
-    }
-}
-
-void
 p480_add_RAW (
     p480_t *out,
     const p480_t *a,
@@ -162,39 +121,6 @@ p480_sub_RAW (
         out->limb[i] = a->limb[i] - b->limb[i];
     }
     */
-}
-
-void
-p480_neg_RAW (
-    struct p480_t *out,
-    const p480_t *a
-) {
-    unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(uint64xn_t); i++) {
-        ((uint64xn_t*)out)[i] = -((const uint64xn_t*)a)[i];
-    }
-    /*
-    unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(out->limb[0]); i++) {
-        out->limb[i] = -a->limb[i];
-    }
-    */
-}
-
-void
-p480_addw (
-    p480_t *a,
-    uint64_t x
-) {
-  a->limb[0] += x;
-}
-             
-void
-p480_subw (
-    p480_t *a,
-    uint64_t x
-) {
-  a->limb[0] -= x;
 }
 
 void

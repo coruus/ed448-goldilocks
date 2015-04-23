@@ -19,12 +19,6 @@ extern "C" {
 #endif
 
 static __inline__ void
-p448_set_ui (
-    p448_t *out,
-    uint64_t x
-) __attribute__((unused));
-
-static __inline__ void
 p448_add_RAW (
     p448_t *out,
     const p448_t *a,
@@ -36,24 +30,6 @@ p448_sub_RAW (
     p448_t *out,
     const p448_t *a,
     const p448_t *b
-) __attribute__((unused));
-             
-static __inline__ void
-p448_neg_RAW (
-    p448_t *out,
-    const p448_t *a
-) __attribute__((unused));
-
-static __inline__ void
-p448_addw (
-    p448_t *a,
-    uint64_t x
-) __attribute__((unused));
-             
-static __inline__ void
-p448_subw (
-    p448_t *a,
-    uint64_t x
 ) __attribute__((unused));
              
 static __inline__ void
@@ -72,19 +48,8 @@ p448_strong_reduce (
     p448_t *inout
 );
 
-mask_t
-p448_is_zero (
-    const p448_t *in
-);
-
 static __inline__ void
 p448_bias (
-    p448_t *inout,
-    int amount
-) __attribute__((unused));
-
-static __inline__ void
-p448_really_bias (
     p448_t *inout,
     int amount
 ) __attribute__((unused));
@@ -124,18 +89,6 @@ p448_deserialize (
 /* -------------- Inline functions begin here -------------- */
 
 void
-p448_set_ui (
-    p448_t *out,
-    uint64_t x
-) {
-    int i;
-    out->limb[0] = x;
-    for (i=1; i<8; i++) {
-      out->limb[i] = 0;
-    }
-}
-
-void
 p448_add_RAW (
     p448_t *out,
     const p448_t *a,
@@ -163,56 +116,11 @@ p448_sub_RAW (
 }
 
 void
-p448_neg_RAW (
-    struct p448_t *out,
-    const p448_t *a
-) {
-    unsigned int i;
-    uint64_t co1 = ((1ull<<56)-1)*2, co2 = co1-2;
-    for (i=0; i<8; i++) {
-        out->limb[i] = ((i==4) ? co2 : co1) - a->limb[i];
-    }
-    p448_weak_reduce(out);
-}
-
-void
-p448_addw (
-    p448_t *a,
-    uint64_t x
-) {
-  a->limb[0] += x;
-  a->limb[1] += a->limb[0]>>56;
-  a->limb[0] &= (1ull<<56)-1;
-}
-             
-void
-p448_subw (
-    p448_t *a,
-    uint64_t x
-) {
-  a->limb[0] -= x;
-  p448_really_bias(a, 1);
-  p448_weak_reduce(a);
-}
-
-void
 p448_copy (
     p448_t *out,
     const p448_t *a
 ) {
     memcpy(out,a,sizeof(*a));
-}
-
-void
-p448_really_bias (
-    p448_t *a,
-    int amt
-) {
-    uint64_t co1 = ((1ull<<56)-1)*amt, co2 = co1-amt;
-    int i;
-    for (i=0; i<8; i++) {
-        a->limb[i] += (i==4) ? co2 : co1;
-    }
 }
 
 void

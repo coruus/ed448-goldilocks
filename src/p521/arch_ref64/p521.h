@@ -19,12 +19,6 @@ extern "C" {
 #endif
 
 static __inline__ void
-p521_set_ui (
-    p521_t *out,
-    uint64_t x
-) __attribute__((unused));
-
-static __inline__ void
 p521_add_RAW (
     p521_t *out,
     const p521_t *a,
@@ -36,24 +30,6 @@ p521_sub_RAW (
     p521_t *out,
     const p521_t *a,
     const p521_t *b
-) __attribute__((unused));
-             
-static __inline__ void
-p521_neg_RAW (
-    p521_t *out,
-    const p521_t *a
-) __attribute__((unused));
-
-static __inline__ void
-p521_addw (
-    p521_t *a,
-    uint64_t x
-) __attribute__((unused));
-             
-static __inline__ void
-p521_subw (
-    p521_t *a,
-    uint64_t x
 ) __attribute__((unused));
              
 static __inline__ void
@@ -72,19 +48,8 @@ p521_strong_reduce (
     p521_t *inout
 );
 
-mask_t
-p521_is_zero (
-    const p521_t *in
-);
-
 static __inline__ void
 p521_bias (
-    p521_t *inout,
-    int amount
-) __attribute__((unused));
-
-static __inline__ void
-p521_really_bias (
     p521_t *inout,
     int amount
 ) __attribute__((unused));
@@ -124,18 +89,6 @@ p521_deserialize (
 /* -------------- Inline functions begin here -------------- */
 
 void
-p521_set_ui (
-    p521_t *out,
-    uint64_t x
-) {
-    int i;
-    out->limb[0] = x;
-    for (i=1; i<9; i++) {
-      out->limb[i] = 0;
-    }
-}
-
-void
 p521_add_RAW (
     p521_t *out,
     const p521_t *a,
@@ -163,56 +116,11 @@ p521_sub_RAW (
 }
 
 void
-p521_neg_RAW (
-    struct p521_t *out,
-    const p521_t *a
-) {
-    unsigned int i;
-    uint64_t co1 = ((1ull<<58)-1)*4, co2 = ((1ull<<57)-1)*4;
-    for (i=0; i<9; i++) {
-        out->limb[i] = ((i==8) ? co2 : co1) - a->limb[i];
-    }
-    p521_weak_reduce(out);
-}
-
-void
-p521_addw (
-    p521_t *a,
-    uint64_t x
-) {
-  a->limb[0] += x;
-  a->limb[1] += a->limb[0]>>58;
-  a->limb[0] &= (1ull<<58)-1;
-}
-             
-void
-p521_subw (
-    p521_t *a,
-    uint64_t x
-) {
-  a->limb[0] -= x;
-  p521_really_bias(a, 1);
-  p521_weak_reduce(a);
-}
-
-void
 p521_copy (
     p521_t *out,
     const p521_t *a
 ) {
     memcpy(out,a,sizeof(*a));
-}
-
-void
-p521_really_bias (
-    p521_t *a,
-    int amt
-) {
-    uint64_t co1 = ((1ull<<58)-1)*2*amt, co2 = ((1ull<<57)-1)*2*amt;
-    int i;
-    for (i=0; i<9; i++) {
-        a->limb[i] += (i==8) ? co2 : co1;
-    }
 }
 
 void

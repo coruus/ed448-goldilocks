@@ -5,7 +5,7 @@
  *   Copyright (c) 2015 Cryptography Research, Inc.  \n
  *   Released under the MIT License.  See LICENSE.txt for license information.
  * @author Mike Hamburg
- * @brief Decaf cyrpto routines. 
+ * @brief Example Decaf cyrpto routines.
  */
 
 #include "decaf_crypto.h"

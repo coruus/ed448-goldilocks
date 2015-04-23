@@ -18,12 +18,6 @@ extern "C" {
 #endif
 
 static __inline__ void
-p448_set_ui (
-    p448_t *out,
-    uint64_t x
-) __attribute__((unused,always_inline));
-
-static __inline__ void
 p448_add_RAW (
     p448_t *out,
     const p448_t *a,
@@ -35,24 +29,6 @@ p448_sub_RAW (
     p448_t *out,
     const p448_t *a,
     const p448_t *b
-) __attribute__((unused,always_inline));
-             
-static __inline__ void
-p448_neg_RAW (
-    p448_t *out,
-    const p448_t *a
-) __attribute__((unused,always_inline));
-
-static __inline__ void
-p448_addw (
-    p448_t *a,
-    uint32_t x
-) __attribute__((unused,always_inline));
-             
-static __inline__ void
-p448_subw (
-    p448_t *a,
-    uint32_t x
 ) __attribute__((unused,always_inline));
              
 static __inline__ void
@@ -69,11 +45,6 @@ p448_weak_reduce (
 void
 p448_strong_reduce (
     p448_t *inout
-);
-
-mask_t
-p448_is_zero (
-    const p448_t *in
 );
              
 static __inline__ void
@@ -117,19 +88,6 @@ p448_deserialize (
 /* -------------- Inline functions begin here -------------- */
 
 void
-p448_set_ui (
-    p448_t *out,
-    uint64_t x
-) {
-    int i;
-    out->limb[0] = x & ((1<<28)-1);
-    out->limb[1] = x>>28;
-    for (i=2; i<16; i++) {
-      out->limb[i] = 0;
-    }
-}
-
-void
 p448_add_RAW (
     p448_t *out,
     const p448_t *a,
@@ -163,39 +121,6 @@ p448_sub_RAW (
         out->limb[i] = a->limb[i] - b->limb[i];
     }
     */
-}
-
-void
-p448_neg_RAW (
-    p448_t *out,
-    const p448_t *a
-) {
-    unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(uint32xn_t); i++) {
-        ((uint32xn_t*)out)[i] = -((const uint32xn_t*)a)[i];
-    }
-    /*
-    unsigned int i;
-    for (i=0; i<sizeof(*out)/sizeof(out->limb[0]); i++) {
-        out->limb[i] = -a->limb[i];
-    }
-    */
-}
-
-void
-p448_addw (
-    p448_t *a,
-    uint32_t x
-) {
-  a->limb[0] += x;
-}
-             
-void
-p448_subw (
-    p448_t *a,
-    uint32_t x
-) {
-  a->limb[0] -= x;
 }
 
 void

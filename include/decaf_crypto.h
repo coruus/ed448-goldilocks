@@ -4,7 +4,10 @@
  *   Copyright (c) 2015 Cryptography Research, Inc.  \n
  *   Released under the MIT License.  See LICENSE.txt for license information.
  * @author Mike Hamburg
- * @brief Decaf cyrpto routines. 
+ * @brief Example Decaf cyrpto routines.
+ * @warning These are merely examples, though they ought to be secure.  But real
+ * protocols will decide differently on magic numbers, formats, which items to
+ * hash, etc.
  * @warning Experimental!  The names, parameter orders etc are likely to change.
  */
 

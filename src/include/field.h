@@ -24,45 +24,6 @@ typedef struct field_t field_a_t[1];
 #define IF32(s)
 #endif
 
-/** @brief Bytes in a field element */
-#define FIELD_BYTES          (1+(FIELD_BITS-1)/8)
-
-/** @brief Words in a field element */
-#define FIELD_WORDS          (1+(FIELD_BITS-1)/sizeof(word_t))
-
-/* TODO: standardize notation */
-/** @brief The number of words in the Goldilocks field. */
-#define GOLDI_FIELD_WORDS DIV_CEIL(FIELD_BITS,WORD_BITS)
-
-/** @brief The number of bits in the Goldilocks curve's cofactor (cofactor=4). */
-#define COFACTOR_BITS 2
-
-/** @brief The number of bits in a Goldilocks scalar. */
-#define SCALAR_BITS (FIELD_BITS - COFACTOR_BITS)
-
-/** @brief The number of bytes in a Goldilocks scalar. */
-#define SCALAR_BYTES (1+(SCALAR_BITS)/8)
-
-/** @brief The number of words in the Goldilocks field. */
-#define SCALAR_WORDS WORDS_FOR_BITS(SCALAR_BITS)
-
-/**
- * @brief For GMP tests: little-endian representation of the field modulus.
- */
-extern const uint8_t FIELD_MODULUS[FIELD_BYTES];
-
-/**
- * Copy one field element to another.
- */
-static inline void
-__attribute__((unused,always_inline))        
-field_copy (
-    field_a_restrict_t a,
-    const field_a_restrict_t b
-) {
-    memcpy(a,b,sizeof(*a));
-}
-
 /**
  * Returns 1/sqrt(+- x).
  * 
@@ -76,37 +37,20 @@ field_isr (
     field_a_t       a,
     const field_a_t x
 );
-    
-/**
- * Batch inverts out[i] = 1/in[i]
- * 
- * If any input is zero, all the outputs will be zero.
- */     
-void
-field_simultaneous_invert (
-    field_a_t *__restrict__ out,
-    const field_a_t *in,
-    unsigned int n
-);
 
 /**
  * Returns 1/x.
  * 
  * If x=0, returns 0.
+ *
+ * TODO: this is currently unused in Decaf, but I've left a decl
+ * for it because field_inverse is different (and simpler) than
+ * field_isqrt for 5-mod-8 fields.
  */
 void
 field_inverse (
     field_a_t       a,
     const field_a_t x
-);
-
-/**
- * Returns -1 if a==b, 0 otherwise.
- */
-mask_t
-field_eq (
-    const field_a_t a,
-    const field_a_t b
 );
     
 /**
@@ -133,53 +77,6 @@ field_sqrn (
         field_sqr(tmp,y);
         field_sqr(y,tmp);
     }
-}
-
-static __inline__ mask_t
-__attribute__((unused,always_inline))
-field_high_bit (const field_a_t f) {
-    field_a_t red;
-    field_copy(red,f);
-    field_weak_reduce(red);
-    field_add_RAW(red,red,red);
-    field_strong_reduce(red);
-    return -(1&red->limb[0]);
-}
-
-static __inline__ mask_t
-__attribute__((unused,always_inline))
-field_make_nonzero (field_a_t f) {
-    mask_t z = field_is_zero(f);
-    field_addw( f, -z );
-    return z;
-}
-
-/* Multiply by signed curve constant */
-static __inline__ void
-field_mulw_scc (
-    field_a_restrict_t out,
-    const field_a_t a,
-    int64_t scc
-) {
-    if (scc >= 0) {
-        field_mulw(out, a, scc);
-    } else {
-        field_mulw(out, a, -scc);
-        field_neg_RAW(out,out);
-        field_bias(out,2);
-    }
-}
-
-/* Multiply by signed curve constant and weak reduce if biased */
-static __inline__ void
-field_mulw_scc_wr (
-    field_a_restrict_t out,
-    const field_a_t a,
-    int64_t scc
-) {
-    field_mulw_scc(out, a, scc);
-    if (scc < 0)
-        field_weak_reduce(out);
 }
 
 static __inline__ void
@@ -212,40 +109,6 @@ field_add (
 ) {
     field_add_RAW ( d, a, b );
     field_weak_reduce ( d );
-}
-
-static __inline__ void
-field_subw (
-    field_a_t d,
-    word_t c
-) {
-    field_subw_RAW ( d, c );
-    field_bias( d, 1 );
-    field_weak_reduce ( d );
-}
-
-static __inline__ void
-field_neg (
-    field_a_t d,
-    const field_a_t a
-) {
-    field_neg_RAW ( d, a );
-    field_bias( d, 2 );
-    field_weak_reduce ( d );
-}
-
-/**
- * Negate a in place if doNegate.
- */
-static inline void
-__attribute__((unused,always_inline)) 
-field_cond_neg (
-    field_a_t a,
-    mask_t doNegate
-) {
-	field_a_t negated;
-    field_neg(negated, a);
-	constant_time_select(a, negated, a, sizeof(negated), doNegate);
 }
 
 /** Require the warning annotation on raw routines */

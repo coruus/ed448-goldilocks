@@ -1,3 +1,25 @@
+April 23, 2015:
+    Removed the original Goldilocks code; Decaf now stands on its own.
+    This cuts the source code approximately in half, to a still-large
+    13.7k wc-lines.  (Most of these lines are in the arch-specific
+    field implementations.)
+    
+    Note that the decaf_crypto routines are not intended to set
+    standards.  They should be secure, but they're intended more as
+    examples of how the core ECC library could be used.
+    
+    The SHAKE stuff is also mostly an experiment, particularly the
+    STROBE protocol/mode stuff.  This is all fine, because the ECC
+    library itself is the core, and doesn't require the SHAKE stuff.
+    (Except for the C++ header, which should probably also be factored
+    so that it doesn't need the SHAKE stuff.)
+    
+    I've started work on making a Decaf BAT, but not done yet.
+    
+    I haven't ripped out all old multi-field code, because I intend
+    to add support for other fields eventually.  Maybe properly this
+    time, instead of with a million compile flags like the original.
+
 March 23, 2015:
     I've been fleshing out Decaf, and hopefully the API is somewhere
     near final.  I will probably move a few things around and add a

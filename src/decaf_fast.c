@@ -1106,12 +1106,6 @@ static void gf_batch_invert (
     /* const */ gf *in,
     unsigned int n
 ) {
-    // if (n==0) {
-    //     return;
-    // } else if (n==1) {
-    //     field_inverse(out[0],in[0]);
-    //     return;
-    // }
     assert(n>1);
   
     gf_cpy(out[1], in[0]);
@@ -1254,7 +1248,7 @@ void decaf_448_precomputed_scalarmul (
          
             for (k=0; k<t; k++) {
                 unsigned int bit = i + s*(k + j*t);
-                if (bit < SCALAR_WORDS * WBITS) {
+                if (bit < DECAF_448_SCALAR_BITS) {
                     tab |= (scalar1x->limb[bit/WBITS] >> (bit%WBITS) & 1) << k;
                 }
             }
