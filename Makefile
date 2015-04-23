@@ -87,10 +87,18 @@ scan: clean
 		make build/bench build/test all
 
 build/test: build/test_decaf.o lib
+ifeq ($(UNAME),Darwin)
 	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -ldecaf
+else
+	$(LDXX) $(LDFLAGS) -Wl,-rpath,`pwd`/build -o $@ $< -Lbuild -ldecaf
+endif
 
 build/bench: build/bench_decaf.o lib
+ifeq ($(UNAME),Darwin)
 	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -ldecaf
+else
+	$(LDXX) $(LDFLAGS) -Wl,-rpath,`pwd`/build -o $@ $< -Lbuild -ldecaf
+endif
 	
 build/shakesum: build/shakesum.o build/shake.o
 	$(LD) $(LDFLAGS) -o $@ $^
