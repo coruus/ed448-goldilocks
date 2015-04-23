@@ -8,11 +8,11 @@
  */
 
 #include <string.h>
-#include "goldilocks.h"
+#include "decaf_crypto.h"
 
-#define PUBLICKEY_BYTES GOLDI_PUBLIC_KEY_BYTES
-#define SECRETKEY_BYTES GOLDI_PRIVATE_KEY_BYTES
-#define SHAREDSECRET_BYTES GOLDI_SHARED_SECRET_BYTES
+#define PUBLICKEY_BYTES (sizeof(decaf_448_public_key_t))
+#define SECRETKEY_BYTES (sizeof(decaf_448_private_key_t))
+#define SHAREDSECRET_BYTES 32
 
 #define CRYPTO_PUBLICKEYBYTES PUBLICKEY_BYTES
 #define CRYPTO_SECRETKEYBYTES SECRETKEY_BYTES

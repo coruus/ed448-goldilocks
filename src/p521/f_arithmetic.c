@@ -8,7 +8,7 @@
  * @brief Field-specific arithmetic.
  */
 
-#include "ec_point.h"
+#include "field.h"
 
 void 
 field_isr (

@@ -10,7 +10,6 @@
 
 #include "decaf_crypto.h"
 #include <string.h>
-#include "sha512.h"
 
 static const unsigned int DECAF_448_SCALAR_OVERKILL_BYTES = DECAF_448_SCALAR_BYTES + 8;
 

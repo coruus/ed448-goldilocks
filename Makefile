@@ -28,7 +28,7 @@ endif
 FIELD ?= p448
 
 WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
-	 -Wmissing-declarations -Wunused-function -Wno-overlength-strings $(EXWARN)
+	 -Wmissing-declarations -Wunused-function $(EXWARN)
 	 
 	 
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(FIELD) -Isrc/$(FIELD)/$(ARCH)
@@ -55,25 +55,16 @@ ifeq ($(CC),clang)
 WARNFLAGS += -Wgcc-compat
 endif
 
-ifeq (,$(findstring 64,$(ARCH))$(findstring gcc,$(CC)))
-# ARCHFLAGS += -m32
-XCFLAGS += -DGOLDI_FORCE_32_BIT=1
-endif
-
 ARCHFLAGS += $(XARCHFLAGS)
 CFLAGS  = $(LANGFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCFLAGS)
 CXXFLAGS = $(LANGXXFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCXXFLAGS) 
 LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS)
 ASFLAGS = $(ARCHFLAGS) $(XASFLAGS)
 
-.PHONY: clean all test bench test_decaf bench_decaf todo doc lib bat
+.PHONY: clean all test bench todo doc lib bat
 .PRECIOUS: build/%.s
 
 HEADERS= Makefile $(shell find . -name "*.h") $(shell find . -name "*.hxx") build/timestamp
-
-LIBCOMPONENTS= build/goldilocks.o build/barrett_field.o build/crandom.o \
-  build/$(FIELD).o build/ec_point.o build/scalarmul.o build/sha512.o build/magic.o \
-	build/f_arithmetic.o build/arithmetic.o
 
 
 DECAFCOMPONENTS= build/$(DECAF).o build/shake.o build/decaf_crypto.o \
@@ -82,19 +73,12 @@ ifeq ($(DECAF),decaf_fast)
 DECAFCOMPONENTS += build/decaf_tables.o
 endif
 
-TESTCOMPONENTS=build/test.o build/test_scalarmul.o build/test_sha512.o \
-	build/test_pointops.o build/test_arithmetic.o build/test_goldilocks.o build/magic.o \
-	build/shake.o
-
-TESTDECAFCOMPONENTS=build/test_decaf.o
-BENCHDECAFCOMPONENTS=build/bench_decaf.o
-
 BENCHCOMPONENTS = build/bench.o build/shake.o
 
-BATBASE=ed448goldilocks-bats-$(TODAY)
+BATBASE=ed448goldilocks-decaf-bats-$(TODAY)
 BATNAME=build/$(BATBASE)
 
-all: lib decaf_lib build/test build/bench build/shakesum
+all: lib  build/test build/bench build/shakesum
 
 scan: clean
 	scan-build --use-analyzer=`which clang` \
@@ -102,36 +86,16 @@ scan: clean
 		 -enable-checker osx -enable-checker security -enable-checker unix \
 		make build/bench build/test all
 
-build/bench: $(LIBCOMPONENTS) $(BENCHCOMPONENTS) $(DECAFCOMPONENTS)
-	$(LD) $(LDFLAGS) -o $@ $^
+build/test: build/test_decaf.o lib
+	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -ldecaf
 
-build/test: $(LIBCOMPONENTS) $(TESTCOMPONENTS) $(DECAFCOMPONENTS)
-	$(LD) $(LDFLAGS) -o $@ $^ -lgmp
-
-build/test_decaf: $(TESTDECAFCOMPONENTS) decaf_lib
-	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -Wl,-rpath=`pwd`/build -ldecaf
-
-build/bench_decaf: $(BENCHDECAFCOMPONENTS) decaf_lib
-	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -Wl,-rpath=`pwd`/build -ldecaf
+build/bench: build/bench_decaf.o lib
+	$(LDXX) $(LDFLAGS) -o $@ $< -Lbuild -ldecaf
 	
 build/shakesum: build/shakesum.o build/shake.o
 	$(LD) $(LDFLAGS) -o $@ $^
 
-lib: build/libgoldilocks.so
-
-decaf_lib: build/libdecaf.so
-
-build/libgoldilocks.so: $(LIBCOMPONENTS)
-	rm -f $@
-ifeq ($(UNAME),Darwin)
-	libtool -macosx_version_min 10.6 -dynamic -dead_strip -lc -x -o $@ \
-		  $(LIBCOMPONENTS)
-else
-	$(LD) $(LDFLAGS) -shared -Wl,-soname,libgoldilocks.so.1 -Wl,--gc-sections -o $@ $(LIBCOMPONENTS)
-	strip --discard-all $@
-	ln -sf `basename $@` build/libgoldilocks.so.1
-endif
-
+lib: build/libdecaf.so
 
 build/libdecaf.so: $(DECAFCOMPONENTS)
 	rm -f $@
@@ -190,18 +154,17 @@ bat: $(BATNAME)
 $(BATNAME): include/* src/* src/*/* test/batarch.map
 	rm -fr $@
 	for prim in dh sign; do \
-          targ="$@/crypto_$$prim/ed448goldilocks"; \
+          targ="$@/crypto_$$prim/ed448goldilocks-decaf"; \
 	  (while read arch where; do \
 	    mkdir -p $$targ/`basename $$arch`; \
 	    cp include/*.h src/*.c src/include/*.h src/bat/$$prim.c src/p448/$$where/*.c src/p448/$$where/*.h src/p448/*.c src/p448/*.h $$targ/`basename $$arch`; \
 	    cp src/bat/api_$$prim.h $$targ/`basename $$arch`/api.h; \
-	    perl -p -i -e 's/.*endif.*GOLDILOCKS_CONFIG_H/#define SUPERCOP_WONT_LET_ME_OPEN_FILES 1\n\n$$&/' $$targ/`basename $$arch`/config.h; \
 	    perl -p -i -e 's/SYSNAME/'`basename $(BATNAME)`_`basename $$arch`'/g' $$targ/`basename $$arch`/api.h;  \
 	    perl -p -i -e 's/__TODAY__/'$(TODAY)'/g' $$targ/`basename $$arch`/api.h;  \
 	    done \
 	  ) < test/batarch.map; \
 	  echo 'Mike Hamburg' > $$targ/designers; \
-	  echo 'Ed448-Goldilocks sign and dh' > $$targ/description; \
+	  echo 'Ed448-Goldilocks Decaf sign and dh' > $$targ/description; \
         done
 	(cd build && tar czf $(BATBASE).tgz $(BATBASE) )
 	
@@ -223,17 +186,11 @@ todo::
 bench: build/bench
 	./$<
 
-test: build/test test_decaf
+test: build/test
 	build/test
 	
-test_decaf: build/test_decaf
-	build/test_decaf
-	
-bench_decaf: build/bench_decaf
-	build/bench_decaf
-	
-microbench_decaf: build/bench_decaf
-	build/bench_decaf --micro
+microbench: build/bench
+	./$< --micro
 
 clean:
 	rm -fr build doc $(BATNAME)

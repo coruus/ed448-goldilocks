@@ -11,20 +11,20 @@
 #include <stdlib.h>
 #include "api.h"
 #include "crypto_dh.h"
+#include "randombytes.h"
 
 int crypto_dh_keypair (
     unsigned char pk[SECRETKEY_BYTES],
     unsigned char sk[PUBLICKEY_BYTES]
 ) {
-  int ret;
-  ret = goldilocks_init();
-  if (ret && ret != GOLDI_EALREADYINIT)
-    return ret;
-  if ((ret = goldilocks_keygen(
-      (struct goldilocks_private_key_t *)sk,
-      (struct goldilocks_public_key_t *)pk
-  ))) abort();
-  return ret;
+    decaf_448_symmetric_key_t proto;
+    randombytes(proto,sizeof(proto));
+    decaf_448_derive_private_key((decaf_448_private_key_s *)sk,proto);
+    decaf_448_private_to_public(
+        (decaf_448_public_key_s *)pk,
+        (decaf_448_private_key_s *)sk
+    );
+    return 0;
 }
 
 int crypto_dh (
@@ -32,9 +32,10 @@ int crypto_dh (
     const unsigned char pk[PUBLICKEY_BYTES],
     const unsigned char sk[SECRETKEY_BYTES]
 ) {
-  return goldilocks_shared_secret (
+    return !decaf_448_shared_secret (
         s,
-        (const struct goldilocks_private_key_t *)sk,
-        (const struct goldilocks_public_key_t *)pk
-  );
+        SHAREDSECRET_BYTES,
+        (const decaf_448_private_key_s *)sk,
+        (const decaf_448_public_key_s *)pk
+    );
 }

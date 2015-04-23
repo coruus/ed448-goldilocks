@@ -10,9 +10,9 @@
 #include <string.h>
 #include "goldilocks.h"
 
-#define PUBLICKEY_BYTES GOLDI_PUBLIC_KEY_BYTES
-#define SECRETKEY_BYTES GOLDI_PRIVATE_KEY_BYTES
-#define SIGNATURE_BYTES GOLDI_SIGNATURE_BYTES
+#define PUBLICKEY_BYTES (sizeof(decaf_448_public_key_t))
+#define SECRETKEY_BYTES (sizeof(decaf_448_private_key_t))
+#define SIGNATURE_BYTES (sizeof(decaf_448_signature_t))
 
 #define CRYPTO_PUBLICKEYBYTES PUBLICKEY_BYTES
 #define CRYPTO_SECRETKEYBYTES SECRETKEY_BYTES
