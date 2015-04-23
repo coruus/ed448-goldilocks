@@ -98,19 +98,6 @@ p448_deserialize (
 /* -------------- Inline functions begin here -------------- */
 
 void
-p448_set_ui (
-    p448_t *out,
-    uint64_t x
-) {
-    int i;
-    for (i=0; i<16; i++) {
-      out->limb[i] = 0;
-    }
-    out->limb[0] = x & ((1<<28)-1);
-    out->limb[2] = x>>28;
-}
-
-void
 p448_add_RAW (
     p448_t *out,
     const p448_t *a,
