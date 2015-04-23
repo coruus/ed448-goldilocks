@@ -28,7 +28,7 @@ endif
 FIELD ?= p448
 
 WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
-	 -Wmissing-declarations -Wunused-function $(EXWARN)
+	 -Wmissing-declarations -Wunused-function -Wno-overlength-strings $(EXWARN)
 	 
 	 
 INCFLAGS = -Isrc/include -Iinclude -Isrc/$(FIELD) -Isrc/$(FIELD)/$(ARCH)
