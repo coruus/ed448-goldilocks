@@ -173,10 +173,10 @@ public:
     }
     
     /** Read data to a buffer. */
-    inline void read(Buffer &buffer) { spongerng_next(sp,buffer.data(),buffer.size()); }
+    inline void read(Buffer &buffer) NOEXCEPT { spongerng_next(sp,buffer.data(),buffer.size()); }
     
     /** Read data to a buffer. */
-    inline void read(TmpBuffer buffer) { read((Buffer &)buffer); }
+    inline void read(TmpBuffer buffer) NOEXCEPT { read((Buffer &)buffer); }
     
     /** Read data to a C++ string 
      * @warning TODO Future versions of this function may throw RngException if a
@@ -192,19 +192,14 @@ private:
 };
 
 /**@cond internal*/
-/* FIXME: multiple sizes */
-EcGroup<448>::Scalar::Scalar(SpongeRng &rng) {
-    *this = rng.read(SER_BYTES);
+template<GroupId g> EcGroup<g>::Scalar::Scalar(SpongeRng &rng) NOEXCEPT {
+    *this = rng.read(EcGroup<g>::Scalar::SER_BYTES);
 }
 
-EcGroup<448>::Point::Point(SpongeRng &rng, bool uniform) {
+template<GroupId g> EcGroup<g>::Point::Point(SpongeRng &rng, bool uniform) NOEXCEPT {
     SecureBuffer buffer((uniform ? 2 : 1) * HASH_BYTES);
     rng.read(buffer);
-    if (uniform) {
-        decaf_448_point_from_hash_uniform(p,buffer);
-    } else {
-        decaf_448_point_from_hash_nonuniform(p,buffer);
-    }
+    set_to_hash(buffer);
 }
 /**@endcond*/
 

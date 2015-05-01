@@ -35,7 +35,7 @@ INCFLAGS = -Isrc/include -Iinclude -Isrc/$(FIELD) -Isrc/$(FIELD)/$(ARCH)
 LANGFLAGS = -std=c99 -fno-strict-aliasing
 LANGXXFLAGS = -fno-strict-aliasing
 GENFLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
-OFLAGS = -O3
+OFLAGS ?= -O3
 
 TODAY = $(shell date "+%Y-%m-%d")
 

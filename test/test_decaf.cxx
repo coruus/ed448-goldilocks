@@ -47,7 +47,7 @@ typedef typename decaf::EcGroup<GROUP>::Point Point;
 typedef typename decaf::EcGroup<GROUP>::Precomputed Precomputed;
 
 static void print(const char *name, const Scalar &x) {
-    unsigned char buffer[DECAF_448_SCALAR_BYTES];
+    unsigned char buffer[Scalar::SER_BYTES];
     x.encode(buffer);
     printf("  %s = 0x", name);
     for (int i=sizeof(buffer)-1; i>=0; i--) {
@@ -57,7 +57,7 @@ static void print(const char *name, const Scalar &x) {
 }
 
 static void print(const char *name, const Point &x) {
-    unsigned char buffer[DECAF_448_SER_BYTES];
+    unsigned char buffer[Point::SER_BYTES];
     x.encode(buffer);
     printf("  %s = 0x", name);
     for (int i=sizeof(buffer)-1; i>=0; i--) {
@@ -175,6 +175,7 @@ static void test_ec() {
         point_check(test,p,q,r,0,0,p,Point((decaf::SecureBuffer)p),"round-trip");
         point_check(test,p,q,r,0,0,p+q,q+p,"commute add");
         point_check(test,p,q,r,0,0,p+(q+r),(p+q)+r,"assoc add");
+        point_check(test,p,q,r,0,0,p.times_two(),p+p,"dbl add");
         
         if (i%10) continue;
         point_check(test,p,q,r,x,0,x*(p+q),x*p+x*q,"distr mul");
