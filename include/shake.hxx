@@ -193,11 +193,11 @@ private:
 
 /**@cond internal*/
 /* FIXME: multiple sizes */
-decaf<448>::Scalar::Scalar(SpongeRng &rng) {
+EcGroup<448>::Scalar::Scalar(SpongeRng &rng) {
     *this = rng.read(SER_BYTES);
 }
 
-decaf<448>::Point::Point(SpongeRng &rng, bool uniform) {
+EcGroup<448>::Point::Point(SpongeRng &rng, bool uniform) {
     SecureBuffer buffer((uniform ? 2 : 1) * HASH_BYTES);
     rng.read(buffer);
     if (uniform) {

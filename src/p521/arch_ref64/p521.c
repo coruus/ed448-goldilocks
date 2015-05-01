@@ -346,22 +346,6 @@ p521_strong_reduce (
     assert(is_zero(carry + scarry));
 }
 
-mask_t
-p521_is_zero (
-    const struct p521_t *a
-) {
-    struct p521_t b;
-    p521_copy(&b,a);
-    p521_strong_reduce(&b);
-
-    uint64_t any = 0;
-    int i;
-    for (i=0; i<9; i++) {
-        any |= b.limb[i];
-    }
-    return is_zero(any);
-}
-
 void
 p521_serialize (
     uint8_t *serial,

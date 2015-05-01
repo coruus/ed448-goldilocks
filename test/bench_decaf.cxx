@@ -17,11 +17,13 @@
 #include <sys/time.h>
 #include <assert.h>
 #include <stdint.h>
+#include <vector>
+#include <algorithm>
 
 using namespace decaf;
-typedef decaf<448>::Scalar Scalar;
-typedef decaf<448>::Point Point;
-typedef decaf<448>::Precomputed Precomputed;
+typedef EcGroup<448>::Scalar Scalar;
+typedef EcGroup<448>::Point Point;
+typedef EcGroup<448>::Precomputed Precomputed;
 
 
 static __inline__ void __attribute__((unused)) ignore_result ( int result ) { (void)result; }
@@ -66,31 +68,44 @@ static void printSI(double x, const char *unit, const char *spacer = " ") {
 }
 
 class Benchmark {
-    static const int NTESTS = 1000;
+    static const int NTESTS = 20, NSAMPLES=50, DISCARD=2;
     static double totalCy, totalS;
     /* FIXME Tcy if get descheduled */
 public:
-    int i, ntests;
+    int i, j, ntests, nsamples;
     double begin;
     uint64_t tsc_begin;
+    std::vector<double> times;
+    std::vector<uint64_t> cycles;
     Benchmark(const char *s, double factor = 1) {
         printf("%s:", s);
         if (strlen(s) < 25) printf("%*s",int(25-strlen(s)),"");
         fflush(stdout);
-        i = 0;
+        i = j = 0;
         ntests = NTESTS * factor;
+        nsamples = NSAMPLES;
         begin = now();
         tsc_begin = rdtsc();
+        times = std::vector<double>(NSAMPLES);
+        cycles = std::vector<uint64_t>(NSAMPLES);
     }
     ~Benchmark() {
-        double tsc = (rdtsc() - tsc_begin) * 1.0;
-        double t = (now() - begin);
+        double tsc = 0;
+        double t = 0;
+        
+        std::sort(times.begin(), times.end());
+        std::sort(cycles.begin(), cycles.end());
+        
+        for (int k=DISCARD; k<nsamples-DISCARD; k++) {
+            tsc += cycles[k];
+            t += times[k];
+        }
         
         totalCy += tsc;
         totalS += t;
         
-        t /= ntests;
-        tsc /= ntests;
+        t /= ntests*(nsamples-2*DISCARD);
+        tsc /= ntests*(nsamples-2*DISCARD);
         
         printSI(t,"s");
         printf("    ");
@@ -98,7 +113,22 @@ public:
         if (tsc) { printf("    "); printSI(tsc, "cy"); }
         printf("\n");
     }
-    inline bool iter() { return i++ < ntests; }
+    inline bool iter() {
+        i++;
+        if (i >= ntests) {
+            uint64_t tsc = rdtsc() - tsc_begin;
+            double t = now() - begin;
+            begin += t;
+            tsc_begin += tsc;
+            assert(j >= 0 && j < nsamples);
+            cycles[j] = tsc;
+            times[j] = t;
+            
+            j++;
+            i = 0;
+        }
+        return j < nsamples;
+    }
     static void calib() {
         if (totalS && totalCy) {
             const char *s = "Cycle calibration";

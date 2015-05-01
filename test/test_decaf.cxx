@@ -42,9 +42,9 @@ public:
 
 template<decaf::GroupId GROUP> struct Tests {
 
-typedef typename decaf::decaf<GROUP>::Scalar Scalar;
-typedef typename decaf::decaf<GROUP>::Point Point;
-typedef typename decaf::decaf<GROUP>::Precomputed Precomputed;
+typedef typename decaf::EcGroup<GROUP>::Scalar Scalar;
+typedef typename decaf::EcGroup<GROUP>::Point Point;
+typedef typename decaf::EcGroup<GROUP>::Precomputed Precomputed;
 
 static void print(const char *name, const Scalar &x) {
     unsigned char buffer[DECAF_448_SCALAR_BYTES];

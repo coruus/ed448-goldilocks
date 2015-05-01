@@ -238,12 +238,12 @@ class SpongeRng;
  * @brief Group with prime order.
  * @todo Move declarations of functions up here?
  */
-template<GroupId group = Ed448Goldilocks> struct decaf;
+template<GroupId group = Ed448Goldilocks> struct EcGroup;
 
 /**
  * @brief Ed448-Goldilocks/Decaf instantiation of group.
  */
-template<> struct decaf<Ed448Goldilocks> {
+template<> struct EcGroup<Ed448Goldilocks> {
 
 /** @cond internal */
 class Point;

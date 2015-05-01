@@ -348,22 +348,6 @@ p448_strong_reduce (
     assert(is_zero(carry + scarry));
 }
 
-mask_t
-p448_is_zero (
-    const struct p448_t *a
-) {
-    struct p448_t b;
-    p448_copy(&b,a);
-    p448_strong_reduce(&b);
-
-    uint64_t any = 0;
-    int i;
-    for (i=0; i<8; i++) {
-        any |= b.limb[i];
-    }
-    return is_zero(any);
-}
-
 void
 p448_serialize (
     uint8_t *serial,

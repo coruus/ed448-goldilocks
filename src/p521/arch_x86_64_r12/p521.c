@@ -417,22 +417,6 @@ p521_strong_reduce (
     a->limb[3] = a->limb[7] = a->limb[11] = 0;
 }
 
-mask_t
-p521_is_zero (
-    const struct p521_t *a
-) {
-    struct p521_t b;
-    p521_copy(&b,a);
-    p521_strong_reduce(&b);
-
-    uint64_t any = 0;
-    unsigned int i;
-    for (i=0; i<sizeof(b)/sizeof(b.limb[0]); i++) {
-        any |= b.limb[i];
-    }
-    return is_zero(any);
-}
-
 void
 p521_serialize (
     uint8_t *serial,
