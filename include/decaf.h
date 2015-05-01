@@ -96,11 +96,6 @@ static const decaf_bool_t DECAF_TRUE = -(decaf_bool_t)1, DECAF_FALSE = 0;
 static const decaf_bool_t DECAF_SUCCESS = -(decaf_bool_t)1 /*DECAF_TRUE*/,
 	DECAF_FAILURE = 0 /*DECAF_FALSE*/;
 
-/** The prime p, for debugging purposes.
- * TODO: prevent this scalar from actually being used for non-debugging purposes?
- */
-extern const decaf_448_scalar_t decaf_448_scalar_p API_VIS;
-
 /** A scalar equal to 1. */
 extern const decaf_448_scalar_t decaf_448_scalar_one API_VIS;
 

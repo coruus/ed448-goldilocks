@@ -17,15 +17,25 @@
 
 #define WBITS DECAF_WORD_BITS
 
+/* Rename table for eventual factoring into .c.inc, MSR ECC style */
+#define SCALAR_LIMBS DECAF_448_SCALAR_LIMBS
+#define SCALAR_BITS DECAF_448_SCALAR_BITS
+#define NLIMBS DECAF_448_LIMBS
+#define API_NS(_id) decaf_448_##_id
+#define API_NS2(_pref,_id) _pref##_decaf_448_##_id
+#define scalar_t decaf_448_scalar_t
+#define point_t decaf_448_point_t
+#define precomputed_s decaf_448_precomputed_s
+#define SER_BYTES DECAF_448_SER_BYTES
+
 #if WBITS == 64
-#define LBITS 56
 typedef __int128_t decaf_sdword_t;
 #define LIMB(x) (x##ull)
 #define SC_LIMB(x) (x##ull)
 #elif WBITS == 32
 typedef int64_t decaf_sdword_t;
-#define LBITS 28
-#define LIMB(x) (x##ull)&((1ull<<LBITS)-1), (x##ull)>>LBITS
+/* 28 is MAGIC */
+#define LIMB(x) (x##ull)&((1ull<<28)-1), (x##ull)>>28
 #define SC_LIMB(x) (x##ull)&((1ull<<32)-1), (x##ull)>>32
 #else
 #error "Only supporting 32- and 64-bit platforms right now"
@@ -38,16 +48,9 @@ typedef int64_t decaf_sdword_t;
 #define siv static inline void __attribute__((always_inline))
 static const gf ZERO = {{{0}}}, ONE = {{{1}}}, TWO = {{{2}}};
 
-#define LMASK ((((decaf_word_t)1)<<LBITS)-1)
-// #if WBITS == 64
-// static const gf P = {{{ LMASK, LMASK, LMASK, LMASK, LMASK-1, LMASK, LMASK, LMASK }}};
-// #else
-// static const gf P = {{{ LMASK,   LMASK, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK,
-//     LMASK-1, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK, LMASK }}};
-// #endif
 static const int EDWARDS_D = -39081;
 
-const decaf_448_scalar_t decaf_448_scalar_p = {{{
+static const scalar_t sc_p = {{{
     SC_LIMB(0x2378c292ab5844f3),
     SC_LIMB(0x216cc2728dc58f55),
     SC_LIMB(0xc44edb49aed63690),
@@ -55,9 +58,10 @@ const decaf_448_scalar_t decaf_448_scalar_p = {{{
     SC_LIMB(0xffffffffffffffff),
     SC_LIMB(0xffffffffffffffff),
     SC_LIMB(0x3fffffffffffffff)
-}}}, decaf_448_scalar_one = {{{1}}}, decaf_448_scalar_zero = {{{0}}};
+}}};
+const scalar_t API_NS(scalar_one) = {{{1}}}, API_NS(scalar_zero) = {{{0}}};
 
-static const decaf_448_scalar_t decaf_448_scalar_r2 = {{{
+static const scalar_t sc_r2 = {{{
     SC_LIMB(0xe3539257049b9b60),
     SC_LIMB(0x7af32c4bc1b195d9),
     SC_LIMB(0x0d66de2388ea1859),
@@ -67,7 +71,7 @@ static const decaf_448_scalar_t decaf_448_scalar_r2 = {{{
     SC_LIMB(0x3402a939f823b729)
 }}};
 
-static const decaf_448_scalar_t decaf_448_scalar_r1 = {{{
+static const scalar_t sc_r1 = {{{
     SC_LIMB(0x721cf5b5529eec34),
     SC_LIMB(0x7a4cf635c8e9c2ab),
     SC_LIMB(0xeec492d944a725bf),
@@ -77,7 +81,7 @@ static const decaf_448_scalar_t decaf_448_scalar_r1 = {{{
     SC_LIMB(0)
 }}};
 
-static const decaf_word_t DECAF_MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae918bc5ull);
+static const decaf_word_t MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae918bc5ull);
 
 /** base = twist of Goldilocks base point (~,19). */
 
@@ -86,7 +90,7 @@ static const decaf_word_t DECAF_MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae91
     LIMB(a),LIMB(b),LIMB(c),LIMB(d),LIMB(e),LIMB(f),LIMB(g),LIMB(h)
 #endif
 
-const decaf_448_point_t decaf_448_point_base = {{
+const point_t API_NS(point_base) = {{
     {{{ FIELD_LITERAL(
         0xb39a2d57e08c7b,0xb38639c75ff281,
         0x2ec981082b3288,0x99fe8607e5237c,
@@ -110,14 +114,14 @@ typedef struct { gf a, b, c; } niels_s, niels_t[1];
 typedef struct { niels_t n; gf z; } pniels_s, pniels_t[1];
 
 /* Precomputed base */
-struct decaf_448_precomputed_s { niels_t table [DECAF_COMBS_N<<(DECAF_COMBS_T-1)]; };
+struct precomputed_s { niels_t table [DECAF_COMBS_N<<(DECAF_COMBS_T-1)]; };
 
-extern const decaf_word_t decaf_448_precomputed_base_as_words[];
-const decaf_448_precomputed_s *decaf_448_precomputed_base =
-    (const decaf_448_precomputed_s *) &decaf_448_precomputed_base_as_words;
+extern const decaf_word_t API_NS(precomputed_base_as_words)[];
+const precomputed_s *API_NS(precomputed_base) =
+    (const precomputed_s *) &API_NS(precomputed_base_as_words);
 
-const size_t sizeof_decaf_448_precomputed_s = sizeof(decaf_448_precomputed_s);
-const size_t alignof_decaf_448_precomputed_s = 32;
+const size_t API_NS2(sizeof,precomputed_s) = sizeof(precomputed_s);
+const size_t API_NS2(alignof,precomputed_s) = 32;
 
 #ifdef __clang__
 #if 100*__clang_major__ + __clang_minor__ > 305
@@ -129,11 +133,11 @@ const size_t alignof_decaf_448_precomputed_s = 32;
 #define VECTORIZE
 #endif
 
-#define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
-#define FOR_LIMB_V(i,op) { unsigned int i=0; VECTORIZE for (i=0; i<DECAF_448_LIMBS; i++)  { op; }}
+#define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<NLIMBS; i++)  { op; }}
+#define FOR_LIMB_V(i,op) { unsigned int i=0; VECTORIZE for (i=0; i<NLIMBS; i++)  { op; }}
 
 /** Copy x = y */
-siv gf_cpy(gf x, const gf y) { FOR_LIMB_V(i, x->limb[i] = y->limb[i]); }
+siv gf_cpy(gf x, const gf y) { x[0] = y[0]; }
 
 /** Mostly-unoptimized multiply, but at least it's unrolled. */
 siv gf_mul (gf c, const gf a, const gf b) {
@@ -148,6 +152,16 @@ siv gf_sqr (gf c, const gf a) {
 /** Inverse square root using addition chain. */
 siv gf_isqrt(gf y, const gf x) {
     field_isr((field_t *)y, (const field_t *)x);
+}
+
+/** Inverse.  TODO: adapt to 5-mod-8 fields? */
+sv gf_invert(gf y, const gf x) {
+    gf t1, t2;
+    gf_sqr(t1, x); // o^2
+    gf_isqrt(t2, t1); // +-1/sqrt(o^2) = +-1/o
+    gf_sqr(t1, t2);
+    gf_mul(t2, t1, x); // not direct to y in case of alias.
+    gf_cpy(y, t2);
 }
 
 /** Add mod p.  Conservatively always weak-reduce. */
@@ -248,6 +262,15 @@ static decaf_word_t __attribute__((noinline)) gf_eq(const gf a, const gf b) {
     return ((decaf_dword_t)ret - 1) >> WBITS;
 }
 
+/** Inverse square root using addition chain. */
+static decaf_bool_t gf_isqrt_chk(gf y, const gf x, decaf_bool_t allow_zero) {
+    gf tmp0, tmp1;
+    field_isr((field_t *)y, (const field_t *)x);
+    gf_sqr(tmp0,y);
+    gf_mul(tmp1,tmp0,x);
+    return gf_eq(tmp1,ONE) | (allow_zero & gf_eq(tmp1,ZERO));
+}
+
 /** Return high bit of x = low bit of 2x mod p */
 static decaf_word_t hibit(const gf x) {
     gf y;
@@ -259,16 +282,16 @@ static decaf_word_t hibit(const gf x) {
 /** {extra,accum} - sub +? p
  * Must have extra <= 1
  */
-snv decaf_448_subx(
-    decaf_448_scalar_t out,
-    const decaf_word_t accum[DECAF_448_SCALAR_LIMBS],
-    const decaf_448_scalar_t sub,
-    const decaf_448_scalar_t p,
+snv sc_subx(
+    scalar_t out,
+    const decaf_word_t accum[SCALAR_LIMBS],
+    const scalar_t sub,
+    const scalar_t p,
     decaf_word_t extra
 ) {
     decaf_sdword_t chain = 0;
     unsigned int i;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for (i=0; i<SCALAR_LIMBS; i++) {
         chain = (chain + accum[i]) - sub->limb[i];
         out->limb[i] = chain;
         chain >>= WBITS;
@@ -276,38 +299,38 @@ snv decaf_448_subx(
     decaf_bool_t borrow = chain+extra; /* = 0 or -1 */
     
     chain = 0;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for (i=0; i<SCALAR_LIMBS; i++) {
         chain = (chain + out->limb[i]) + (p->limb[i] & borrow);
         out->limb[i] = chain;
         chain >>= WBITS;
     }
 }
 
-snv decaf_448_montmul (
-    decaf_448_scalar_t out,
-    const decaf_448_scalar_t a,
-    const decaf_448_scalar_t b
+snv sc_montmul (
+    scalar_t out,
+    const scalar_t a,
+    const scalar_t b
 ) {
     unsigned int i,j;
-    decaf_word_t accum[DECAF_448_SCALAR_LIMBS+1] = {0};
+    decaf_word_t accum[SCALAR_LIMBS+1] = {0};
     decaf_word_t hi_carry = 0;
     
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for (i=0; i<SCALAR_LIMBS; i++) {
         decaf_word_t mand = a->limb[i];
         const decaf_word_t *mier = b->limb;
         
         decaf_dword_t chain = 0;
-        for (j=0; j<DECAF_448_SCALAR_LIMBS; j++) {
+        for (j=0; j<SCALAR_LIMBS; j++) {
             chain += ((decaf_dword_t)mand)*mier[j] + accum[j];
             accum[j] = chain;
             chain >>= WBITS;
         }
         accum[j] = chain;
         
-        mand = accum[0] * DECAF_MONTGOMERY_FACTOR;
+        mand = accum[0] * MONTGOMERY_FACTOR;
         chain = 0;
-        mier = decaf_448_scalar_p->limb;
-        for (j=0; j<DECAF_448_SCALAR_LIMBS; j++) {
+        mier = sc_p->limb;
+        for (j=0; j<SCALAR_LIMBS; j++) {
             chain += (decaf_dword_t)mand*mier[j] + accum[j];
             if (j) accum[j-1] = chain;
             chain >>= WBITS;
@@ -318,32 +341,33 @@ snv decaf_448_montmul (
         hi_carry = chain >> WBITS;
     }
     
-    decaf_448_subx(out, accum, decaf_448_scalar_p, decaf_448_scalar_p, hi_carry);
+    sc_subx(out, accum, sc_p, sc_p, hi_carry);
 }
 
-void decaf_448_scalar_mul (
-    decaf_448_scalar_t out,
-    const decaf_448_scalar_t a,
-    const decaf_448_scalar_t b
+void API_NS(scalar_mul) (
+    scalar_t out,
+    const scalar_t a,
+    const scalar_t b
 ) {
-    decaf_448_montmul(out,a,b);
-    decaf_448_montmul(out,out,decaf_448_scalar_r2);
+    sc_montmul(out,a,b);
+    sc_montmul(out,out,sc_r2);
 }
 
 /* PERF: could implement this */
-siv decaf_448_montsqr (
-    decaf_448_scalar_t out,
-    const decaf_448_scalar_t a
+siv sc_montsqr (
+    scalar_t out,
+    const scalar_t a
 ) {
-    decaf_448_montmul(out,a,a);
+    sc_montmul(out,a,a);
 }
 
-decaf_bool_t decaf_448_scalar_invert (
-    decaf_448_scalar_t out,
-    const decaf_448_scalar_t a
+decaf_bool_t API_NS(scalar_invert) (
+    scalar_t out,
+    const scalar_t a
 ) {
-    decaf_448_scalar_t chain[7], tmp;
-    decaf_448_montmul(chain[0],a,decaf_448_scalar_r2);
+    /* FIELD MAGIC */
+    scalar_t chain[7], tmp;
+    sc_montmul(chain[0],a,sc_r2);
     
     unsigned int i,j;
     /* Addition chain generated by a not-too-clever SAGE script.  First part: compute a^(2^222-1) */
@@ -368,85 +392,85 @@ decaf_bool_t decaf_448_scalar_invert (
     };
     
     for (i=0; i<sizeof(muls)/sizeof(muls[0]); i++) {
-        decaf_448_montsqr(tmp, chain[muls[i].sidx]);
+        sc_montsqr(tmp, chain[muls[i].sidx]);
         for (j=1; j<muls[i].sct; j++) {
-            decaf_448_montsqr(tmp, tmp);
+            sc_montsqr(tmp, tmp);
         }
-        decaf_448_montmul(chain[muls[i].widx], tmp, chain[muls[i].midx]);
+        sc_montmul(chain[muls[i].widx], tmp, chain[muls[i].midx]);
     }
     
     for (i=0; i<sizeof(muls1)/sizeof(muls1[0]); i++) {
-        decaf_448_montsqr(tmp, chain[1]);
+        sc_montsqr(tmp, chain[1]);
         for (j=1; j<muls1[i].sct; j++) {
-            decaf_448_montsqr(tmp, tmp);
+            sc_montsqr(tmp, tmp);
         }
-        decaf_448_montmul(chain[1], tmp, chain[muls1[i].midx]);
+        sc_montmul(chain[1], tmp, chain[muls1[i].midx]);
     }
     
-    decaf_448_montmul(out,chain[1],decaf_448_scalar_one);
+    sc_montmul(out,chain[1],API_NS(scalar_one));
     for (i=0; i<sizeof(chain)/sizeof(chain[0]); i++) {
-        decaf_448_scalar_destroy(chain[i]);
+        API_NS(scalar_destroy)(chain[i]);
     }
-    return ~decaf_448_scalar_eq(out,decaf_448_scalar_zero);
+    return ~API_NS(scalar_eq)(out,API_NS(scalar_zero));
 }
 
-void decaf_448_scalar_sub (
-    decaf_448_scalar_t out,
-    const decaf_448_scalar_t a,
-    const decaf_448_scalar_t b
+void API_NS(scalar_sub) (
+    scalar_t out,
+    const scalar_t a,
+    const scalar_t b
 ) {
-    decaf_448_subx(out, a->limb, b, decaf_448_scalar_p, 0);
+    sc_subx(out, a->limb, b, sc_p, 0);
 }
 
-void decaf_448_scalar_add (
-    decaf_448_scalar_t out,
-    const decaf_448_scalar_t a,
-    const decaf_448_scalar_t b
+void API_NS(scalar_add) (
+    scalar_t out,
+    const scalar_t a,
+    const scalar_t b
 ) {
     decaf_dword_t chain = 0;
     unsigned int i;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for (i=0; i<SCALAR_LIMBS; i++) {
         chain = (chain + a->limb[i]) + b->limb[i];
         out->limb[i] = chain;
         chain >>= WBITS;
     }
-    decaf_448_subx(out, out->limb, decaf_448_scalar_p, decaf_448_scalar_p, chain);
+    sc_subx(out, out->limb, sc_p, sc_p, chain);
 }
 
-snv decaf_448_scalar_halve (
-    decaf_448_scalar_t out,
-    const decaf_448_scalar_t a,
-    const decaf_448_scalar_t p
+snv sc_halve (
+    scalar_t out,
+    const scalar_t a,
+    const scalar_t p
 ) {
     decaf_word_t mask = -(a->limb[0] & 1);
     decaf_dword_t chain = 0;
     unsigned int i;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for (i=0; i<SCALAR_LIMBS; i++) {
         chain = (chain + a->limb[i]) + (p->limb[i] & mask);
         out->limb[i] = chain;
         chain >>= WBITS;
     }
-    for (i=0; i<DECAF_448_SCALAR_LIMBS-1; i++) {
+    for (i=0; i<SCALAR_LIMBS-1; i++) {
         out->limb[i] = out->limb[i]>>1 | out->limb[i+1]<<(WBITS-1);
     }
     out->limb[i] = out->limb[i]>>1 | chain<<(WBITS-1);
 }
 
-void decaf_448_scalar_set (
-    decaf_448_scalar_t out,
+void API_NS(scalar_set) (
+    scalar_t out,
     decaf_word_t w
 ) {
-    memset(out,0,sizeof(decaf_448_scalar_t));
+    memset(out,0,sizeof(scalar_t));
     out->limb[0] = w;
 }
 
-decaf_bool_t decaf_448_scalar_eq (
-    const decaf_448_scalar_t a,
-    const decaf_448_scalar_t b
+decaf_bool_t API_NS(scalar_eq) (
+    const scalar_t a,
+    const scalar_t b
 ) {
     decaf_word_t diff = 0;
     unsigned int i;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for (i=0; i<SCALAR_LIMBS; i++) {
         diff |= a->limb[i] ^ b->limb[i];
     }
     return (((decaf_dword_t)diff)-1)>>WBITS;
@@ -455,24 +479,13 @@ decaf_bool_t decaf_448_scalar_eq (
 /* *** API begins here *** */    
 
 /** identity = (0,1) */
-const decaf_448_point_t decaf_448_point_identity = {{{{{0}}},{{{1}}},{{{1}}},{{{0}}}}};
+const point_t API_NS(point_identity) = {{{{{0}}},{{{1}}},{{{1}}},{{{0}}}}};
 
-static void gf_encode ( unsigned char ser[DECAF_448_SER_BYTES], gf a ) {
-    /*
-    gf_canon(a);
-    int i, k=0, bits=0;
-    decaf_dword_t buf=0;
-    for (i=0; i<DECAF_448_LIMBS; i++) {
-        buf |= (decaf_dword_t)a->limb[i]<<bits;
-        for (bits += LBITS; (bits>=8 || i==DECAF_448_LIMBS-1) && k<DECAF_448_SER_BYTES; bits-=8, buf>>=8) {
-            ser[k++]=buf;
-        }
-    }
-    */
+static void gf_encode ( unsigned char ser[SER_BYTES], gf a ) {
     field_serialize(ser, (field_t *)a);
 }
 
-void decaf_448_point_encode( unsigned char ser[DECAF_448_SER_BYTES], const decaf_448_point_t p ) {
+void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
     /* Can shave off one mul here; not important but makes consistent with paper */
     gf a, b, c, d;
     gf_mlw ( a, p->y, 1-EDWARDS_D ); 
@@ -499,30 +512,16 @@ void decaf_448_point_encode( unsigned char ser[DECAF_448_SER_BYTES], const decaf
 /**
  * Deserialize a bool, return TRUE if < p.
  */
-static decaf_bool_t gf_deser(gf s, const unsigned char ser[DECAF_448_SER_BYTES]) {
-    /*
-    unsigned int i, k=0, bits=0;
-    decaf_dword_t buf=0;
-    for (i=0; i<DECAF_448_SER_BYTES; i++) {
-        buf |= (decaf_dword_t)ser[i]<<bits;
-        for (bits += 8; (bits>=LBITS || i==DECAF_448_SER_BYTES-1) && k<DECAF_448_LIMBS; bits-=LBITS, buf>>=LBITS) {
-            s->limb[k++] = buf & LMASK;
-        }
-    }
-    
-    decaf_sdword_t accum = 0;
-    FOR_LIMB(i, accum = (accum + s->limb[i] - P->limb[i]) >> WBITS );
-    return accum;
-    */
+static decaf_bool_t gf_deser(gf s, const unsigned char ser[SER_BYTES]) {
     return field_deserialize((field_t *)s, ser);
 }
     
-decaf_bool_t decaf_448_point_decode (
-    decaf_448_point_t p,
-    const unsigned char ser[DECAF_448_SER_BYTES],
+decaf_bool_t API_NS(point_decode) (
+    point_t p,
+    const unsigned char ser[SER_BYTES],
     decaf_bool_t allow_identity
 ) {
-    gf s, a, b, c, d, e;
+    gf s, a, b, c, d;
     decaf_bool_t succ = gf_deser(s, ser), zero = gf_eq(s, ZERO);
     succ &= allow_identity | ~zero;
     succ &= ~hibit(s);
@@ -532,11 +531,7 @@ decaf_bool_t decaf_448_point_decode (
     gf_mlw ( c, a, 4-4*EDWARDS_D );
     gf_add ( c, c, b );
     gf_mul ( b, c, a );
-    gf_isqrt ( d, b );
-    gf_sqr ( e, d );
-    gf_mul ( a, e, b );
-    gf_add ( a, a, ONE );
-    succ &= ~gf_eq ( a, ZERO );
+    succ &= gf_isqrt_chk ( d, b, DECAF_TRUE );
     gf_mul ( b, c, d );
     cond_neg ( d, hibit(b) );
     gf_add ( p->x, s, s );
@@ -550,10 +545,10 @@ decaf_bool_t decaf_448_point_decode (
     return succ;
 }
 
-void decaf_448_point_sub (
-    decaf_448_point_t p,
-    const decaf_448_point_t q,
-    const decaf_448_point_t r
+void API_NS(point_sub) (
+    point_t p,
+    const point_t q,
+    const point_t r
 ) {
     gf a, b, c, d;
     gf_sub_nr ( b, q->y, q->x );
@@ -576,10 +571,10 @@ void decaf_448_point_sub (
     gf_mul ( p->t, b, c );
 }
     
-void decaf_448_point_add (
-    decaf_448_point_t p,
-    const decaf_448_point_t q,
-    const decaf_448_point_t r
+void API_NS(point_add) (
+    point_t p,
+    const point_t q,
+    const point_t r
 ) {
     gf a, b, c, d;
     gf_sub_nr ( b, q->y, q->x );
@@ -602,9 +597,9 @@ void decaf_448_point_add (
     gf_mul ( p->t, b, c );
 }
 
-snv decaf_448_point_double_internal (
-    decaf_448_point_t p,
-    const decaf_448_point_t q,
+snv point_double_internal (
+    point_t p,
+    const point_t q,
     decaf_bool_t before_double
 ) {
     gf a, b, c, d;
@@ -624,13 +619,13 @@ snv decaf_448_point_double_internal (
     if (!before_double) gf_mul ( p->t, b, d );
 }
 
-void decaf_448_point_double(decaf_448_point_t p, const decaf_448_point_t q) {
-    decaf_448_point_double_internal(p,q,0);
+void API_NS(point_double)(point_t p, const point_t q) {
+    point_double_internal(p,q,0);
 }
 
-void decaf_448_point_negate (
-   decaf_448_point_t nega,
-   const decaf_448_point_t a
+void API_NS(point_negate) (
+   point_t nega,
+   const point_t a
 ) {
     gf_sub(nega->x, ZERO, a->x);
     gf_cpy(nega->y, a->y);
@@ -638,13 +633,13 @@ void decaf_448_point_negate (
     gf_sub(nega->t, ZERO, a->t);
 }
 
-siv decaf_448_scalar_decode_short (
-    decaf_448_scalar_t s,
-    const unsigned char ser[DECAF_448_SER_BYTES],
+siv scalar_decode_short (
+    scalar_t s,
+    const unsigned char ser[SER_BYTES],
     unsigned int nbytes
 ) {
     unsigned int i,j,k=0;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for (i=0; i<SCALAR_LIMBS; i++) {
         decaf_word_t out = 0;
         for (j=0; j<sizeof(decaf_word_t) && k<nbytes; j++,k++) {
             out |= ((decaf_word_t)ser[k])<<(8*j);
@@ -653,18 +648,18 @@ siv decaf_448_scalar_decode_short (
     }
 }
 
-decaf_bool_t decaf_448_scalar_decode(
-    decaf_448_scalar_t s,
-    const unsigned char ser[DECAF_448_SER_BYTES]
+decaf_bool_t API_NS(scalar_decode)(
+    scalar_t s,
+    const unsigned char ser[SER_BYTES]
 ) {
     unsigned int i;
-    decaf_448_scalar_decode_short(s, ser, DECAF_448_SER_BYTES);
+    scalar_decode_short(s, ser, SER_BYTES);
     decaf_sdword_t accum = 0;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
-        accum = (accum + s->limb[i] - decaf_448_scalar_p->limb[i]) >> WBITS;
+    for (i=0; i<SCALAR_LIMBS; i++) {
+        accum = (accum + s->limb[i] - sc_p->limb[i]) >> WBITS;
     }
     
-    decaf_448_montmul(s,s,decaf_448_scalar_r1); /* ham-handed reduce */
+    sc_montmul(s,s,sc_r1); /* ham-handed reduce */
     
     return accum;
 }
@@ -688,60 +683,60 @@ void decaf_bzero (
 }
 
 
-void decaf_448_scalar_destroy (
-    decaf_448_scalar_t scalar
+void API_NS(scalar_destroy) (
+    scalar_t scalar
 ) {
-    decaf_bzero(scalar, sizeof(decaf_448_scalar_t));
+    decaf_bzero(scalar, sizeof(scalar_t));
 }
 
 static inline void ignore_result ( decaf_bool_t boo ) {
     (void)boo;
 }
 
-void decaf_448_scalar_decode_long(
-    decaf_448_scalar_t s,
+void API_NS(scalar_decode_long)(
+    scalar_t s,
     const unsigned char *ser,
     size_t ser_len
 ) {
     if (ser_len == 0) {
-        decaf_448_scalar_copy(s, decaf_448_scalar_zero);
+        API_NS(scalar_copy)(s, API_NS(scalar_zero));
         return;
     }
     
     size_t i;
-    decaf_448_scalar_t t1, t2;
+    scalar_t t1, t2;
 
-    i = ser_len - (ser_len%DECAF_448_SER_BYTES);
-    if (i==ser_len) i -= DECAF_448_SER_BYTES;
+    i = ser_len - (ser_len%SER_BYTES);
+    if (i==ser_len) i -= SER_BYTES;
     
-    decaf_448_scalar_decode_short(t1, &ser[i], ser_len-i);
+    scalar_decode_short(t1, &ser[i], ser_len-i);
 
-    if (ser_len == sizeof(decaf_448_scalar_t)) {
+    if (ser_len == sizeof(scalar_t)) {
         assert(i==0);
         /* ham-handed reduce */
-        decaf_448_montmul(s,t1,decaf_448_scalar_r1);
-        decaf_448_scalar_destroy(t1);
+        sc_montmul(s,t1,sc_r1);
+        API_NS(scalar_destroy)(t1);
         return;
     }
 
     while (i) {
-        i -= DECAF_448_SER_BYTES;
-        decaf_448_montmul(t1,t1,decaf_448_scalar_r2);
-        ignore_result( decaf_448_scalar_decode(t2, ser+i) );
-        decaf_448_scalar_add(t1, t1, t2);
+        i -= SER_BYTES;
+        sc_montmul(t1,t1,sc_r2);
+        ignore_result( API_NS(scalar_decode)(t2, ser+i) );
+        API_NS(scalar_add)(t1, t1, t2);
     }
 
-    decaf_448_scalar_copy(s, t1);
-    decaf_448_scalar_destroy(t1);
-    decaf_448_scalar_destroy(t2);
+    API_NS(scalar_copy)(s, t1);
+    API_NS(scalar_destroy)(t1);
+    API_NS(scalar_destroy)(t2);
 }
 
-void decaf_448_scalar_encode(
-    unsigned char ser[DECAF_448_SER_BYTES],
-    const decaf_448_scalar_t s
+void API_NS(scalar_encode)(
+    unsigned char ser[SER_BYTES],
+    const scalar_t s
 ) {
     unsigned int i,j,k=0;
-    for (i=0; i<DECAF_448_SCALAR_LIMBS; i++) {
+    for (i=0; i<SCALAR_LIMBS; i++) {
         for (j=0; j<sizeof(decaf_word_t); j++,k++) {
             ser[k] = s->limb[i] >> (8*j);
         }
@@ -759,7 +754,7 @@ siv cond_neg_niels (
 
 static void pt_to_pniels (
     pniels_t b,
-    const decaf_448_point_t a
+    const point_t a
 ) {
     gf_sub ( b->n->a, a->y, a->x );
     gf_add ( b->n->b, a->x, a->y );
@@ -768,7 +763,7 @@ static void pt_to_pniels (
 }
 
 static void pniels_to_pt (
-    decaf_448_point_t e,
+    point_t e,
     const pniels_t d
 ) {
     gf eu;
@@ -781,7 +776,7 @@ static void pniels_to_pt (
 }
 
 snv niels_to_pt (
-    decaf_448_point_t e,
+    point_t e,
     const niels_t n
 ) {
     gf_add ( e->y, n->b, n->a );
@@ -791,7 +786,7 @@ snv niels_to_pt (
 }
 
 snv add_niels_to_pt (
-    decaf_448_point_t d,
+    point_t d,
     const niels_t e,
     decaf_bool_t before_double
 ) {
@@ -812,7 +807,7 @@ snv add_niels_to_pt (
 }
 
 snv sub_niels_from_pt (
-    decaf_448_point_t d,
+    point_t d,
     const niels_t e,
     decaf_bool_t before_double
 ) {
@@ -833,7 +828,7 @@ snv sub_niels_from_pt (
 }
 
 sv add_pniels_to_pt (
-    decaf_448_point_t p,
+    point_t p,
     const pniels_t pn,
     decaf_bool_t before_double
 ) {
@@ -844,7 +839,7 @@ sv add_pniels_to_pt (
 }
 
 sv sub_pniels_from_pt (
-    decaf_448_point_t p,
+    point_t p,
     const pniels_t pn,
     decaf_bool_t before_double
 ) {
@@ -854,7 +849,7 @@ sv sub_pniels_from_pt (
     sub_niels_from_pt( p, pn->n, before_double );
 }
 
-extern const decaf_448_scalar_t decaf_448_point_scalarmul_adjustment;
+extern const scalar_t API_NS(point_scalarmul_adjustment);
 
 /* TODO: get rid of big_register_t dependencies? */
 siv constant_time_lookup_xx (
@@ -883,50 +878,50 @@ siv constant_time_lookup_xx (
 
 snv prepare_fixed_window(
     pniels_t *multiples,
-    const decaf_448_point_t b,
+    const point_t b,
     int ntable
 ) {
-    decaf_448_point_t tmp;
+    point_t tmp;
     pniels_t pn;
     int i;
     
-    decaf_448_point_double(tmp, b);
+    point_double_internal(tmp, b, 0);
     pt_to_pniels(pn, tmp);
     pt_to_pniels(multiples[0], b);
-    decaf_448_point_copy(tmp, b);
+    API_NS(point_copy)(tmp, b);
     for (i=1; i<ntable; i++) {
         add_pniels_to_pt(tmp, pn, 0);
         pt_to_pniels(multiples[i], tmp);
     }
 }
 
-void decaf_448_point_scalarmul (
-    decaf_448_point_t a,
-    const decaf_448_point_t b,
-    const decaf_448_scalar_t scalar
+void API_NS(point_scalarmul) (
+    point_t a,
+    const point_t b,
+    const scalar_t scalar
 ) {
     const int WINDOW = DECAF_WINDOW_BITS,
         WINDOW_MASK = (1<<WINDOW)-1,
         WINDOW_T_MASK = WINDOW_MASK >> 1,
         NTABLE = 1<<(WINDOW-1);
         
-    decaf_448_scalar_t scalar1x;
-    decaf_448_scalar_add(scalar1x, scalar, decaf_448_point_scalarmul_adjustment);
-    decaf_448_scalar_halve(scalar1x,scalar1x,decaf_448_scalar_p);
+    scalar_t scalar1x;
+    API_NS(scalar_add)(scalar1x, scalar, API_NS(point_scalarmul_adjustment));
+    sc_halve(scalar1x,scalar1x,sc_p);
     
     /* Set up a precomputed table with odd multiples of b. */
     pniels_t pn, multiples[NTABLE];
-    decaf_448_point_t tmp;
+    point_t tmp;
     prepare_fixed_window(multiples, b, NTABLE);
 
     /* Initialize. */
     int i,j,first=1;
-    i = DECAF_448_SCALAR_BITS - ((DECAF_448_SCALAR_BITS-1) % WINDOW) - 1;
+    i = SCALAR_BITS - ((SCALAR_BITS-1) % WINDOW) - 1;
 
     for (; i>=0; i-=WINDOW) {
         /* Fetch another block of bits */
         decaf_word_t bits = scalar1x->limb[i/WBITS] >> (i%WBITS);
-        if (i%WBITS >= WBITS-WINDOW && i/WBITS<DECAF_448_SCALAR_LIMBS-1) {
+        if (i%WBITS >= WBITS-WINDOW && i/WBITS<SCALAR_LIMBS-1) {
             bits ^= scalar1x->limb[i/WBITS+1] << (WBITS - (i%WBITS));
         }
         bits &= WINDOW_MASK;
@@ -945,49 +940,49 @@ void decaf_448_point_scalarmul (
             * the last one.
             */
             for (j=0; j<WINDOW-1; j++)
-                decaf_448_point_double_internal(tmp, tmp, -1);
-            decaf_448_point_double(tmp, tmp);
+                point_double_internal(tmp, tmp, -1);
+            point_double_internal(tmp, tmp, 0);
             add_pniels_to_pt(tmp, pn, i ? -1 : 0);
         }
     }
     
     /* Write out the answer */
-    decaf_448_point_copy(a,tmp);
+    API_NS(point_copy)(a,tmp);
 }
 
-void decaf_448_point_double_scalarmul (
-    decaf_448_point_t a,
-    const decaf_448_point_t b,
-    const decaf_448_scalar_t scalarb,
-    const decaf_448_point_t c,
-    const decaf_448_scalar_t scalarc
+void API_NS(point_double_scalarmul) (
+    point_t a,
+    const point_t b,
+    const scalar_t scalarb,
+    const point_t c,
+    const scalar_t scalarc
 ) {
     const int WINDOW = DECAF_WINDOW_BITS,
         WINDOW_MASK = (1<<WINDOW)-1,
         WINDOW_T_MASK = WINDOW_MASK >> 1,
         NTABLE = 1<<(WINDOW-1);
         
-    decaf_448_scalar_t scalar1x, scalar2x;
-    decaf_448_scalar_add(scalar1x, scalarb, decaf_448_point_scalarmul_adjustment);
-    decaf_448_scalar_halve(scalar1x,scalar1x,decaf_448_scalar_p);
-    decaf_448_scalar_add(scalar2x, scalarc, decaf_448_point_scalarmul_adjustment);
-    decaf_448_scalar_halve(scalar2x,scalar2x,decaf_448_scalar_p);
+    scalar_t scalar1x, scalar2x;
+    API_NS(scalar_add)(scalar1x, scalarb, API_NS(point_scalarmul_adjustment));
+    sc_halve(scalar1x,scalar1x,sc_p);
+    API_NS(scalar_add)(scalar2x, scalarc, API_NS(point_scalarmul_adjustment));
+    sc_halve(scalar2x,scalar2x,sc_p);
     
     /* Set up a precomputed table with odd multiples of b. */
     pniels_t pn, multiples1[NTABLE], multiples2[NTABLE];
-    decaf_448_point_t tmp;
+    point_t tmp;
     prepare_fixed_window(multiples1, b, NTABLE);
     prepare_fixed_window(multiples2, c, NTABLE);
 
     /* Initialize. */
     int i,j,first=1;
-    i = DECAF_448_SCALAR_BITS - ((DECAF_448_SCALAR_BITS-1) % WINDOW) - 1;
+    i = SCALAR_BITS - ((SCALAR_BITS-1) % WINDOW) - 1;
 
     for (; i>=0; i-=WINDOW) {
         /* Fetch another block of bits */
         decaf_word_t bits1 = scalar1x->limb[i/WBITS] >> (i%WBITS),
                      bits2 = scalar2x->limb[i/WBITS] >> (i%WBITS);
-        if (i%WBITS >= WBITS-WINDOW && i/WBITS<DECAF_448_SCALAR_LIMBS-1) {
+        if (i%WBITS >= WBITS-WINDOW && i/WBITS<SCALAR_LIMBS-1) {
             bits1 ^= scalar1x->limb[i/WBITS+1] << (WBITS - (i%WBITS));
             bits2 ^= scalar2x->limb[i/WBITS+1] << (WBITS - (i%WBITS));
         }
@@ -1010,8 +1005,8 @@ void decaf_448_point_double_scalarmul (
             * the last one.
             */
             for (j=0; j<WINDOW-1; j++)
-                decaf_448_point_double_internal(tmp, tmp, -1);
-            decaf_448_point_double(tmp, tmp);
+                point_double_internal(tmp, tmp, -1);
+            point_double_internal(tmp, tmp, 0);
             add_pniels_to_pt(tmp, pn, 0);
         }
         constant_time_lookup_xx(pn, multiples2, sizeof(pn), NTABLE, bits2 & WINDOW_T_MASK);
@@ -1020,10 +1015,10 @@ void decaf_448_point_double_scalarmul (
     }
     
     /* Write out the answer */
-    decaf_448_point_copy(a,tmp);
+    API_NS(point_copy)(a,tmp);
 }
 
-decaf_bool_t decaf_448_point_eq ( const decaf_448_point_t p, const decaf_448_point_t q ) {
+decaf_bool_t API_NS(point_eq) ( const point_t p, const point_t q ) {
     /* equality mod 2-torsion compares x/y */
     gf a, b;
     gf_mul ( a, p->y, q->x );
@@ -1031,9 +1026,9 @@ decaf_bool_t decaf_448_point_eq ( const decaf_448_point_t p, const decaf_448_poi
     return gf_eq(a,b);
 }
 
-void decaf_448_point_from_hash_nonuniform (
-    decaf_448_point_t p,
-    const unsigned char ser[DECAF_448_SER_BYTES]
+void API_NS(point_from_hash_nonuniform) (
+    point_t p,
+    const unsigned char ser[SER_BYTES]
 ) {
     gf r,urr,a,b,c,dee,e,ur2_d,udr2_1;
     (void)gf_deser(r,ser);
@@ -1049,10 +1044,8 @@ void decaf_448_point_from_hash_nonuniform (
     gf_add(udr2_1,b,ONE);
     gf_mul(a,c,udr2_1);
     gf_mlw(c,a,EDWARDS_D+1);
-    gf_isqrt(b,c); /* FIELD: if 5 mod 8, multiply result by u. */
-    gf_sqr(a,b);
-    gf_mul(e,a,c);
-    decaf_bool_t square = gf_eq(e,ONE);
+    decaf_bool_t square = gf_isqrt_chk(b,c,DECAF_FALSE);
+    /* FIELD: if 5 mod 8, multiply result by u. */
     gf_mul(a,b,r);
     cond_sel(b,a,b,square);
     gf_mlw(a,b,EDWARDS_D+1);
@@ -1072,18 +1065,18 @@ void decaf_448_point_from_hash_nonuniform (
     gf_mul(p->t,b,e);
 }
 
-void decaf_448_point_from_hash_uniform (
-    decaf_448_point_t pt,
-    const unsigned char hashed_data[2*DECAF_448_SER_BYTES]
+void API_NS(point_from_hash_uniform) (
+    point_t pt,
+    const unsigned char hashed_data[2*SER_BYTES]
 ) {
-    decaf_448_point_t pt2;
-    decaf_448_point_from_hash_nonuniform(pt,hashed_data);
-    decaf_448_point_from_hash_nonuniform(pt2,&hashed_data[DECAF_448_SER_BYTES]);
-    decaf_448_point_add(pt,pt,pt2);
+    point_t pt2;
+    API_NS(point_from_hash_nonuniform)(pt,hashed_data);
+    API_NS(point_from_hash_nonuniform)(pt2,&hashed_data[SER_BYTES]);
+    API_NS(point_add)(pt,pt,pt2);
 }
 
-decaf_bool_t decaf_448_point_valid (
-    const decaf_448_point_t p
+decaf_bool_t API_NS(point_valid) (
+    const point_t p
 ) {
     gf a,b,c;
     gf_mul(a,p->x,p->y);
@@ -1106,6 +1099,7 @@ static void gf_batch_invert (
     /* const */ gf *in,
     unsigned int n
 ) {
+    gf t1;
     assert(n>1);
   
     gf_cpy(out[1], in[0]);
@@ -1115,12 +1109,7 @@ static void gf_batch_invert (
     }
     gf_mul(out[0], out[n-1], in[n-1]);
 
-    gf t1, t2;
-    gf_isqrt(t1, out[0]);
-    gf_sqr(t2, t1);
-    gf_sqr(t1, t2);
-    gf_mul(t2, t1, out[0]);
-    gf_cpy(out[0], t2);
+    gf_invert(out[0], out[0]);
 
     for (i=n-1; i>0; i--) {
         gf_mul(t1, out[i], out[0]);
@@ -1155,16 +1144,15 @@ static void batch_normalize_niels (
     }
 }
 
-void
-decaf_448_precompute (
-    decaf_448_precomputed_s *table,
-    const decaf_448_point_t base
+void API_NS(precompute) (
+    precomputed_s *table,
+    const point_t base
 ) { 
     const unsigned int n = DECAF_COMBS_N, t = DECAF_COMBS_T, s = DECAF_COMBS_S;
-    assert(n*t*s >= DECAF_448_SCALAR_BITS);
+    assert(n*t*s >= SCALAR_BITS);
   
-    decaf_448_point_t working, start, doubles[t-1];
-    decaf_448_point_copy(working, base);
+    point_t working, start, doubles[t-1];
+    API_NS(point_copy)(working, base);
     pniels_t pn_tmp;
   
     gf zs[n<<(t-1)], zis[n<<(t-1)];
@@ -1176,16 +1164,16 @@ decaf_448_precompute (
 
         /* Doubling phase */
         for (j=0; j<t; j++) {
-            if (j) decaf_448_point_add(start, start, working);
-            else decaf_448_point_copy(start, working);
+            if (j) API_NS(point_add)(start, start, working);
+            else API_NS(point_copy)(start, working);
 
             if (j==t-1 && i==n-1) break;
 
-            decaf_448_point_double(working, working);
-            if (j<t-1) decaf_448_point_copy(doubles[j], working);
+            point_double_internal(working, working,0);
+            if (j<t-1) API_NS(point_copy)(doubles[j], working);
 
             for (k=0; k<s-1; k++)
-                decaf_448_point_double_internal(working, working, k<s-2);
+                point_double_internal(working, working, k<s-2);
         }
 
         /* Gray-code phase */
@@ -1204,9 +1192,9 @@ decaf_448_precompute (
                 delta >>=1;
             
             if (gray & (1<<k)) {
-                decaf_448_point_add(start, start, doubles[k]);
+                API_NS(point_add)(start, start, doubles[k]);
             } else {
-                decaf_448_point_sub(start, start, doubles[k]);
+                API_NS(point_sub)(start, start, doubles[k]);
             }
         }
     }
@@ -1214,9 +1202,9 @@ decaf_448_precompute (
     batch_normalize_niels(table->table,zs,zis,n<<(t-1));
 }
 
-extern const decaf_448_scalar_t decaf_448_precomputed_scalarmul_adjustment;
+extern const scalar_t API_NS(precomputed_scalarmul_adjustment);
 
-siv constant_time_lookup_niels (
+siv constant_time_lookup_xx_niels (
     niels_s *__restrict__ ni,
     const niels_t *table,
     int nelts,
@@ -1225,30 +1213,30 @@ siv constant_time_lookup_niels (
     constant_time_lookup_xx(ni, table, sizeof(niels_s), nelts, idx);
 }
 
-void decaf_448_precomputed_scalarmul (
-    decaf_448_point_t out,
-    const decaf_448_precomputed_s *table,
-    const decaf_448_scalar_t scalar
+void API_NS(precomputed_scalarmul) (
+    point_t out,
+    const precomputed_s *table,
+    const scalar_t scalar
 ) {
     int i;
     unsigned j,k;
     const unsigned int n = DECAF_COMBS_N, t = DECAF_COMBS_T, s = DECAF_COMBS_S;
     
-    decaf_448_scalar_t scalar1x;
-    decaf_448_scalar_add(scalar1x, scalar, decaf_448_precomputed_scalarmul_adjustment);
-    decaf_448_scalar_halve(scalar1x,scalar1x,decaf_448_scalar_p);
+    scalar_t scalar1x;
+    API_NS(scalar_add)(scalar1x, scalar, API_NS(precomputed_scalarmul_adjustment));
+    sc_halve(scalar1x,scalar1x,sc_p);
     
     niels_t ni;
     
     for (i=s-1; i>=0; i--) {
-        if (i != (int)s-1) decaf_448_point_double(out,out);
+        if (i != (int)s-1) point_double_internal(out,out,0);
         
         for (j=0; j<n; j++) {
             int tab = 0;
          
             for (k=0; k<t; k++) {
                 unsigned int bit = i + s*(k + j*t);
-                if (bit < DECAF_448_SCALAR_BITS) {
+                if (bit < SCALAR_BITS) {
                     tab |= (scalar1x->limb[bit/WBITS] >> (bit%WBITS) & 1) << k;
                 }
             }
@@ -1257,7 +1245,7 @@ void decaf_448_precomputed_scalarmul (
             tab ^= invert;
             tab &= (1<<(t-1)) - 1;
 
-            constant_time_lookup_niels(ni, &table->table[j<<(t-1)], 1<<(t-1), tab);
+            constant_time_lookup_xx_niels(ni, &table->table[j<<(t-1)], 1<<(t-1), tab);
 
             cond_neg_niels(ni, invert);
             if ((i!=s-1)||j) {
@@ -1276,10 +1264,10 @@ static inline decaf_word_t lobit(gf x) {
     return -(x->limb[0]&1);
 }
 
-decaf_bool_t decaf_448_direct_scalarmul (
-    uint8_t scaled[DECAF_448_SER_BYTES],
-    const uint8_t base[DECAF_448_SER_BYTES],
-    const decaf_448_scalar_t scalar,
+decaf_bool_t API_NS(direct_scalarmul) (
+    uint8_t scaled[SER_BYTES],
+    const uint8_t base[SER_BYTES],
+    const scalar_t scalar,
     decaf_bool_t allow_identity,
     decaf_bool_t short_circuit
 ) {
@@ -1301,7 +1289,7 @@ decaf_bool_t decaf_448_direct_scalarmul (
     
     int j;
     decaf_bool_t pflip = 0;
-    for (j=DECAF_448_SCALAR_BITS+1; j>=0; j--) {
+    for (j=SCALAR_BITS+1; j>=0; j--) {
         /* FIXME: -1, but the test cases use too many bits */
         
         /* Augmented Montgomery ladder */
@@ -1406,18 +1394,18 @@ decaf_bool_t decaf_448_direct_scalarmul (
     return succ;
 }
 #else /* DECAF_USE_MONTGOMERY_LADDER */
-decaf_bool_t decaf_448_direct_scalarmul (
-    uint8_t scaled[DECAF_448_SER_BYTES],
-    const uint8_t base[DECAF_448_SER_BYTES],
-    const decaf_448_scalar_t scalar,
+decaf_bool_t API_NS(direct_scalarmul) (
+    uint8_t scaled[SER_BYTES],
+    const uint8_t base[SER_BYTES],
+    const scalar_t scalar,
     decaf_bool_t allow_identity,
     decaf_bool_t short_circuit
 ) {
-    decaf_448_point_t basep;
-    decaf_bool_t succ = decaf_448_point_decode(basep, base, allow_identity);
+    point_t basep;
+    decaf_bool_t succ = API_NS(point_decode)(basep, base, allow_identity);
     if (short_circuit & ~succ) return succ;
-    decaf_448_point_scalarmul(basep, basep, scalar);
-    decaf_448_point_encode(scaled, basep);
+    API_NS(point_scalarmul)(basep, basep, scalar);
+    API_NS(point_encode)(scaled, basep);
     return succ;
 }
 #endif /* DECAF_USE_MONTGOMERY_LADDER */
@@ -1432,7 +1420,7 @@ struct smvt_control {
 
 static int recode_wnaf (
     struct smvt_control *control, /* [nbits/(tableBits+1) + 3] */
-    const decaf_448_scalar_t scalar,
+    const scalar_t scalar,
     unsigned int tableBits
 ) {
     int current = 0, i, j;
@@ -1440,8 +1428,9 @@ static int recode_wnaf (
 
     /* PERF: negate scalar if it's large
      * PERF: this is a pretty simplistic algorithm.  I'm sure there's a faster one...
+     * PERF MINOR: not technically WNAF, since last digits can be adjacent.  Could be rtl.
      */
-    for (i=DECAF_448_SCALAR_BITS-1; i >= 0; i--) {
+    for (i=SCALAR_BITS-1; i >= 0; i--) {
         int bit = (scalar->limb[i/WORD_BITS] >> (i%WORD_BITS)) & 1;
         current = 2*current + bit;
 
@@ -1464,7 +1453,7 @@ static int recode_wnaf (
             control[position].power = j+1;
             control[position].addend = delta;
             position++;
-            assert(position <= DECAF_448_SCALAR_BITS/(tableBits+1) + 2);
+            assert(position <= SCALAR_BITS/(tableBits+1) + 2);
         }
     }
     
@@ -1475,7 +1464,7 @@ static int recode_wnaf (
         control[position].power = j;
         control[position].addend = current;
         position++;
-        assert(position <= DECAF_448_SCALAR_BITS/(tableBits+1) + 2);
+        assert(position <= SCALAR_BITS/(tableBits+1) + 2);
     }
     
   
@@ -1486,16 +1475,16 @@ static int recode_wnaf (
 
 sv prepare_wnaf_table(
     pniels_t *output,
-    const decaf_448_point_t working,
+    const point_t working,
     unsigned int tbits
 ) {
-    decaf_448_point_t tmp;
+    point_t tmp;
     int i;
     pt_to_pniels(output[0], working);
 
     if (tbits == 0) return;
 
-    decaf_448_point_double(tmp,working);
+    API_NS(point_double)(tmp,working);
     pniels_t twop;
     pt_to_pniels(twop, tmp);
 
@@ -1508,19 +1497,19 @@ sv prepare_wnaf_table(
     }
 }
 
-extern const decaf_word_t decaf_448_precomputed_wnaf_as_words[];
-static const niels_t *decaf_448_wnaf_base = (const niels_t *)decaf_448_precomputed_wnaf_as_words;
-const size_t sizeof_decaf_448_precomputed_wnafs __attribute((visibility("hidden")))
+extern const decaf_word_t API_NS(precomputed_wnaf_as_words)[];
+static const niels_t *API_NS(wnaf_base) = (const niels_t *)API_NS(precomputed_wnaf_as_words);
+const size_t API_NS2(sizeof,precomputed_wnafs) __attribute((visibility("hidden")))
     = sizeof(niels_t)<<DECAF_WNAF_FIXED_TABLE_BITS;
 
-void decaf_448_precompute_wnafs (
+void API_NS(precompute_wnafs) (
     niels_t out[1<<DECAF_WNAF_FIXED_TABLE_BITS],
-    const decaf_448_point_t base
+    const point_t base
 ) __attribute__ ((visibility ("hidden")));
 
-void decaf_448_precompute_wnafs (
+void API_NS(precompute_wnafs) (
     niels_t out[1<<DECAF_WNAF_FIXED_TABLE_BITS],
-    const decaf_448_point_t base
+    const point_t base
 ) {
     pniels_t tmp[1<<DECAF_WNAF_FIXED_TABLE_BITS];
     gf zs[1<<DECAF_WNAF_FIXED_TABLE_BITS], zis[1<<DECAF_WNAF_FIXED_TABLE_BITS];
@@ -1533,16 +1522,16 @@ void decaf_448_precompute_wnafs (
     batch_normalize_niels(out, zs, zis, 1<<DECAF_WNAF_FIXED_TABLE_BITS);
 }
 
-void decaf_448_base_double_scalarmul_non_secret (
-    decaf_448_point_t combo,
-    const decaf_448_scalar_t scalar1,
-    const decaf_448_point_t base2,
-    const decaf_448_scalar_t scalar2
+void API_NS(base_double_scalarmul_non_secret) (
+    point_t combo,
+    const scalar_t scalar1,
+    const point_t base2,
+    const scalar_t scalar2
 ) {
     const int table_bits_var = DECAF_WNAF_VAR_TABLE_BITS,
         table_bits_pre = DECAF_WNAF_FIXED_TABLE_BITS;
-    struct smvt_control control_var[DECAF_448_SCALAR_BITS/(table_bits_var+1)+3];
-    struct smvt_control control_pre[DECAF_448_SCALAR_BITS/(table_bits_pre+1)+3];
+    struct smvt_control control_var[SCALAR_BITS/(table_bits_var+1)+3];
+    struct smvt_control control_pre[SCALAR_BITS/(table_bits_pre+1)+3];
     
     int ncb_pre = recode_wnaf(control_pre, scalar1, table_bits_pre);
     int ncb_var = recode_wnaf(control_var, scalar2, table_bits_var);
@@ -1553,24 +1542,24 @@ void decaf_448_base_double_scalarmul_non_secret (
     int contp=0, contv=0, i = control_var[0].power;
 
     if (i < 0) {
-        decaf_448_point_copy(combo, decaf_448_point_identity);
+        API_NS(point_copy)(combo, API_NS(point_identity));
         return;
     } else if (i > control_pre[0].power) {
         pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
         contv++;
     } else if (i == control_pre[0].power && i >=0 ) {
         pniels_to_pt(combo, precmp_var[control_var[0].addend >> 1]);
-        add_niels_to_pt(combo, decaf_448_wnaf_base[control_pre[0].addend >> 1], i);
+        add_niels_to_pt(combo, API_NS(wnaf_base)[control_pre[0].addend >> 1], i);
         contv++; contp++;
     } else {
         i = control_pre[0].power;
-        niels_to_pt(combo, decaf_448_wnaf_base[control_pre[0].addend >> 1]);
+        niels_to_pt(combo, API_NS(wnaf_base)[control_pre[0].addend >> 1]);
         contp++;
     }
     
     for (i--; i >= 0; i--) {
         int cv = (i==control_var[contv].power), cp = (i==control_pre[contp].power);
-        decaf_448_point_double_internal(combo,combo,i && !(cv||cp));
+        point_double_internal(combo,combo,i && !(cv||cp));
 
         if (cv) {
             assert(control_var[contv].addend);
@@ -1587,9 +1576,9 @@ void decaf_448_base_double_scalarmul_non_secret (
             assert(control_pre[contp].addend);
 
             if (control_pre[contp].addend > 0) {
-                add_niels_to_pt(combo, decaf_448_wnaf_base[control_pre[contp].addend >> 1], i);
+                add_niels_to_pt(combo, API_NS(wnaf_base)[control_pre[contp].addend >> 1], i);
             } else {
-                sub_niels_from_pt(combo, decaf_448_wnaf_base[(-control_pre[contp].addend) >> 1], i);
+                sub_niels_from_pt(combo, API_NS(wnaf_base)[(-control_pre[contp].addend) >> 1], i);
             }
             contp++;
         }
@@ -1599,14 +1588,14 @@ void decaf_448_base_double_scalarmul_non_secret (
     assert(contp == ncb_pre); (void)ncb_pre;
 }
 
-void decaf_448_point_destroy (
-  decaf_448_point_t point
+void API_NS(point_destroy) (
+  point_t point
 ) {
-    decaf_bzero(point, sizeof(decaf_448_point_t));
+    decaf_bzero(point, sizeof(point_t));
 }
 
-void decaf_448_precomputed_destroy (
-  decaf_448_precomputed_s *pre
+void API_NS(precomputed_destroy) (
+  precomputed_s *pre
 ) {
-    decaf_bzero(pre, sizeof_decaf_448_precomputed_s);
+    decaf_bzero(pre, API_NS2(sizeof,precomputed_s));
 }

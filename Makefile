@@ -16,7 +16,7 @@ LD = $(CC)
 LDXX = $(CXX)
 ASM ?= $(CC)
 
-DECAF ?= decaf
+DECAF ?= decaf_fast
 
 ifneq (,$(findstring x86_64,$(MACHINE)))
 ARCH ?= arch_x86_64

@@ -13,33 +13,9 @@
 #include "shake.hxx"
 #include <stdio.h>
 
-typedef decaf::decaf<448>::Scalar Scalar;
-typedef decaf::decaf<448>::Point Point;
-typedef decaf::decaf<448>::Precomputed Precomputed;
-
-static const long NTESTS = 10000;
-
-static void print(const char *name, const Scalar &x) {
-    unsigned char buffer[DECAF_448_SCALAR_BYTES];
-    x.encode(buffer);
-    printf("  %s = 0x", name);
-    for (int i=sizeof(buffer)-1; i>=0; i--) {
-        printf("%02x", buffer[i]);
-    }
-    printf("\n");
-}
-
-static void print(const char *name, const Point &x) {
-    unsigned char buffer[DECAF_448_SER_BYTES];
-    x.encode(buffer);
-    printf("  %s = 0x", name);
-    for (int i=sizeof(buffer)-1; i>=0; i--) {
-        printf("%02x", buffer[i]);
-    }
-    printf("\n");
-}
 
 static bool passing = true;
+static const long NTESTS = 10000;
 
 class Test {
 public:
@@ -63,6 +39,32 @@ public:
         printf("[FAIL]\n");
     }
 };
+
+template<decaf::GroupId GROUP> struct Tests {
+
+typedef typename decaf::decaf<GROUP>::Scalar Scalar;
+typedef typename decaf::decaf<GROUP>::Point Point;
+typedef typename decaf::decaf<GROUP>::Precomputed Precomputed;
+
+static void print(const char *name, const Scalar &x) {
+    unsigned char buffer[DECAF_448_SCALAR_BYTES];
+    x.encode(buffer);
+    printf("  %s = 0x", name);
+    for (int i=sizeof(buffer)-1; i>=0; i--) {
+        printf("%02x", buffer[i]);
+    }
+    printf("\n");
+}
+
+static void print(const char *name, const Point &x) {
+    unsigned char buffer[DECAF_448_SER_BYTES];
+    x.encode(buffer);
+    printf("  %s = 0x", name);
+    for (int i=sizeof(buffer)-1; i>=0; i--) {
+        printf("%02x", buffer[i]);
+    }
+    printf("\n");
+}
 
 static bool arith_check(
     Test &test,
@@ -191,11 +193,13 @@ static void test_ec() {
     }
 }
 
+}; // template<decaf::GroupId GROUP>
+
 int main(int argc, char **argv) {
     (void) argc; (void) argv;
     
-    test_arithmetic();
-    test_ec();
+    Tests<448>::test_arithmetic();
+    Tests<448>::test_ec();
     
     if (passing) printf("Passed all tests.\n");
     

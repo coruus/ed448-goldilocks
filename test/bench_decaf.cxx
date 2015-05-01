@@ -113,18 +113,19 @@ public:
 double Benchmark::totalCy = 0, Benchmark::totalS = 0;
 
 static void tdh (
-    SpongeRng &rng,
+    SpongeRng &clientRng,
+    SpongeRng &serverRng,
     Scalar x, const Block &gx,
     Scalar y, const Block &gy
 ) {
     Strobe client(Strobe::CLIENT), server(Strobe::SERVER);
     
-    Scalar xe(rng);
+    Scalar xe(clientRng);
     SecureBuffer gxe = Precomputed::base() * xe;
     client.send_plaintext(gxe);
     server.recv_plaintext(gxe);
     
-    Scalar ye(rng);
+    Scalar ye(serverRng);
     SecureBuffer gye = Precomputed::base() * ye;
     server.send_plaintext(gye);
     client.recv_plaintext(gye);
@@ -152,21 +153,22 @@ static void tdh (
 }
 
 static void fhmqv (
-    SpongeRng &rng,
+    SpongeRng &clientRng,
+    SpongeRng &serverRng,
     Scalar x, const Block &gx,
     Scalar y, const Block &gy
 ) {
     /* Don't use this, it's probably patented */
     Strobe client(Strobe::CLIENT), server(Strobe::SERVER);
     
-    Scalar xe(rng);
+    Scalar xe(clientRng);
     client.send_plaintext(gx);
     server.recv_plaintext(gx);
     SecureBuffer gxe = Precomputed::base() * xe;
     server.send_plaintext(gxe);
     client.recv_plaintext(gxe);
 
-    Scalar ye(rng);
+    Scalar ye(serverRng);
     server.send_plaintext(gy);
     client.recv_plaintext(gy);
     SecureBuffer gye = Precomputed::base() * ye;
@@ -191,10 +193,15 @@ static void fhmqv (
     server.respec(STROBE_KEYED_128);
 }
 
-static void spake2ee(const Block &hashed_password, SpongeRng &rng, bool aug) {
+static void spake2ee(
+    SpongeRng &clientRng,
+    SpongeRng &serverRng,
+    const Block &hashed_password,
+    bool aug
+) {
     Strobe client(Strobe::CLIENT), server(Strobe::SERVER);
     
-    Scalar x(rng);
+    Scalar x(clientRng);
     
     SHAKE<256> shake;
     shake.update(hashed_password);
@@ -212,7 +219,7 @@ static void spake2ee(const Block &hashed_password, SpongeRng &rng, bool aug) {
     client.send_plaintext(gx);
     server.recv_plaintext(gx);
     
-    Scalar y(rng);
+    Scalar y(serverRng);
     SecureBuffer gy(Precomputed::base() * y + hs);
     server.send_plaintext(gy);
     client.recv_plaintext(gy);
@@ -332,27 +339,28 @@ int main(int argc, char **argv) {
     }
 
     printf("\nProtocol benchmarks:\n");
-    SpongeRng rng(Block("my rng seed"));
+    SpongeRng clientRng(Block("client rng seed"));
+    SpongeRng serverRng(Block("server rng seed"));
     SecureBuffer hashedPassword("hello world");
     for (Benchmark b("Spake2ee c+s",0.1); b.iter(); ) {
-        spake2ee(hashedPassword,rng,false);
+        spake2ee(clientRng, serverRng, hashedPassword,false);
     }
     
     for (Benchmark b("Spake2ee c+s aug",0.1); b.iter(); ) {
-        spake2ee(hashedPassword,rng,true);
+        spake2ee(clientRng, serverRng, hashedPassword,true);
     }
     
-    Scalar x(rng);
+    Scalar x(clientRng);
     SecureBuffer gx(Precomputed::base() * x);
-    Scalar y(rng);
+    Scalar y(serverRng);
     SecureBuffer gy(Precomputed::base() * y);
     
     for (Benchmark b("FHMQV c+s",0.1); b.iter(); ) {
-        fhmqv(rng,x,gx,y,gy);
+        fhmqv(clientRng, serverRng,x,gx,y,gy);
     }
     
     for (Benchmark b("TripleDH anon c+s",0.1); b.iter(); ) {
-        tdh(rng,x,gx,y,gy);
+        tdh(clientRng, serverRng, x,gx,y,gy);
     }
     
     printf("\n");
