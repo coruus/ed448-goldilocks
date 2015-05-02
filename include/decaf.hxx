@@ -528,7 +528,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
        /**
         * @brief Encode to string.  The identity encodes to the all-zero string.
         */
-       inline EXPLICIT_CON operator SecureBuffer() const NOEXCEPT {
+       inline operator SecureBuffer() const NOEXCEPT {
            SecureBuffer buffer(SER_BYTES); encode(buffer.data()); return buffer;
        }
     
