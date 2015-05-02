@@ -105,7 +105,7 @@ public:
 template<int bits> class SHA3 : public KeccakHash {
 private:
     /** Get the parameter template block for this hash */
-    const struct kparams_s *get_params();
+    static inline const struct kparams_s *get_params();
 public:
     /** Initializer */
     inline SHA3() NOEXCEPT : KeccakHash(get_params()) {}
@@ -119,7 +119,7 @@ template<int bits>
 class SHAKE : public KeccakHash {
 private:
     /** Get the parameter template block for this hash */
-    const struct kparams_s *get_params();
+    static inline const struct kparams_s *get_params();
 public:
     /** Initializer */
     inline SHAKE() NOEXCEPT : KeccakHash(get_params()) {}
@@ -129,12 +129,12 @@ public:
 };
 
 /** @cond internal */
-template<> const struct kparams_s *SHAKE<128>::get_params() { return &SHAKE128_params_s; }
-template<> const struct kparams_s *SHAKE<256>::get_params() { return &SHAKE256_params_s; }
-template<> const struct kparams_s *SHA3<224>::get_params() { return &SHA3_224_params_s; }
-template<> const struct kparams_s *SHA3<256>::get_params() { return &SHA3_256_params_s; }
-template<> const struct kparams_s *SHA3<384>::get_params() { return &SHA3_384_params_s; }
-template<> const struct kparams_s *SHA3<512>::get_params() { return &SHA3_512_params_s; }
+template<> inline const struct kparams_s *SHAKE<128>::get_params() { return &SHAKE128_params_s; }
+template<> inline const struct kparams_s *SHAKE<256>::get_params() { return &SHAKE256_params_s; }
+template<> inline const struct kparams_s *SHA3<224>::get_params() { return &SHA3_224_params_s; }
+template<> inline const struct kparams_s *SHA3<256>::get_params() { return &SHA3_256_params_s; }
+template<> inline const struct kparams_s *SHA3<384>::get_params() { return &SHA3_384_params_s; }
+template<> inline const struct kparams_s *SHA3<512>::get_params() { return &SHA3_512_params_s; }
 /** @endcond */
 
 /** @brief An exception for misused protocol, eg encrypt with no key. */

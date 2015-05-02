@@ -257,7 +257,8 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
         friend class Point;
         friend class Precomputed;
         typedef typename WrappedTypes<group>::Scalar Wrapped;
-        static const Wrapped &ZERO, &ONE;
+        static inline const Wrapped &ZERO() NOEXCEPT;
+        static inline const Wrapped &ONE() NOEXCEPT;
         static inline void add3(Wrapped&, const Wrapped&, const Wrapped&) NOEXCEPT;
         static inline void setu(Wrapped&, decaf_word_t) NOEXCEPT;
         static inline void sub3(Wrapped&, const Wrapped&, const Wrapped&) NOEXCEPT;
@@ -270,7 +271,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
         
     public:
         /** @brief Size of a serialized element */
-        static const size_t SER_BYTES;
+        static const size_t SER_BYTES = WrappedTypes<group>::SCALAR_SER_BYTES;
         
         /** @brief access to the Wrapped scalar object */
         Wrapped s;
@@ -321,7 +322,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
          * @return DECAF_FAILURE if the scalar is greater than or equal to the group order q.
          */
         static inline decaf_bool_t __attribute__((warn_unused_result)) decode (
-            Scalar &sc, const unsigned char buffer[/*SER_BYTES*/] // TODO
+            Scalar &sc, const unsigned char buffer[SER_BYTES]
         ) NOEXCEPT;
     
         /** @brief Decode from correct-length little-endian byte sequence in C++ string. */
@@ -333,7 +334,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
         }
     
         /** @brief Encode to fixed-length buffer */
-        inline void encode(unsigned char buffer[/*SER_BYTES*/]) const NOEXCEPT;
+        inline void encode(unsigned char buffer[SER_BYTES]) const NOEXCEPT;
     
         /** @brief Encode to fixed-length string */
         inline EXPLICIT_CON operator SecureBuffer() const NOEXCEPT {
@@ -360,7 +361,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
         inline Scalar &operator*=(const Scalar &q)       NOEXCEPT { mul3(s,s,q.s); return *this; }
     
         /** Negate */
-        inline Scalar operator- ()                const NOEXCEPT { Scalar r((NOINIT())); sub3(r.s,ZERO,s); return r; }
+        inline Scalar operator- ()                const NOEXCEPT { Scalar r((NOINIT())); sub3(r.s,ZERO(),s); return r; }
     
         /** @brief Invert with Fermat's Little Theorem (slow!).  If *this == 0, return 0. */
         inline Scalar inverse() const NOEXCEPT { Scalar q((NOINIT())); inv2(q.s,s); return q; }
@@ -401,7 +402,6 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
        typedef typename WrappedTypes<group>::Point Wrapped;
        friend class Scalar;
        friend class Precomputed;
-       static const Wrapped &IDENTITY, &GENERATOR;
        static inline void add3(Wrapped&, const Wrapped&, const Wrapped&) NOEXCEPT;
        static inline void sub3(Wrapped&, const Wrapped&, const Wrapped&) NOEXCEPT;
        static inline void dbl2(Wrapped&, const Wrapped&) NOEXCEPT;
@@ -423,10 +423,10 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
        
    public:
        /** @brief Size of a serialized element */
-       static const size_t SER_BYTES;
+       static const size_t SER_BYTES = WrappedTypes<group>::POINT_SER_BYTES;
     
        /** @brief Bytes required for hash */
-       static const size_t HASH_BYTES;
+       static const size_t HASH_BYTES = WrappedTypes<group>::POINT_HASH_BYTES;
     
        /** The c-level object. */
        Wrapped p;
@@ -435,10 +435,10 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
        inline Point(const NOINIT &) {}
     
        /** @brief Constructor sets to identity by default. */
-       inline Point(const decaf_448_point_s &q = IDENTITY) { *this = q; }
+       inline Point(const decaf_448_point_s &q) { *this = q; }
     
        /** @brief Copy constructor. */
-       inline Point(const Point &q) { *this = q; }
+       inline Point(const Point &q = identity()) { *this = q; }
     
        /** @brief Assignment. */
        inline Point& operator=(const Point &q) NOEXCEPT { assign2(p,q.p); return *this; }
@@ -470,7 +470,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
        * @throw CryptoException the string was the wrong length, or wasn't the encoding of a point,
        * or was the identity and allow_identity was DECAF_FALSE.
        */
-       inline explicit Point(const unsigned char buffer[/*SER_BYTES*/], decaf_bool_t allow_identity=DECAF_TRUE)
+       inline explicit Point(const unsigned char buffer[SER_BYTES], decaf_bool_t allow_identity=DECAF_TRUE)
            throw(CryptoException) { if (!decode(*this,buffer,allow_identity)) throw CryptoException(); }
     
        /**
@@ -482,7 +482,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
         * and allow_identity was DECAF_FALSE.  Contents of the buffer are undefined.
         */
        static inline decaf_bool_t __attribute__((warn_unused_result)) decode (
-           Point &p, const unsigned char buffer[/*SER_BYTES*/], decaf_bool_t allow_identity=DECAF_TRUE
+           Point &p, const unsigned char buffer[SER_BYTES], decaf_bool_t allow_identity=DECAF_TRUE
        ) NOEXCEPT;
     
        /**
@@ -601,10 +601,10 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
        }
     
        /** @brief Return the base point */
-       static inline const Point base() NOEXCEPT { return GENERATOR; }
+       static inline Point base() NOEXCEPT;
     
        /** @brief Return the identity point */
-       static inline const Point identity() NOEXCEPT { return IDENTITY; }
+       static inline Point identity() NOEXCEPT;
    };
     
   /**
@@ -617,9 +617,10 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
   private:
       
       /** @cond internal */
-      static const size_t sizeof_this, alignof_this;
+      static inline size_t sizeof_this() NOEXCEPT;
+      static inline size_t alignof_this() NOEXCEPT;
       typedef typename WrappedTypes<group>::Precomputed Wrapped;
-      static const Wrapped *GENERATOR;
+      static inline const Wrapped *GENERATOR() NOEXCEPT;
       static inline void destroy(Wrapped*) NOEXCEPT;
       static inline void precompute(Wrapped*, const typename Point::Wrapped&) NOEXCEPT;
       static inline void psmul3(typename Point::Wrapped&, const Wrapped*, const typename Scalar::Wrapped&) NOEXCEPT;
@@ -634,13 +635,13 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
           if (isMine) {
               destroy(ours.mine);
               free(ours.mine);
-              ours.yours = GENERATOR;
+              ours.yours = GENERATOR();
               isMine = false;
           }
       }
       inline void alloc() throw(std::bad_alloc) {
           if (isMine) return;
-          int ret = posix_memalign((void**)&ours.mine, alignof_this,sizeof_this);
+          int ret = posix_memalign((void**)&ours.mine, alignof_this(),sizeof_this());
           if (ret || !ours.mine) {
               isMine = false;
               throw std::bad_alloc();
@@ -665,7 +666,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
        * initializer for points which makes this equal to the identity.
        */ 
       inline Precomputed(
-          const Wrapped &yours = *GENERATOR
+          const Wrapped &yours = *GENERATOR()
       ) NOEXCEPT {
           ours.yours = &yours;
           isMine = false;
@@ -678,7 +679,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
           if (this == &it) return *this;
           if (it.isMine) {
               alloc();
-              memcpy(ours.mine,it.ours.mine,sizeof_this);
+              memcpy(ours.mine,it.ours.mine,sizeof_this());
           } else {
               clear();
               ours.yours = it.ours.yours;
@@ -724,7 +725,7 @@ template<GroupId group = Ed448Goldilocks> struct EcGroup {
       inline Point operator/ (const Scalar &s) const NOEXCEPT { return (*this) * s.inverse(); }
     
       /** @brief Return the table for the base point. */
-      static inline const Precomputed base() NOEXCEPT { return Precomputed(*GENERATOR); }
+      static inline const Precomputed base() NOEXCEPT { return Precomputed(*GENERATOR()); }
   };
 };
 
@@ -738,10 +739,12 @@ template<> struct WrappedTypes<Ed448Goldilocks> {
     typedef decaf_448_point_s Point;
     typedef decaf_448_scalar_s Scalar;
     typedef decaf_448_precomputed_s Precomputed;
+    static const size_t SCALAR_SER_BYTES = 56;
+    static const size_t POINT_SER_BYTES = 56;
+    static const size_t POINT_HASH_BYTES = 56;
 };
 
 /* Scalar instantiation */
-template<> const size_t EcGroup<Ed448Goldilocks>::Scalar::SER_BYTES = 56;
 
 template<> inline void EcGroup<Ed448Goldilocks>::Scalar::add3(
     Wrapped& a, const Wrapped& b, const Wrapped& c
@@ -800,16 +803,14 @@ EcGroup<Ed448Goldilocks>::Scalar::decode (
 
     /* CLASSY */
 template<> inline EcGroup<Ed448Goldilocks>::Scalar::~Scalar() NOEXCEPT { decaf_448_scalar_destroy(&s); }
-template<> const EcGroup<Ed448Goldilocks>::Scalar::Wrapped&
-    EcGroup<Ed448Goldilocks>::Scalar::ZERO = decaf_448_scalar_zero[0];
-template<> const EcGroup<Ed448Goldilocks>::Scalar::Wrapped&
-    EcGroup<Ed448Goldilocks>::Scalar::ONE = decaf_448_scalar_one[0];
+template<> inline const EcGroup<Ed448Goldilocks>::Scalar::Wrapped&
+    EcGroup<Ed448Goldilocks>::Scalar::ZERO() NOEXCEPT { return decaf_448_scalar_zero[0]; }
+template<> inline const EcGroup<Ed448Goldilocks>::Scalar::Wrapped&
+    EcGroup<Ed448Goldilocks>::Scalar::ONE() NOEXCEPT { return decaf_448_scalar_one[0]; }
     
     
 
 /* Point instantiation */
-template<> const size_t EcGroup<Ed448Goldilocks>::Point::SER_BYTES = 56;
-template<> const size_t EcGroup<Ed448Goldilocks>::Point::HASH_BYTES = 56;
 
     /* CLASSY */
 template<> inline EcGroup<Ed448Goldilocks>::Point::~Point() NOEXCEPT { decaf_448_point_destroy(&p); }
@@ -880,10 +881,11 @@ template<> inline void EcGroup<Ed448Goldilocks>::Point::encode(
     decaf_448_point_encode(buffer,&p);
 }
 
-template<> const EcGroup<Ed448Goldilocks>::Point::Wrapped&
-    EcGroup<Ed448Goldilocks>::Point::IDENTITY = decaf_448_point_identity[0];
-template<> const EcGroup<Ed448Goldilocks>::Point::Wrapped&
-    EcGroup<Ed448Goldilocks>::Point::GENERATOR = decaf_448_point_base[0];
+template<> inline EcGroup<Ed448Goldilocks>::Point
+    EcGroup<Ed448Goldilocks>::Point::identity() NOEXCEPT { return decaf_448_point_identity[0]; }
+    
+template<> inline EcGroup<Ed448Goldilocks>::Point
+    EcGroup<Ed448Goldilocks>::Point::base() NOEXCEPT { return decaf_448_point_base[0]; }
 
 /* Precomputed instantiation */
 template<> inline void EcGroup<Ed448Goldilocks>::Precomputed::destroy(
@@ -905,10 +907,12 @@ template<> inline void EcGroup<Ed448Goldilocks>::Precomputed::psmul3(
     decaf_448_precomputed_scalarmul(&out,pre,&sc);
 }
 
-template<> const size_t EcGroup<Ed448Goldilocks>::Precomputed:: sizeof_this =  sizeof_decaf_448_precomputed_s;
-template<> const size_t EcGroup<Ed448Goldilocks>::Precomputed::alignof_this = alignof_decaf_448_precomputed_s;
-template<> const EcGroup<Ed448Goldilocks>::Precomputed::Wrapped*
-    EcGroup<Ed448Goldilocks>::Precomputed::GENERATOR = decaf_448_precomputed_base;
+template<> inline size_t EcGroup<Ed448Goldilocks>::Precomputed:: sizeof_this() NOEXCEPT
+    { return sizeof_decaf_448_precomputed_s; }
+template<> inline size_t EcGroup<Ed448Goldilocks>::Precomputed::alignof_this() NOEXCEPT
+    { return alignof_decaf_448_precomputed_s; }
+template<> inline const EcGroup<Ed448Goldilocks>::Precomputed::Wrapped*
+    EcGroup<Ed448Goldilocks>::Precomputed::GENERATOR() NOEXCEPT { return decaf_448_precomputed_base; }
 
 /** @endcond */
 
