@@ -34,8 +34,8 @@ typedef __int128_t decaf_sdword_t;
 #define SC_LIMB(x) (x##ull)
 #elif WBITS == 32
 typedef int64_t decaf_sdword_t;
-/* 28 is MAGIC */
-#define LIMB(x) (x##ull)&((1ull<<28)-1), (x##ull)>>28
+#define LBITS 28 /* MAGIC */
+#define LIMB(x) (x##ull)&((1ull<<LBITS)-1), (x##ull)>>LBITS
 #define SC_LIMB(x) (x##ull)&((1ull<<32)-1), (x##ull)>>32
 #else
 #error "Only supporting 32- and 64-bit platforms right now"
