@@ -21,9 +21,9 @@
 #include <algorithm>
 
 using namespace decaf;
-typedef EcGroup<448>::Scalar Scalar;
-typedef EcGroup<448>::Point Point;
-typedef EcGroup<448>::Precomputed Precomputed;
+typedef Ed448::Scalar Scalar;
+typedef Ed448::Point Point;
+typedef Ed448::Precomputed Precomputed;
 
 
 static __inline__ void __attribute__((unused)) ignore_result ( int result ) { (void)result; }

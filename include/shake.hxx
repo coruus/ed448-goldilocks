@@ -192,11 +192,11 @@ private:
 };
 
 /**@cond internal*/
-template<GroupId g> EcGroup<g>::Scalar::Scalar(SpongeRng &rng) NOEXCEPT {
-    *this = rng.read(EcGroup<g>::Scalar::SER_BYTES);
+inline Ed448::Scalar::Scalar(SpongeRng &rng) NOEXCEPT {
+    *this = rng.read(SER_BYTES);
 }
 
-template<GroupId g> EcGroup<g>::Point::Point(SpongeRng &rng, bool uniform) NOEXCEPT {
+inline Ed448::Point::Point(SpongeRng &rng, bool uniform) NOEXCEPT {
     SecureBuffer buffer((uniform ? 2 : 1) * HASH_BYTES);
     rng.read(buffer);
     set_to_hash(buffer);

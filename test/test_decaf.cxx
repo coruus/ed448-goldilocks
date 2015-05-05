@@ -40,11 +40,11 @@ public:
     }
 };
 
-template<decaf::GroupId GROUP> struct Tests {
+template<typename Group> struct Tests {
 
-typedef typename decaf::EcGroup<GROUP>::Scalar Scalar;
-typedef typename decaf::EcGroup<GROUP>::Point Point;
-typedef typename decaf::EcGroup<GROUP>::Precomputed Precomputed;
+typedef typename Group::Scalar Scalar;
+typedef typename Group::Point Point;
+typedef typename Group::Precomputed Precomputed;
 
 static void print(const char *name, const Scalar &x) {
     unsigned char buffer[Scalar::SER_BYTES];
@@ -199,8 +199,8 @@ static void test_ec() {
 int main(int argc, char **argv) {
     (void) argc; (void) argv;
     
-    Tests<448>::test_arithmetic();
-    Tests<448>::test_ec();
+    Tests<decaf::Ed448>::test_arithmetic();
+    Tests<decaf::Ed448>::test_ec();
     
     if (passing) printf("Passed all tests.\n");
     
