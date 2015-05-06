@@ -75,7 +75,7 @@ endif
 
 BENCHCOMPONENTS = build/bench.o build/shake.o
 
-BATBASE=ed448goldilocks-decaf-bats-$(TODAY)
+BATBASE=ed448goldilocks_decaf_bats_$(TODAY)
 BATNAME=build/$(BATBASE)
 
 all: lib  build/test build/bench build/shakesum
@@ -159,13 +159,13 @@ doc: Doxyfile doc/timestamp include/*.h src/*.c src/include/*.h src/$(FIELD)/$(A
 
 bat: $(BATNAME)
 
-$(BATNAME): include/* src/* src/*/* test/batarch.map
+$(BATNAME): include/* src/* src/*/* test/batarch.map build/decaf_tables.c # TODO tables some other way
 	rm -fr $@
 	for prim in dh sign; do \
-          targ="$@/crypto_$$prim/ed448goldilocks-decaf"; \
+          targ="$@/crypto_$$prim/ed448goldilocks_decaf"; \
 	  (while read arch where; do \
 	    mkdir -p $$targ/`basename $$arch`; \
-	    cp include/*.h src/*.c src/include/*.h src/bat/$$prim.c src/p448/$$where/*.c src/p448/$$where/*.h src/p448/*.c src/p448/*.h $$targ/`basename $$arch`; \
+	    cp include/*.h build/decaf_tables.c src/decaf_fast.c src/decaf_crypto.c src/shake.c src/include/*.h src/bat/$$prim.c src/p448/$$where/*.c src/p448/$$where/*.h src/p448/*.c src/p448/*.h $$targ/`basename $$arch`; \
 	    cp src/bat/api_$$prim.h $$targ/`basename $$arch`/api.h; \
 	    perl -p -i -e 's/SYSNAME/'`basename $(BATNAME)`_`basename $$arch`'/g' $$targ/`basename $$arch`/api.h;  \
 	    perl -p -i -e 's/__TODAY__/'$(TODAY)'/g' $$targ/`basename $$arch`/api.h;  \

@@ -11,6 +11,7 @@
 
 #include "decaf.hxx"
 #include "shake.hxx"
+#include "decaf_crypto.h"
 #include <stdio.h>
 
 
@@ -196,11 +197,47 @@ static void test_ec() {
 
 }; // template<decaf::GroupId GROUP>
 
+
+static void test_decaf() {
+    Test test("Sample crypto");
+    decaf::SpongeRng rng(decaf::Block("test_decaf"));
+
+    decaf_448_symmetric_key_t proto1,proto2;
+    decaf_448_private_key_t s1,s2;
+    decaf_448_public_key_t p1,p2;
+    decaf_448_signature_t sig;
+    unsigned char shared1[1234],shared2[1234];
+    const char *message = "Hello, world!";
+
+    for (int i=0; i<NTESTS && test.passing_now; i++) {
+        rng.read(decaf::TmpBuffer(proto1,sizeof(proto1)));
+        rng.read(decaf::TmpBuffer(proto2,sizeof(proto2)));
+        decaf_448_derive_private_key(s1,proto1);
+        decaf_448_private_to_public(p1,s1);
+        decaf_448_derive_private_key(s2,proto2);
+        decaf_448_private_to_public(p2,s2);
+        if (!decaf_448_shared_secret (shared1,sizeof(shared1),s1,p2)) {
+            test.fail(); printf("Fail ss12\n");
+        }
+        if (!decaf_448_shared_secret (shared2,sizeof(shared2),s2,p1)) {
+            test.fail(); printf("Fail ss21\n");
+        }
+        if (memcmp(shared1,shared2,sizeof(shared1))) {
+            test.fail(); printf("Fail ss21 == ss12\n");   
+        }
+        decaf_448_sign (sig,s1,(const unsigned char *)message,strlen(message));
+        if (!decaf_448_verify (sig,p1,(const unsigned char *)message,strlen(message))) {
+            test.fail(); printf("Fail sig ver\n");   
+        }
+    }
+}
+
 int main(int argc, char **argv) {
     (void) argc; (void) argv;
     
     Tests<decaf::Ed448>::test_arithmetic();
     Tests<decaf::Ed448>::test_ec();
+    test_decaf();
     
     if (passing) printf("Passed all tests.\n");
     

@@ -8,7 +8,7 @@
  */
 
 #include <string.h>
-#include "goldilocks.h"
+#include "decaf_crypto.h"
 
 #define PUBLICKEY_BYTES (sizeof(decaf_448_public_key_t))
 #define SECRETKEY_BYTES (sizeof(decaf_448_private_key_t))

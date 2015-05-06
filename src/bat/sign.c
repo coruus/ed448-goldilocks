@@ -13,14 +13,13 @@
 #include "crypto_sign.h"
 
 int crypto_sign_keypair (
-    unsigned char pk[SECRETKEY_BYTES],
-    unsigned char sk[PUBLICKEY_BYTES]
+    unsigned char pk[PUBLICKEY_BYTES],
+    unsigned char sk[SECRETKEY_BYTES]
 ) {
     decaf_448_symmetric_key_t proto;
     randombytes(proto,sizeof(proto));
     decaf_448_derive_private_key((decaf_448_private_key_s *)sk,proto);
-    decaf_448_private_to_public(
-        (decaf_448_public_key_s *)pk,
+    decaf_448_private_to_public(pk,
         (decaf_448_private_key_s *)sk
     );
     return 0;
@@ -53,8 +52,7 @@ int crypto_sign_open (
     const unsigned char pk[PUBLICKEY_BYTES]
 ) {
     int ret = decaf_448_verify(
-        sm,
-        (const struct goldilocks_public_key_t *)pk,
+        sm,pk,
         sm + SIGNATURE_BYTES, smlen - SIGNATURE_BYTES
     );
     if (ret) {

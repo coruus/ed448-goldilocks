@@ -14,16 +14,13 @@
 #include "randombytes.h"
 
 int crypto_dh_keypair (
-    unsigned char pk[SECRETKEY_BYTES],
-    unsigned char sk[PUBLICKEY_BYTES]
+    unsigned char pk[PUBLICKEY_BYTES],
+    unsigned char sk[SECRETKEY_BYTES]
 ) {
     decaf_448_symmetric_key_t proto;
     randombytes(proto,sizeof(proto));
     decaf_448_derive_private_key((decaf_448_private_key_s *)sk,proto);
-    decaf_448_private_to_public(
-        (decaf_448_public_key_s *)pk,
-        (decaf_448_private_key_s *)sk
-    );
+    decaf_448_private_to_public(pk,(decaf_448_private_key_s *)sk);
     return 0;
 }
 
@@ -32,10 +29,7 @@ int crypto_dh (
     const unsigned char pk[PUBLICKEY_BYTES],
     const unsigned char sk[SECRETKEY_BYTES]
 ) {
-    return !decaf_448_shared_secret (
-        s,
-        SHAREDSECRET_BYTES,
-        (const decaf_448_private_key_s *)sk,
-        (const decaf_448_public_key_s *)pk
+    return !decaf_448_shared_secret (s,SHAREDSECRET_BYTES,
+        (const decaf_448_private_key_s *)sk, pk
     );
 }
