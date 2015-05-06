@@ -22,6 +22,11 @@
 const field_t API_NS(precomputed_base_as_fe)[1];
 const API_NS(scalar_t) API_NS(precomputed_scalarmul_adjustment);
 const API_NS(scalar_t) API_NS(point_scalarmul_adjustment);
+const API_NS(scalar_t) sc_r2 = {{{0}}};
+const decaf_word_t MONTGOMERY_FACTOR = 0;
+const unsigned char base_point_ser_for_pregen[DECAF_448_SER_BYTES];
+
+const API_NS(point_t) API_NS(point_base);
 
 struct niels_s;
 const field_t *API_NS(precomputed_wnaf_as_fe);
@@ -32,6 +37,7 @@ void API_NS(precompute_wnafs) (
     const API_NS(point_t) base
 );
 
+/* TODO: use SC_LIMB? */
 static void scalar_print(const char *name, const API_NS(scalar_t) sc) {
     printf("const API_NS(scalar_t) %s = {{{\n", name);
     unsigned i;
@@ -68,17 +74,21 @@ static void field_print(const field_t *f) {
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
     
+    API_NS(point_t) real_point_base;
+    int ret = API_NS(point_decode)(real_point_base,base_point_ser_for_pregen,0);
+    if (!ret) return 1;
+    
     API_NS(precomputed_s) *pre;
-    int ret = posix_memalign((void**)&pre, API_NS2(alignof,precomputed_s), API_NS2(sizeof,precomputed_s));
+    ret = posix_memalign((void**)&pre, API_NS2(alignof,precomputed_s), API_NS2(sizeof,precomputed_s));
     if (ret || !pre) return 1;
-    API_NS(precompute)(pre, API_NS(point_base));
+    API_NS(precompute)(pre, real_point_base);
     
     struct niels_s *preWnaf;
     ret = posix_memalign((void**)&preWnaf, API_NS2(alignof,precomputed_s), API_NS2(sizeof,precomputed_wnafs));
     if (ret || !preWnaf) return 1;
-    API_NS(precompute_wnafs)(preWnaf, API_NS(point_base));
+    API_NS(precompute_wnafs)(preWnaf, real_point_base);
 
-    const field_t *output = (const field_t *)pre;
+    const field_t *output;
     unsigned i;
     
     printf("/** @warning: this file was automatically generated. */\n");
@@ -86,6 +96,18 @@ int main(int argc, char **argv) {
     printf("#include \"decaf.h\"\n\n");
     printf("#define API_NS(_id) decaf_448_##_id\n");
     printf("#define API_NS2(_pref,_id) _pref##_decaf_448_##_id\n");
+    
+    output = (const field_t *)real_point_base;
+    printf("const API_NS(point_t) API_NS(point_base) = {{\n");
+    for (i=0; i < sizeof(API_NS(point_t)); i+=sizeof(field_t)) {
+        if (i) printf(",\n  ");
+        printf("{");
+        field_print(output++);
+        printf("}");
+    }
+    printf("\n}};\n");
+    
+    output = (const field_t *)pre;
     printf("const field_t API_NS(precomputed_base_as_fe)[%d]\n", 
         (int)(API_NS2(sizeof,precomputed_s) / sizeof(field_t)));
     printf("__attribute__((aligned(%d),visibility(\"hidden\"))) = {\n  ", (int)API_NS2(alignof,precomputed_s));
@@ -122,6 +144,23 @@ int main(int argc, char **argv) {
     }
     API_NS(scalar_sub)(smadj, smadj, API_NS(scalar_one));
     scalar_print("API_NS(point_scalarmul_adjustment)", smadj);
+    
+    API_NS(scalar_copy)(smadj,API_NS(scalar_one));
+    for (i=0; i<sizeof(API_NS(scalar_t))*8*2; i++) {
+        API_NS(scalar_add)(smadj,smadj,smadj);
+    }
+    scalar_print("sc_r2", smadj);
+    
+    API_NS(scalar_sub)(smadj,API_NS(scalar_zero),API_NS(scalar_one)); /* HACK */
+    
+    unsigned long long w = 1, plo = smadj->limb[0]+1;
+#if DECAF_WORD_BITS == 32
+    plo |= ((unsigned long long)smadj->limb[1]) << 32;
+#endif
+    for (i=0; i<6; i++) {
+        w *= w*plo + 2;
+    }
+    printf("const decaf_word_t MONTGOMERY_FACTOR = (decaf_word_t)0x%016llxull;\n\n", w);
     
     return 0;
 }

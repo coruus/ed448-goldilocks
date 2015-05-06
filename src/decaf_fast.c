@@ -56,50 +56,17 @@ static const scalar_t sc_p = {{{
     SC_LIMB(0xffffffffffffffff),
     SC_LIMB(0x3fffffffffffffff)
 }}};
+
 const scalar_t API_NS(scalar_one) = {{{1}}}, API_NS(scalar_zero) = {{{0}}};
+extern const scalar_t sc_r2;
+extern const decaf_word_t MONTGOMERY_FACTOR;
 
-static const scalar_t sc_r2 = {{{
-    SC_LIMB(0xe3539257049b9b60),
-    SC_LIMB(0x7af32c4bc1b195d9),
-    SC_LIMB(0x0d66de2388ea1859),
-    SC_LIMB(0xae17cf725ee4d838),
-    SC_LIMB(0x1a9cc14ba3c47c44),
-    SC_LIMB(0x2052bcb7e4d070af),
-    SC_LIMB(0x3402a939f823b729)
-}}};
+/* sqrt(5) = 2phi-1 from the curve spec.  Not exported, but used by pregen tool. */
+const unsigned char base_point_ser_for_pregen[SER_BYTES] = {
+    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1
+};
 
-static const scalar_t sc_r1 = {{{
-    SC_LIMB(0x721cf5b5529eec34),
-    SC_LIMB(0x7a4cf635c8e9c2ab),
-    SC_LIMB(0xeec492d944a725bf),
-    SC_LIMB(0x000000020cd77058),
-    SC_LIMB(0),
-    SC_LIMB(0),
-    SC_LIMB(0)
-}}};
-
-static const decaf_word_t MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae918bc5ull);
-
-/** base = twist of Goldilocks base point (~,19). */
-
-const point_t API_NS(point_base) = {{
-    { FIELD_LITERAL(
-        0xb39a2d57e08c7b,0xb38639c75ff281,
-        0x2ec981082b3288,0x99fe8607e5237c,
-        0x0e33fbb1fadd1f,0xe714f67055eb4a,
-        0xc9ae06d64067dd,0xf7be45054760fa )},
-    { FIELD_LITERAL(
-        0xbd8715f551617f,0x8c17fbeca8f5fc,
-        0xaae0eec209c06f,0xce41ad80cbe6b8,
-        0xdf360b5c828c00,0xaf25b6bbb40e3b,
-        0x8ed37f0ce4ed31,0x72a1c3214557b9 )},
-    {{{ 1 }}},
-    { FIELD_LITERAL(
-        0x97ca9c8ed8bde9,0xf0b780da83304c,
-        0x0d79c0a7729a69,0xc18d3f24aebc1c,
-        0x1fbb5389b3fda5,0xbb24f674635948,
-        0x723a55709a3983,0xe1c0107a823dd4 )}
-}};
+extern const point_t API_NS(point_base);
 
 /* Projective Niels coordinates */
 typedef struct { gf a, b, c; } niels_s, niels_t[1];
@@ -651,7 +618,7 @@ decaf_bool_t API_NS(scalar_decode)(
         accum = (accum + s->limb[i] - sc_p->limb[i]) >> WBITS;
     }
     
-    sc_montmul(s,s,sc_r1); /* ham-handed reduce */
+    API_NS(scalar_mul)(s,s,API_NS(scalar_one)); /* ham-handed reduce */
     
     return accum;
 }
@@ -706,7 +673,7 @@ void API_NS(scalar_decode_long)(
     if (ser_len == sizeof(scalar_t)) {
         assert(i==0);
         /* ham-handed reduce */
-        sc_montmul(s,t1,sc_r1);
+        API_NS(scalar_mul)(s,t1,API_NS(scalar_one));
         API_NS(scalar_destroy)(t1);
         return;
     }

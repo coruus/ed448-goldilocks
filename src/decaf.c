@@ -67,23 +67,19 @@ static const decaf_448_scalar_t decaf_448_scalar_r2 = {{{
 
 static const decaf_word_t DECAF_MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae918bc5ull);
 
-/** base = twist of Goldilocks base point (~,19). */
+#define FIELD_LITERAL(a,b,c,d,e,f,g,h) {{LIMB(a),LIMB(b),LIMB(c),LIMB(d),LIMB(e),LIMB(f),LIMB(g),LIMB(h)}}
 
 const decaf_448_point_t decaf_448_point_base = {{
-    {{{ LIMB(0xb39a2d57e08c7b),LIMB(0xb38639c75ff281),
-        LIMB(0x2ec981082b3288),LIMB(0x99fe8607e5237c),
-        LIMB(0x0e33fbb1fadd1f),LIMB(0xe714f67055eb4a),
-        LIMB(0xc9ae06d64067dd),LIMB(0xf7be45054760fa) }}},
-    {{{ LIMB(0xbd8715f551617f),LIMB(0x8c17fbeca8f5fc),
-        LIMB(0xaae0eec209c06f),LIMB(0xce41ad80cbe6b8),
-        LIMB(0xdf360b5c828c00),LIMB(0xaf25b6bbb40e3b),
-        LIMB(0x8ed37f0ce4ed31),LIMB(0x72a1c3214557b9) }}},
-    {{{ 1 }}},
-    {{{ LIMB(0x97ca9c8ed8bde9),LIMB(0xf0b780da83304c),
-        LIMB(0x0d79c0a7729a69),LIMB(0xc18d3f24aebc1c),
-        LIMB(0x1fbb5389b3fda5),LIMB(0xbb24f674635948),
-        LIMB(0x723a55709a3983),LIMB(0xe1c0107a823dd4) }}}
+    {FIELD_LITERAL(0x00fffffffffffffe,0x00ffffffffffffff,0x00ffffffffffffff,0x00ffffffffffffff,
+                   0x0000000000000003,0x0000000000000000,0x0000000000000000,0x0000000000000000)},
+    {FIELD_LITERAL(0x0081e6d37f752992,0x003078ead1c28721,0x00135cfd2394666c,0x0041149c50506061,
+                   0x0031d30e4f5490b3,0x00902014990dc141,0x0052341b04c1e328,0x0014237853c10a1b)},
+    {FIELD_LITERAL(0x00fffffffffffffb,0x00ffffffffffffff,0x00ffffffffffffff,0x00ffffffffffffff,
+                   0x00fffffffffffffe,0x00ffffffffffffff,0x00ffffffffffffff,0x00ffffffffffffff)},
+    {FIELD_LITERAL(0x008f205b70660415,0x00881c60cfd3824f,0x00377a638d08500d,0x008c66d5d4672615,
+                   0x00e52fa558e08e13,0x0087770ae1b6983d,0x004388f55a0aa7ff,0x00b4d9a785cf1a91)}
 }};
+
 
 struct decaf_448_precomputed_s { decaf_448_point_t p[1]; };
 
