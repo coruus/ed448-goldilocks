@@ -64,7 +64,7 @@ ASFLAGS = $(ARCHFLAGS) $(XASFLAGS)
 .PHONY: clean all test bench todo doc lib bat
 .PRECIOUS: build/%.s
 
-HEADERS= Makefile $(shell find . -name "*.h") $(shell find . -name "*.hxx") build/timestamp
+HEADERS= Makefile $(shell find src include test -name "*.h") $(shell find . -name "*.hxx") build/timestamp
 
 
 DECAFCOMPONENTS= build/$(DECAF).o build/shake.o build/decaf_crypto.o \

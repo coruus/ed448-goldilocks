@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "p448.h"
+#define FIELD_LIT_LIMB_BITS  56
 #define FIELD_BITS           448
 #define field_t              p448_t
 #define field_mul            p448_mul

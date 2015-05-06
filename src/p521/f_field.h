@@ -13,6 +13,7 @@
 #include "constant_time.h"
 
 #include "p521.h"
+#define FIELD_LIT_LIMB_BITS  58
 #define FIELD_BITS           521
 #define field_t              p521_t
 #define field_mul            p521_mul

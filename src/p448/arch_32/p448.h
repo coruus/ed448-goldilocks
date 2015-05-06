@@ -13,6 +13,11 @@ typedef struct p448_t {
   uint32_t limb[16];
 } __attribute__((aligned(32))) p448_t;
 
+#define LBITS 28
+#define LIMB(x) (x##ull)&((1ull<<LBITS)-1), (x##ull)>>LBITS
+#define FIELD_LITERAL(a,b,c,d,e,f,g,h) \
+    {{LIMB(a),LIMB(b),LIMB(c),LIMB(d),LIMB(e),LIMB(f),LIMB(g),LIMB(h)}}
+
 #ifdef __cplusplus
 extern "C" {
 #endif

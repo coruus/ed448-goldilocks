@@ -30,12 +30,9 @@
 
 #if WBITS == 64
 typedef __int128_t decaf_sdword_t;
-#define LIMB(x) (x##ull)
 #define SC_LIMB(x) (x##ull)
 #elif WBITS == 32
 typedef int64_t decaf_sdword_t;
-#define LBITS 28 /* MAGIC */
-#define LIMB(x) (x##ull)&((1ull<<LBITS)-1), (x##ull)>>LBITS
 #define SC_LIMB(x) (x##ull)&((1ull<<32)-1), (x##ull)>>32
 #else
 #error "Only supporting 32- and 64-bit platforms right now"
@@ -85,28 +82,23 @@ static const decaf_word_t MONTGOMERY_FACTOR = (decaf_word_t)(0x3bd440fae918bc5ul
 
 /** base = twist of Goldilocks base point (~,19). */
 
-#ifndef FIELD_LITERAL
-#  define FIELD_LITERAL(a,b,c,d,e,f,g,h) \
-    LIMB(a),LIMB(b),LIMB(c),LIMB(d),LIMB(e),LIMB(f),LIMB(g),LIMB(h)
-#endif
-
 const point_t API_NS(point_base) = {{
-    {{{ FIELD_LITERAL(
+    { FIELD_LITERAL(
         0xb39a2d57e08c7b,0xb38639c75ff281,
         0x2ec981082b3288,0x99fe8607e5237c,
         0x0e33fbb1fadd1f,0xe714f67055eb4a,
-        0xc9ae06d64067dd,0xf7be45054760fa )}}},
-    {{{ FIELD_LITERAL(  
+        0xc9ae06d64067dd,0xf7be45054760fa )},
+    { FIELD_LITERAL(
         0xbd8715f551617f,0x8c17fbeca8f5fc,
         0xaae0eec209c06f,0xce41ad80cbe6b8,
         0xdf360b5c828c00,0xaf25b6bbb40e3b,
-        0x8ed37f0ce4ed31,0x72a1c3214557b9 )}}},
-    {{{ 1 }}},          
-    {{{ FIELD_LITERAL(  
+        0x8ed37f0ce4ed31,0x72a1c3214557b9 )},
+    {{{ 1 }}},
+    { FIELD_LITERAL(
         0x97ca9c8ed8bde9,0xf0b780da83304c,
         0x0d79c0a7729a69,0xc18d3f24aebc1c,
         0x1fbb5389b3fda5,0xbb24f674635948,
-        0x723a55709a3983,0xe1c0107a823dd4 )}}}
+        0x723a55709a3983,0xe1c0107a823dd4 )}
 }};
 
 /* Projective Niels coordinates */
@@ -116,9 +108,9 @@ typedef struct { niels_t n; gf z; } pniels_s, pniels_t[1];
 /* Precomputed base */
 struct precomputed_s { niels_t table [DECAF_COMBS_N<<(DECAF_COMBS_T-1)]; };
 
-extern const decaf_word_t API_NS(precomputed_base_as_words)[];
+extern const field_t API_NS(precomputed_base_as_fe)[];
 const precomputed_s *API_NS(precomputed_base) =
-    (const precomputed_s *) &API_NS(precomputed_base_as_words);
+    (const precomputed_s *) &API_NS(precomputed_base_as_fe);
 
 const size_t API_NS2(sizeof,precomputed_s) = sizeof(precomputed_s);
 const size_t API_NS2(alignof,precomputed_s) = 32;
@@ -1497,8 +1489,8 @@ sv prepare_wnaf_table(
     }
 }
 
-extern const decaf_word_t API_NS(precomputed_wnaf_as_words)[];
-static const niels_t *API_NS(wnaf_base) = (const niels_t *)API_NS(precomputed_wnaf_as_words);
+extern const field_t API_NS(precomputed_wnaf_as_fe)[];
+static const niels_t *API_NS(wnaf_base) = (const niels_t *)API_NS(precomputed_wnaf_as_fe);
 const size_t API_NS2(sizeof,precomputed_wnafs) __attribute((visibility("hidden")))
     = sizeof(niels_t)<<DECAF_WNAF_FIXED_TABLE_BITS;
 

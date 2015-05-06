@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "p480.h"
+#define FIELD_LIT_LIMB_BITS  60
 #define FIELD_BITS           480
 #define field_t              p480_t
 #define field_mul            p480_mul

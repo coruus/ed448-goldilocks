@@ -11,6 +11,7 @@
 #include <string.h>
 #include "api.h"
 #include "crypto_sign.h"
+#include "randombytes.h"
 
 int crypto_sign_keypair (
     unsigned char pk[PUBLICKEY_BYTES],
@@ -35,7 +36,7 @@ int crypto_sign (
     unsigned char sig[SIGNATURE_BYTES];
     decaf_448_sign(
         sig,
-        (const struct goldilocks_private_key_t *)sk,
+        (const decaf_448_private_key_s *)sk,
         m, mlen
     );
     memmove(sm + SIGNATURE_BYTES, m, mlen);

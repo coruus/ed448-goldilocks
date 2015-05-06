@@ -13,17 +13,18 @@
 #include <stdlib.h>
 #include "decaf.h"
 #include "decaf_448_config.h" /* MAGIC */
+#include "field.h"
 
 #define API_NS(_id) decaf_448_##_id
 #define API_NS2(_pref,_id) _pref##_decaf_448_##_id
 
  /* To satisfy linker. */
-const decaf_word_t API_NS(precomputed_base_as_words)[1];
+const field_t API_NS(precomputed_base_as_fe)[1];
 const API_NS(scalar_t) API_NS(precomputed_scalarmul_adjustment);
 const API_NS(scalar_t) API_NS(point_scalarmul_adjustment);
 
 struct niels_s;
-const decaf_word_t *API_NS(precomputed_wnaf_as_words);
+const field_t *API_NS(precomputed_wnaf_as_fe);
 extern const size_t API_NS2(sizeof,precomputed_wnafs);
 
 void API_NS(precompute_wnafs) (
@@ -41,6 +42,29 @@ static void scalar_print(const char *name, const API_NS(scalar_t) sc) {
     printf("}}};\n\n");
 }
 
+static void field_print(const field_t *f) {
+    const int FIELD_SER_BYTES = (FIELD_BITS + 7) / 8;
+    unsigned char ser[FIELD_SER_BYTES];
+    field_serialize(ser,f);
+    int b=0, i, comma=0;
+    unsigned long long limb = 0;
+    printf("FIELD_LITERAL(");
+    for (i=0; i<FIELD_SER_BYTES; i++) {
+        limb |= ((uint64_t)ser[i])<<b;
+        b += 8;
+        if (b >= FIELD_LIT_LIMB_BITS) {
+            limb &= (1ull<<FIELD_LIT_LIMB_BITS) -1;
+            b -= FIELD_LIT_LIMB_BITS;
+            if (comma) printf(",");
+            comma = 1;
+            printf("0x%016llx", limb);
+            limb = ((uint64_t)ser[i])>>(8-b);
+        }
+    }
+    printf(")");
+    assert(b<8);
+}
+
 int main(int argc, char **argv) {
     (void)argc; (void)argv;
     
@@ -54,34 +78,31 @@ int main(int argc, char **argv) {
     if (ret || !preWnaf) return 1;
     API_NS(precompute_wnafs)(preWnaf, API_NS(point_base));
 
-    const decaf_word_t *output = (const decaf_word_t *)pre;
+    const field_t *output = (const field_t *)pre;
     unsigned i;
     
     printf("/** @warning: this file was automatically generated. */\n");
+    printf("#include \"field.h\"\n\n");
     printf("#include \"decaf.h\"\n\n");
     printf("#define API_NS(_id) decaf_448_##_id\n");
     printf("#define API_NS2(_pref,_id) _pref##_decaf_448_##_id\n");
-    printf("const decaf_word_t API_NS(precomputed_base_as_words)[%d]\n", 
-        (int)(API_NS2(sizeof,precomputed_s) / sizeof(decaf_word_t)));
+    printf("const field_t API_NS(precomputed_base_as_fe)[%d]\n", 
+        (int)(API_NS2(sizeof,precomputed_s) / sizeof(field_t)));
     printf("__attribute__((aligned(%d),visibility(\"hidden\"))) = {\n  ", (int)API_NS2(alignof,precomputed_s));
     
-    for (i=0; i < API_NS2(sizeof,precomputed_s); i+=sizeof(decaf_word_t)) {
-        if (i && (i%8==0)) printf(",\n  ");
-        else if (i) printf(", ");
-        printf("0x%0*llxull", (int)sizeof(decaf_word_t)*2, (unsigned long long)*output );
-        output++;
+    for (i=0; i < API_NS2(sizeof,precomputed_s); i+=sizeof(field_t)) {
+        if (i) printf(",\n  ");
+        field_print(output++);
     }
     printf("\n};\n");
     
-    output = (const decaf_word_t *)preWnaf;
-    printf("const decaf_word_t API_NS(precomputed_wnaf_as_words)[%d]\n", 
-        (int)(API_NS2(sizeof,precomputed_wnafs) / sizeof(decaf_word_t)));
+    output = (const field_t *)preWnaf;
+    printf("const field_t API_NS(precomputed_wnaf_as_fe)[%d]\n", 
+        (int)(API_NS2(sizeof,precomputed_wnafs) / sizeof(field_t)));
     printf("__attribute__((aligned(%d),visibility(\"hidden\"))) = {\n  ", (int)API_NS2(alignof,precomputed_s));
-    for (i=0; i < API_NS2(sizeof,precomputed_wnafs); i+=sizeof(decaf_word_t)) {
-        if (i && (i%8==0)) printf(",\n  ");
-        else if (i) printf(", ");
-        printf("0x%0*llxull", (int)sizeof(decaf_word_t)*2, (unsigned long long)*output );
-        output++;
+    for (i=0; i < API_NS2(sizeof,precomputed_wnafs); i+=sizeof(field_t)) {
+        if (i) printf(",\n  ");
+        field_print(output++);
     }
     printf("\n};\n");
     
