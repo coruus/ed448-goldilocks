@@ -989,39 +989,56 @@ void API_NS(point_from_hash_nonuniform) (
     point_t p,
     const unsigned char ser[SER_BYTES]
 ) {
-    gf r,urr,a,b,c,dee,e,ur2_d,udr2_1;
-    (void)gf_deser(r,ser);
-    gf_canon(r);
-    gf_sqr(a,r);
-    /* gf_mlw(urr,a,QUADRATIC_NONRESIDUE); */
-    gf_sub(urr,ZERO,a);
+    gf r0,r,a,b,c,dee,D,N,e;
+    (void)gf_deser(r0,ser);
+    gf_canon(r0);
+    gf_sqr(a,r0);
+    /*gf_mlw(r,a,QUADRATIC_NONRESIDUE);*/
+    gf_sub(r,ZERO,a);
     gf_mlw(dee,ONE,EDWARDS_D);
-    gf_add(a,urr,ONE);
-    gf_sub(ur2_d,dee,urr);
-    gf_mul(c,a,ur2_d);
-    gf_mlw(b,urr,-EDWARDS_D);
-    gf_add(udr2_1,b,ONE);
-    gf_mul(a,c,udr2_1);
-    gf_mlw(c,a,EDWARDS_D+1);
-    decaf_bool_t square = gf_isqrt_chk(b,c,DECAF_FALSE);
-    /* FIELD: if 5 mod 8, multiply result by u. */
-    gf_mul(a,b,r);
-    cond_sel(b,a,b,square);
-    gf_mlw(a,b,EDWARDS_D+1);
-    cond_swap(ur2_d,udr2_1,~square);
-    gf_mul(e,ur2_d,a);
-    cond_neg(e,hibit(e)^square);
-    gf_mul(b,udr2_1,a);
-    gf_sqr(c,b);
-    gf_sqr(a,e);
-    gf_sub(a,ONE,a);
-    gf_add(e,e,e);
-    gf_add(b,dee,c);
-    gf_sub(c,dee,c);
-    gf_mul(p->x,e,c);
-    gf_mul(p->z,a,c);
-    gf_mul(p->y,b,a);
-    gf_mul(p->t,b,e);
+    gf_mlw(c,r,EDWARDS_D);
+    
+    /* Compute D := (dr+a-d)(dr-ar-d) with a=1 */
+    gf_sub(a,c,dee);
+    gf_add(a,a,ONE);
+    gf_sub(b,c,r);
+    gf_sub(b,b,dee);
+    gf_mul(D,a,b);
+    
+    /* compute N := (r+1)(a-2d) */
+    gf_add(a,r,ONE);
+    gf_mlw(N,a,1-2*EDWARDS_D);
+    
+    /* e = +-1/sqrt(+-ND) */
+    gf_mul(a,N,D);
+    decaf_bool_t square = gf_isqrt_chk(e,a,DECAF_FALSE);
+    
+    /* *r0 if not square */
+    gf_mul(a,e,r0);
+    cond_sel(e,a,e,square);
+    cond_neg(e,hibit(e)^~square);
+    
+    /* b <- t */
+    gf_mlw(a,e,1-2*EDWARDS_D);
+    gf_sqr(b,a);
+    gf_mul(a,b,N);
+    gf_sub(c,r,ONE);
+    gf_mul(b,c,a);
+    cond_neg(b,square);
+    gf_sub(b,b,ONE);
+
+    /* a <- s */
+    gf_mul(a,e,N);
+    
+    /* isogenize */
+    gf_sqr(c,a); /* s^2 */
+    gf_add(a,a,a); /* 2s */
+    gf_add(e,c,ONE);
+    gf_mul(p->t,a,e); /* 2s(1+s^2) */
+    gf_mul(p->x,a,b); /* 2st */
+    gf_sub(a,ONE,c);
+    gf_mul(p->y,e,a); /* (1+s^2)(1-s^2) */
+    gf_mul(p->z,a,b); /* (1-s^2)t */
 }
 
 void API_NS(point_from_hash_uniform) (
