@@ -195,7 +195,55 @@ decaf_448_verify_shake (
 }
 
 void
-decaf_448_sign (
+decaf_448_indsign (
+    decaf_448_signature_t sig,
+    const decaf_448_public_key_t pub,
+    const decaf_448_private_key_t priv,
+    const unsigned char *message,
+    size_t message_len
+) {
+    keccak_sponge_t ctx;
+    shake256_init(ctx);
+    // Absorb the public key,
+    shake256_update(ctx, pub, sizeof(decaf_448_public_key_t));
+    // then the message,
+    shake256_update(ctx, message, message_len);
+    // sign, using the sponge state,
+    decaf_448_sign_shake(sig, priv, ctx);
+    // and AONT the signature with the public key and message.
+    uint8_t pad[sizeof(decaf_448_signature_t)];
+    shake256_final(ctx, pad, sizeof(pad));
+    for (size_t i = 0; i < sizeof(pad); i++) {
+        ((uint8_t*)sig)[i] ^= pad[i];
+    }
+    shake256_destroy(ctx);
+}
+
+decaf_bool_t
+decaf_448_indverify (
+    const decaf_448_signature_t sig,
+    const decaf_448_public_key_t pub,
+    const unsigned char *message,
+    size_t message_len
+) {
+    keccak_sponge_t ctx;
+    shake256_init(ctx);
+    shake256_update(ctx, pub, sizeof(decaf_448_public_key_t));
+    shake256_update(ctx, message, message_len);
+    uint8_t pad[sizeof(decaf_448_signature_t)];
+    keccak_sponge_t temp;
+    memcpy(temp, ctx, sizeof(keccak_sponge_t));
+    shake256_final(temp, pad, sizeof(pad));
+    for (size_t i = 0; i < sizeof(pad); i++) {
+        pad[i] ^= ((uint8_t*)sig)[i];
+    }
+    decaf_bool_t ret = decaf_448_verify_shake(sig, pad, ctx);
+    shake256_destroy(ctx);
+    return ret;
+}
+
+void
+decaf_448_sign(
     decaf_448_signature_t sig,
     const decaf_448_private_key_t priv,
     const unsigned char *message,
@@ -207,6 +255,7 @@ decaf_448_sign (
     decaf_448_sign_shake(sig, priv, ctx);
     shake256_destroy(ctx);
 }
+
 
 decaf_bool_t
 decaf_448_verify (
