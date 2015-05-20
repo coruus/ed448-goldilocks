@@ -386,6 +386,9 @@ public:
     /** @brief Size of a serialized element */
     static const size_t SER_BYTES = DECAF_448_SER_BYTES;
     
+    /** @brief Size of a stegged element */
+    static const size_t STEG_BYTES = DECAF_448_SER_BYTES + 8;
+    
     /** @brief Bytes required for hash */
     static const size_t HASH_BYTES = DECAF_448_SER_BYTES;
     
@@ -476,19 +479,19 @@ public:
     * If the buffer is shorter than 2*HASH_BYTES, well, it won't be as uniform,
     * but the buffer will be zero-padded on the right.
     */
-    inline void set_to_hash( const Block &s ) NOEXCEPT {
+    inline unsigned char set_to_hash( const Block &s ) NOEXCEPT {
         if (s.size() < HASH_BYTES) {
             SecureBuffer b(HASH_BYTES);
             memcpy(b.data(), s.data(), s.size());
-            decaf_448_point_from_hash_nonuniform(p,b);
+            return decaf_448_point_from_hash_nonuniform(p,b);
         } else if (s.size() == HASH_BYTES) {
-            decaf_448_point_from_hash_nonuniform(p,s);
+            return decaf_448_point_from_hash_nonuniform(p,s);
         } else if (s.size() < 2*HASH_BYTES) {
             SecureBuffer b(2*HASH_BYTES);
             memcpy(b.data(), s.data(), s.size());
-            decaf_448_point_from_hash_uniform(p,b);
+            return decaf_448_point_from_hash_uniform(p,b);
         } else {
-            decaf_448_point_from_hash_uniform(p,s);
+            return decaf_448_point_from_hash_uniform(p,s);
         }
     }
     
@@ -575,6 +578,34 @@ public:
     inline Point non_secret_combo_with_base(const Scalar &s, const Scalar &s_base) NOEXCEPT {
         Point r((NOINIT())); decaf_448_base_double_scalarmul_non_secret(r.p,s_base.s,p,s.s); return r;
     }
+    
+    inline Point& debugging_torque_in_place() {
+        decaf_448_point_debugging_2torque(p,p);
+        return *this;
+    }
+    
+    inline bool invert_elligator (
+        Buffer &buf, unsigned char hint
+    ) const NOEXCEPT {
+        unsigned char buf2[2*HASH_BYTES];
+        memset(buf2,0,sizeof(buf2));
+        memcpy(buf2,buf,(buf.size() > 2*HASH_BYTES) ? 2*HASH_BYTES : buf.size());
+        decaf_bool_t ret;
+        if (buf.size() > HASH_BYTES) {
+            ret = decaf_448_invert_elligator_uniform(buf2, p, hint);
+        } else {
+            ret = decaf_448_invert_elligator_nonuniform(buf2, p, hint);
+        }
+        if (buf.size() < HASH_BYTES) {
+            ret &= decaf_memeq(&buf2[buf.size()], &buf2[HASH_BYTES], HASH_BYTES - buf.size());
+        }
+        memcpy(buf,buf2,(buf.size() < HASH_BYTES) ? buf.size() : HASH_BYTES);
+        decaf_bzero(buf2,sizeof(buf2));
+        return !!ret;
+    }
+    
+    /** @brief Steganographically encode this */
+    inline SecureBuffer steg_encode(SpongeRng &rng) const NOEXCEPT;
     
     /** @brief Return the base point */
     static inline const Point base() NOEXCEPT { return Point(decaf_448_point_base); }

@@ -152,6 +152,47 @@ static void test_arithmetic() {
     }
 }
 
+static void test_elligator() {
+    decaf::SpongeRng rng(decaf::Block("test_elligator"));
+    Test test("Elligator");
+    
+    for (int i=0; i<16; i++) {
+        decaf::SecureBuffer b1(Point::HASH_BYTES);
+        Point p = Point::identity();
+        if (i>=8) p.debugging_torque_in_place();
+        bool succ = p.invert_elligator(b1,i&7);
+        Point q;
+        unsigned char hint = q.set_to_hash(b1);
+        
+        if (succ != ((i&7) != 4) || (q != p) || (succ && (hint != (i&7)))) {
+            test.fail();
+            printf("Elligator test: t=%d, h=%d->%d, q%sp, %s %02x%02x\n",
+                i/8, i&7, hint, (q==p)?"==":"!=",succ ? "SUCC" : "FAIL",
+                b1[0], b1[1]);
+        }
+    }
+
+    for (int i=0; i<NTESTS && test.passing_now; i++) {
+        size_t len = (i % (2*Point::HASH_BYTES + 3));
+        decaf::SecureBuffer b1(len), b2(len);
+        rng.read(b1);
+        if (i==1) b1[0] = 1; /* special case test */
+        if (len > Point::HASH_BYTES)
+            memcpy(&b2[Point::HASH_BYTES], &b1[Point::HASH_BYTES], len-Point::HASH_BYTES);
+        Point s;
+        unsigned char hint = s.set_to_hash(b1);
+        if (i&1) s.debugging_torque_in_place();
+        bool succ = s.invert_elligator(b2,hint);
+        if (!succ || memcmp(b1,b2,len)) {
+            test.fail();
+            printf("    Fail elligator inversion i=%d (claimed %s, hint=%d)\n",
+                i, succ ? "success" : "failure", hint);
+        }
+        
+        Point t(rng);
+        point_check(test,t,t,t,0,0,t,Point::from_hash(t.steg_encode(rng)),"steg round-trip");
+    }
+}
 
 static void test_ec() {
     decaf::SpongeRng rng(decaf::Block("test_ec"));
@@ -175,6 +216,7 @@ static void test_ec() {
         
         point_check(test,p,q,r,0,0,p,Point((decaf::SecureBuffer)p),"round-trip");
         point_check(test,p,q,r,0,0,p+q,q+p,"commute add");
+        point_check(test,p,q,r,0,0,(p-q)+q,p,"correct sub");
         point_check(test,p,q,r,0,0,p+(q+r),(p+q)+r,"assoc add");
         point_check(test,p,q,r,0,0,p.times_two(),p+p,"dbl add");
         
@@ -236,6 +278,7 @@ int main(int argc, char **argv) {
     (void) argc; (void) argv;
     
     Tests<decaf::Ed448>::test_arithmetic();
+    Tests<decaf::Ed448>::test_elligator();
     Tests<decaf::Ed448>::test_ec();
     test_decaf();
     

@@ -201,6 +201,17 @@ inline Ed448::Point::Point(SpongeRng &rng, bool uniform) NOEXCEPT {
     rng.read(buffer);
     set_to_hash(buffer);
 }
+
+
+inline SecureBuffer Ed448::Point::steg_encode(SpongeRng &rng) const NOEXCEPT {
+    SecureBuffer out(STEG_BYTES);
+    bool done;
+    do {
+        rng.read(out.slice(HASH_BYTES-1,STEG_BYTES-HASH_BYTES+1));
+        done = invert_elligator(out, out[HASH_BYTES-1] & 7); /* 7 is kind of MAGIC */
+    } while (!done);
+    return out;
+}
 /**@endcond*/
 
 class Strobe : private KeccakSponge {
