@@ -299,6 +299,7 @@ int main(int argc, char **argv) {
         Point p,q;
         Scalar s,t;
         SecureBuffer ep, ep2(Point::SER_BYTES*2);
+        SpongeRng rng(Block("micro-benchmarks"));
         
         printf("\nMicro-benchmarks:\n");
         SHAKE<128> shake1;
@@ -337,6 +338,9 @@ int main(int argc, char **argv) {
         for (Benchmark b("Point create/destroy"); b.iter(); ) { Point r; }
         for (Benchmark b("Point hash nonuniform"); b.iter(); ) { Point::from_hash(ep); }
         for (Benchmark b("Point hash uniform"); b.iter(); ) { Point::from_hash(ep2); }
+        for (Benchmark b("Point unhash nonuniform"); b.iter(); ) { ignore_result(p.invert_elligator(ep,0)); }
+        for (Benchmark b("Point unhash uniform"); b.iter(); ) { ignore_result(p.invert_elligator(ep2,0)); }
+        for (Benchmark b("Point steg"); b.iter(); ) { p.steg_encode(rng); }
         for (Benchmark b("Point double scalarmul"); b.iter(); ) { Point::double_scalarmul(p,s,q,t); }
         for (Benchmark b("Point precmp scalarmul"); b.iter(); ) { pBase * s; }
         /* TODO: scalarmul for verif, etc */

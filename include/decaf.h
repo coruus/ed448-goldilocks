@@ -472,13 +472,24 @@ void decaf_448_base_double_scalarmul_non_secret (
 /**
  * @brief Test that a point is valid, for debugging purposes.
  *
- * @param [in] toTest The number to test.
+ * @param [in] toTest The point to test.
  * @retval DECAF_TRUE The point is valid.
  * @retval DECAF_FALSE The point is invalid.
  */
 decaf_bool_t decaf_448_point_valid (
     const decaf_448_point_t toTest
 ) API_VIS WARN_UNUSED NONNULL1 NOINLINE;
+
+/**
+ * @brief 2-torque a point, for debugging purposes.
+ *
+ * @param [out] q The point to torque.
+ * @param [in] p The point to torque.
+ */
+void decaf_448_point_debugging_2torque (
+     decaf_448_point_t q,
+     const decaf_448_point_t p
+) API_VIS NONNULL2 NOINLINE;
 
 /**
  * @brief Almost-Elligator-like hash to curve.
@@ -495,6 +506,8 @@ decaf_bool_t decaf_448_point_valid (
  *   A factor of 2 due to the isogeny.
  *   A factor of 2 because we quotient out the 2-torsion.
  *
+ * This makes it about 8:1 overall.
+ *
  * Negating the input (mod q) results in the same point.  Inverting the input
  * (mod q) results in the negative point.  This is the same as Elligator.
  *
@@ -505,11 +518,66 @@ decaf_bool_t decaf_448_point_valid (
  *
  * @param [in] hashed_data Output of some hash function.
  * @param [out] pt The data hashed to the curve.
+ * @return A "hint" value which can be used to help invert the encoding.
  */
-void decaf_448_point_from_hash_nonuniform (
+unsigned char
+decaf_448_point_from_hash_nonuniform (
     decaf_448_point_t pt,
     const unsigned char hashed_data[DECAF_448_SER_BYTES]
 ) API_VIS NONNULL2 NOINLINE;
+
+/**
+ * @brief Inverse of elligator-like hash to curve.
+ *
+ * This function writes to the buffer, to make it so that
+ * decaf_448_point_from_hash_nonuniform(buffer) = pt,hint
+ * if possible.
+ *
+ * @param [out] recovered_hash Encoded data.
+ * @param [in] pt The point to encode.
+ * @param [in] hint The hint value returned from 
+ *   decaf_448_point_from_hash_nonuniform.
+ *
+ * @retval DECAF_SUCCESS The inverse succeeded.
+ * @retval DECAF_FAILURE The pt isn't the image of 
+ *    decaf_448_point_from_hash_nonuniform with the given hint.
+ *
+ * @warning The hinting system is subject to change, especially in corner cases.
+ * @warning FIXME The hinting system doesn't work for certain inputs which have many 0xFF.
+ */
+decaf_bool_t
+decaf_448_invert_elligator_nonuniform (
+    unsigned char recovered_hash[DECAF_448_SER_BYTES],
+    const decaf_448_point_t pt,
+    unsigned char hint
+) API_VIS NONNULL2 NOINLINE WARN_UNUSED;
+
+/**
+ * @brief Inverse of elligator-like hash to curve, uniform.
+ *
+ * This function modifies the first DECAF_448_SER_BYTES of the
+ * buffer, to make it so that
+ * decaf_448_point_from_hash_uniform(buffer) = pt,hint
+ * if possible.
+ *
+ * @param [out] recovered_hash Encoded data.
+ * @param [in] pt The point to encode.
+ * @param [in] hint The hint value returned from 
+ *   decaf_448_point_from_hash_nonuniform.
+ *
+ * @retval DECAF_SUCCESS The inverse succeeded.
+ * @retval DECAF_FAILURE The pt isn't the image of 
+ *    decaf_448_point_from_hash_uniform with the given hint.
+ *
+ * @warning The hinting system is subject to change, especially in corner cases.
+ * @warning FIXME The hinting system doesn't work for certain inputs which have many 0xFF.
+ */
+decaf_bool_t
+decaf_448_invert_elligator_uniform (
+    unsigned char recovered_hash[2*DECAF_448_SER_BYTES],
+    const decaf_448_point_t pt,
+    unsigned char hint
+) API_VIS NONNULL2 NOINLINE WARN_UNUSED;
 
 /**
  * @brief Indifferentiable hash function encoding to curve.
@@ -518,8 +586,9 @@ void decaf_448_point_from_hash_nonuniform (
  *
  * @param [in] hashed_data Output of some hash function.
  * @param [out] pt The data hashed to the curve.
+ * @return A "hint" value which can be used to help invert the encoding.
  */ 
-void decaf_448_point_from_hash_uniform (
+unsigned char decaf_448_point_from_hash_uniform (
     decaf_448_point_t pt,
     const unsigned char hashed_data[2*DECAF_448_SER_BYTES]
 ) API_VIS NONNULL2 NOINLINE;
@@ -531,6 +600,15 @@ void decaf_bzero (
    void *data,
    size_t size
 ) NONNULL1 API_VIS NOINLINE;
+
+/**
+ * @brief Compare two buffers, returning DECAF_TRUE if they are equal.
+ */
+decaf_bool_t decaf_memeq (
+   const void *data1,
+   const void *data2,
+   size_t size
+) NONNULL2 WARN_UNUSED API_VIS NOINLINE;
 
 /**
  * @brief Overwrite scalar with zeros.

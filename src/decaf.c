@@ -29,8 +29,6 @@ typedef int64_t decaf_sdword_t;
 #error "Only supporting 32- and 64-bit platforms right now"
 #endif
 
-static const int QUADRATIC_NONRESIDUE = -1;
-
 #define sv static void
 #define snv static void __attribute__((noinline))
 #define siv static inline void __attribute__((always_inline))
@@ -736,53 +734,83 @@ decaf_bool_t decaf_448_point_eq ( const decaf_448_point_t p, const decaf_448_poi
     return gf_eq(a,b);
 }
 
-void decaf_448_point_from_hash_nonuniform (
+
+/** Inverse square root using addition chain. */
+static decaf_bool_t gf_isqrt_chk(gf y, const gf x, decaf_bool_t allow_zero) {
+    gf tmp0, tmp1;
+    gf_isqrt(y,x);
+    gf_sqr(tmp0,y);
+    gf_mul(tmp1,tmp0,x);
+    return gf_eq(tmp1,ONE) | (allow_zero & gf_eq(tmp1,ZERO));
+}
+
+unsigned char decaf_448_point_from_hash_nonuniform (
     decaf_448_point_t p,
     const unsigned char ser[DECAF_448_SER_BYTES]
 ) {
-    gf r0,r,a,b,c,dee,D,N,e;
-    (void)gf_deser(r0,ser);
+    gf r0,r,a,b,c,dee,D,N,rN,e;
+    decaf_bool_t over = ~gf_deser(r0,ser);
+    decaf_bool_t sgn_r0 = hibit(r0);
     gf_canon(r0);
     gf_sqr(a,r0);
-    gf_mlw(r,a,QUADRATIC_NONRESIDUE);
+    gf_sub(r,ZERO,a); /*gf_mlw(r,a,QUADRATIC_NONRESIDUE);*/
     gf_mlw(dee,ONE,EDWARDS_D);
     gf_mlw(c,r,EDWARDS_D);
     
     /* Compute D := (dr+a-d)(dr-ar-d) with a=1 */
     gf_sub(a,c,dee);
     gf_add(a,a,ONE);
-    gf_sub(b, c, r);
-    gf_sub(b, b, dee);
+    decaf_bool_t special_identity_case = gf_eq(a,ZERO);
+    gf_sub(b,c,r);
+    gf_sub(b,b,dee);
     gf_mul(D,a,b);
     
-    /* compute N := (r+1)(a-2d) with a=1 */
+    /* compute N := (r+1)(a-2d) */
     gf_add(a,r,ONE);
     gf_mlw(N,a,1-2*EDWARDS_D);
     
     /* e = +-1/sqrt(+-ND) */
-    gf_mul(a,N,D);
-    gf_isqrt(e,a);
-    gf_sqr(b,e);
-    gf_mul(c,a,b);
-    decaf_bool_t square = gf_eq(c,ONE);
+    gf_mul(rN,r,N);
+    gf_mul(a,rN,D);
     
-    /* *r0 if not square */
-    gf_mul(a,e,r0);
-    cond_sel(e,a,e,square);
-    cond_neg(e,hibit(e)^~square);
+    decaf_bool_t square = gf_isqrt_chk(e,a,DECAF_FALSE);
+    decaf_bool_t r_is_zero = gf_eq(r,ZERO);
+    square |= r_is_zero;
+    square |= special_identity_case;
+    
+    /* b <- t/s */
+    cond_sel(c,r0,r,square); /* r? = sqr ? r : 1 */
+    /* In two steps to avoid overflow on 32-bit arch */
+    gf_mlw(a,c,1-2*EDWARDS_D);
+    gf_mlw(b,a,1-2*EDWARDS_D);
+    gf_sub(c,r,ONE);
+    gf_mul(a,b,c); /* = r? * (r-1) * (a-2d)^2 with a=1 */
+    gf_mul(b,a,e);
+    cond_neg(b,~square);
+    cond_sel(c,r0,ONE,square);
+    gf_mul(a,e,c);
+    gf_mul(c,a,D); /* 1/s except for sign.  FUTURE: simplify using this. */
+    gf_sub(b,b,c);
+
+    /* a <- s = e * N * (sqr ? r : r0)
+     * e^2 r N D = 1
+     * 1/s =  1/(e * N * (sqr ? r : r0)) = e * D * (sqr ? 1 : r0)
+     */
+    gf_mul(a,N,r0);
+    cond_sel(rN,a,rN,square);
+    gf_mul(a,rN,e);
+    gf_mul(c,a,b);
+    
+    /* Normalize/negate */
+    decaf_bool_t neg_s = hibit(a)^~square;
+    cond_neg(a,neg_s); /* ends up negative if ~square */
+    decaf_bool_t sgn_t_over_s = hibit(b)^neg_s;
+    sgn_t_over_s &= ~gf_eq(N,ZERO);
+    sgn_t_over_s |= gf_eq(D,ZERO);
     
     /* b <- t */
-    gf_mlw(a,e,1-2*EDWARDS_D);
-    gf_sqr(b,a);
-    gf_mul(a,b,N);
-    gf_sub(c,r,ONE);
-    gf_mul(b,c,a);
-    cond_neg(b,square);
-    gf_sub(b,b,ONE);
-        
-    /* a <- s */
-    gf_mul(a,e,N);
-    
+    cond_sel(b,c,ONE,gf_eq(c,ZERO)); /* 0,0 -> 1,0 */
+
     /* isogenize */
     gf_sqr(c,a); /* s^2 */
     gf_add(a,a,a); /* 2s */
@@ -792,16 +820,109 @@ void decaf_448_point_from_hash_nonuniform (
     gf_sub(a,ONE,c);
     gf_mul(p->y,e,a); /* (1+s^2)(1-s^2) */
     gf_mul(p->z,a,b); /* (1-s^2)t */
+    
+    return (~square & 1) | (sgn_t_over_s & 2) | (sgn_r0 & 4) | (over & 8);
 }
 
-void decaf_448_point_from_hash_uniform (
+/* TODO: source these impls instead of copy-pasting them */
+decaf_bool_t
+decaf_448_invert_elligator_nonuniform (
+    unsigned char recovered_hash[DECAF_448_SER_BYTES],
+    const decaf_448_point_t p,
+    unsigned char hint
+) {
+    decaf_bool_t sgn_s = -(hint & 1),
+        sgn_t_over_s = -(hint>>1 & 1),
+        sgn_r0 = -(hint>>2 & 1);
+    gf a, b, c, d;
+    gf_mlw ( a, p->y, 1-EDWARDS_D );
+    gf_mul ( c, a, p->t ); 
+    gf_mul ( a, p->x, p->z ); 
+    gf_sub ( d, c, a );
+    gf_add ( a, p->z, p->y ); 
+    gf_sub ( b, p->z, p->y ); 
+    gf_mul ( c, b, a );
+    gf_mlw ( b, c, -EDWARDS_D );
+    gf_isqrt ( a, b );
+    gf_mlw ( b, a, -EDWARDS_D ); 
+    gf_mul ( c, b, a );
+    gf_mul ( a, c, d );
+    gf_add ( d, b, b );
+    gf_mul ( c, d, p->z );
+    cond_neg ( b, sgn_t_over_s^~hibit(c) ); 
+    cond_neg ( c, sgn_t_over_s^~hibit(c) ); 
+    gf_mul ( d, b, p->y ); 
+    gf_add ( a, a, d );
+    cond_neg( a, hibit(a)^sgn_s);
+    
+    /* ok, s = a; c = -t/s */
+    gf_mul(b,c,a);
+    gf_sub(b,ONE,b); /* t+1 */
+    gf_sqr(c,a); /* s^2 */
+    {   /* identity adjustments */
+        /* in case of identity, currently c=0, t=0, b=1, will encode to 1 */
+        /* if hint is 0, -> 0 */
+        /* if hint is to neg t/s, then go to infinity, effectively set s to 1 */
+        decaf_bool_t is_identity = gf_eq(p->x,ZERO);
+        cond_sel(c,c,ONE,is_identity & sgn_t_over_s);
+        cond_sel(b,b,ZERO,is_identity & ~sgn_t_over_s & ~sgn_s); /* identity adjust */
+        
+    }
+    gf_mlw(d,c,2*EDWARDS_D-1); /* $d = (2d-a)s^2 */
+    gf_add(a,b,d); /* num? */
+    gf_sub(d,b,d); /* den? */
+    gf_mul(b,a,d); /* n*d */
+    cond_sel(a,d,a,sgn_s);
+    decaf_bool_t succ = gf_isqrt_chk(c,b,DECAF_TRUE);
+    gf_mul(b,a,c);
+    cond_neg(b, sgn_r0^hibit(b));
+    
+    succ &= ~(gf_eq(b,ZERO) & sgn_r0);
+    
+    gf_canon(b);
+    int k=0, bits=0;
+    decaf_dword_t buf=0;
+    FOR_LIMB(i, {
+        buf |= (decaf_dword_t)b->limb[i]<<bits;
+        for (bits += LBITS; (bits>=8 || i==DECAF_448_LIMBS-1) && k<DECAF_448_SER_BYTES; bits-=8, buf>>=8) {
+            recovered_hash[k++]=buf;
+        }
+    });
+    return succ;
+}
+
+void decaf_448_point_debugging_2torque (
+    decaf_448_point_t q,
+    const decaf_448_point_t p
+) {
+    gf_sub(q->x,ZERO,p->x);
+    gf_sub(q->y,ZERO,p->y);
+    gf_cpy(q->z,p->z);
+    gf_cpy(q->t,p->t);
+}
+
+unsigned char decaf_448_point_from_hash_uniform (
     decaf_448_point_t pt,
     const unsigned char hashed_data[2*DECAF_448_SER_BYTES]
 ) {
     decaf_448_point_t pt2;
-    decaf_448_point_from_hash_nonuniform(pt,hashed_data);
-    decaf_448_point_from_hash_nonuniform(pt2,&hashed_data[DECAF_448_SER_BYTES]);
+    unsigned char ret1 =
+        decaf_448_point_from_hash_nonuniform(pt,hashed_data);
+    unsigned char ret2 =
+        decaf_448_point_from_hash_nonuniform(pt2,&hashed_data[DECAF_448_SER_BYTES]);
     decaf_448_point_add(pt,pt,pt2);
+    return ret1 | (ret2<<4);
+}
+
+decaf_bool_t decaf_448_invert_elligator_uniform (
+    unsigned char partial_hash[2*DECAF_448_SER_BYTES],
+    const decaf_448_point_t p,
+    unsigned char hint
+) {
+    decaf_448_point_t pt2;
+    decaf_448_point_from_hash_nonuniform(pt2,&partial_hash[DECAF_448_SER_BYTES]);
+    decaf_448_point_sub(pt2,p,pt2);
+    return decaf_448_invert_elligator_nonuniform(partial_hash,pt2,hint);
 }
 
 decaf_bool_t decaf_448_point_valid (
@@ -866,6 +987,20 @@ void decaf_448_point_destroy (
   decaf_448_point_t point
 ) {
     decaf_bzero(point, sizeof(decaf_448_point_t));
+}
+
+decaf_bool_t decaf_memeq (
+   const void *data1_,
+   const void *data2_,
+   size_t size
+) {
+    const unsigned char *data1 = (const unsigned char *)data1_;
+    const unsigned char *data2 = (const unsigned char *)data2_;
+    unsigned char ret = 0;
+    for (; size; size--, data1++, data2++) {
+        ret |= *data1 ^ *data2;
+    }
+    return (((decaf_dword_t)ret) - 1) >> 8;
 }
 
 void decaf_448_precomputed_destroy (
