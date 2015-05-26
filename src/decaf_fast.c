@@ -447,21 +447,21 @@ static void gf_encode ( unsigned char ser[SER_BYTES], gf a ) {
 void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
     /* Can shave off one mul here; not important but makes consistent with paper */
     gf a, b, c, d;
-    gf_mlw ( a, p->y, 1-EDWARDS_D ); 
-    gf_mul ( c, a, p->t ); 
+    gf_mlw ( a, p->y, 1-EDWARDS_D );
+    gf_mul ( c, a, p->t );     /* -dYT, with EDWARDS_D = d-1 */
     gf_mul ( a, p->x, p->z ); 
-    gf_sub ( d, c, a );
+    gf_sub ( d, c, a );  /* aXZ-dYT with a=-1 */
     gf_add ( a, p->z, p->y ); 
     gf_sub ( b, p->z, p->y ); 
     gf_mul ( c, b, a );
-    gf_mlw ( b, c, -EDWARDS_D );
-    gf_isqrt ( a, b );
-    gf_mlw ( b, a, -EDWARDS_D ); 
-    gf_mul ( c, b, a );
-    gf_mul ( a, c, d );
-    gf_add ( d, b, b );  
-    gf_mul ( c, d, p->z );   
-    cond_neg ( b, ~hibit(c) ); 
+    gf_mlw ( b, c, -EDWARDS_D ); /* (a-d)(Z+Y)(Z-Y) */
+    gf_isqrt ( a, b ); /* r in the paper */
+    gf_mlw ( b, a, -EDWARDS_D ); /* u in the paper */
+    gf_mul ( c, b, a ); /* ur */
+    gf_mul ( a, c, d ); /* ur (aZX-dYT) */
+    gf_add ( d, b, b );  /* 2u = -2au since a=-1 */
+    gf_mul ( c, d, p->z ); /* 2uZ */
+    cond_neg ( b, ~hibit(c) ); /* u <- -u if negative. */
     gf_mul ( c, b, p->y ); 
     gf_add ( a, a, c );
     cond_neg ( a, hibit(a) );
@@ -485,22 +485,22 @@ decaf_bool_t API_NS(point_decode) (
     succ &= allow_identity | ~zero;
     succ &= ~hibit(s);
     gf_sqr ( a, s );
-    gf_sub ( p->z, ONE, a );
+    gf_sub ( p->z, ONE, a ); /* 1-s^2 = 1+as^2 since a=-1 */
     gf_sqr ( b, p->z ); 
-    gf_mlw ( c, a, 4-4*EDWARDS_D );
-    gf_add ( c, c, b );
+    gf_mlw ( c, a, 4-4*EDWARDS_D ); 
+    gf_add ( c, c, b ); /* u = Z^2 - 4ds^2 with d = EDWARDS_D-1 */
     gf_mul ( b, c, a );
-    succ &= gf_isqrt_chk ( d, b, DECAF_TRUE );
+    succ &= gf_isqrt_chk ( d, b, DECAF_TRUE ); /* v <- 1/sqrt(us^2) */
     gf_mul ( b, c, d );
-    cond_neg ( d, hibit(b) );
-    gf_add ( p->x, s, s );
+    cond_neg ( d, hibit(b) ); /* v <- -v if uv negative */
+    gf_add ( p->x, s, s ); /* X = 2s */
     gf_mul ( c, d, s );
-    gf_sub ( b, TWO, p->z );
-    gf_mul ( a, b, c );
-    gf_mul ( p->y,a,p->z );
-    gf_mul ( p->t,p->x,a );
+    gf_sub ( b, TWO, p->z ); 
+    gf_mul ( a, b, c ); /* vs(2-Z) */
+    gf_mul ( p->y,a,p->z ); /* Y = wZ */
+    gf_mul ( p->t,a,p->x ); /* T = wX */
     p->y->limb[0] -= zero;
-    /* TODO: do something safe if ~succ? */
+    /* TODO: do something safe-ish if ~succ? */
     return succ;
 }
 
