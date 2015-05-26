@@ -1373,9 +1373,7 @@ decaf_bool_t API_NS(direct_scalarmul) (
     
     int j;
     decaf_bool_t pflip = 0;
-    for (j=SCALAR_BITS+1; j>=0; j--) {
-        /* FIXME: -1, but the test cases use too many bits */
-        
+    for (j=SCALAR_BITS-1; j>=0; j--) {
         /* Augmented Montgomery ladder */
         decaf_bool_t flip = -((scalar->limb[j/WBITS]>>(j%WBITS))&1);
         
