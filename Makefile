@@ -55,13 +55,17 @@ ifeq ($(CC),clang)
 WARNFLAGS += -Wgcc-compat
 endif
 
+SAGE ?= sage
+SAGES= $(shell ls test/*.sage)
+BUILDPYS= $(SAGES:test/%.sage=build/%.py)
+
 ARCHFLAGS += $(XARCHFLAGS)
 CFLAGS  = $(LANGFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCFLAGS)
 CXXFLAGS = $(LANGXXFLAGS) $(WARNFLAGS) $(INCFLAGS) $(OFLAGS) $(ARCHFLAGS) $(GENFLAGS) $(XCXXFLAGS) 
 LDFLAGS = $(ARCHFLAGS) $(XLDFLAGS)
 ASFLAGS = $(ARCHFLAGS) $(XASFLAGS)
 
-.PHONY: clean all test bench todo doc lib bat
+.PHONY: clean all test bench todo doc lib bat sage sagetest
 .PRECIOUS: build/%.s
 
 HEADERS= Makefile $(shell find src include test -name "*.h") $(shell find . -name "*.hxx") build/timestamp
@@ -149,6 +153,21 @@ build/%.s: src/$(FIELD)/$(ARCH)/%.c $(HEADERS)
 
 build/%.s: src/$(FIELD)/%.c $(HEADERS)
 	$(CC) $(CFLAGS) -S -c -o $@ $<
+	
+sage: $(BUILDPYS)
+
+sagetest: sage lib
+	LD_LIBRARY_PATH=build sage build/test_decaf.sage
+
+$(BUILDPYS): $(SAGES) build/timestamp
+	cp -f $(SAGES) build/
+	$(SAGE) --preparse $(SAGES:test/%.sage=build/%.sage)
+	# some sage versions compile to .sage.py
+	for f in $(SAGES:test/%.sage=build/%); do \
+		 if [ -e $$f.sage.py ]; then \
+		 	 mv $$f.sage.py $$f.py; \
+		 fi; \
+	  done
 
 doc/timestamp:
 	mkdir -p doc
