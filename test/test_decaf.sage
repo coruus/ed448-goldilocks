@@ -11,8 +11,42 @@ Tor = [p_tor4 * i for i in xrange(4)]
 q = 2^446-0x8335dc163bb124b65129c96fde933d8d723a70aadc873d6d54a7bb0d
 FQ = GF(q)
 
+passing = True
+
+# TODO: pathological cases
+# TODO: Elligator
+# TODO: double scalar mul
+
+def random_array(length):
+    answer = "".join([chr(randint(0,255)) for i in xrange(length)])
+    return answer
+
 def from_le(buf):
     return sum([256^i * ord(x) for i,x in enumerate(buf)])
+
+def youfail(why,n):
+    print ("Fail on test %d!"%n), why
+    global passing
+    passing = False
+    
+def run_test(i):
+    try:
+        s = DecafScalar.random()
+        t = DecafScalar.random()
+        p = DecafPoint.random()
+        q = DecafPoint.random()
+        s*p + t*q
+        if s*(t*p) != (s*t)*p:
+            raise Exception("Mul doesn't work")
+        (p+q-p-q).ser() # i guess...
+    except Exception, e:
+        youfail(e,i)
+
+def run_all_tests(n = 100):
+    for testno in xrange(n):
+        run_test(testno)
+    if passing:
+        print "Passed all %d tests." % n
 
 def to_le(x,n):
     x = int(x)
@@ -57,6 +91,9 @@ class DecafScalar():
         if csays != sagesays:
             raise Exception("C and SAGE don't agree: %d %d" % (csays, sagesays))
         return csays
+        
+    def __ne__(self,other):
+        return not self==other
     
     def __add__(self,other):
         cstruct = DecafScalar._UNDER()
@@ -127,6 +164,12 @@ class DecafScalar():
             raise Exception("scalar didn't decode")
         
         return cls(cstruct,scalar)
+        
+    @classmethod
+    def random(cls):
+        while True:
+            try: return cls.deser(random_array(56))
+            except Exception: pass
 
     @staticmethod
     def _c_ser(cstruct):
@@ -192,6 +235,9 @@ class DecafPoint():
         if csays != sagesays:
             raise Exception("C and SAGE don't agree: %d %d" % (csays, sagesays))
         return csays
+                
+    def __ne__(self,other):
+        return not self==other
     
     def __add__(self,other):
         cstruct = DecafPoint._UNDER()
@@ -249,6 +295,12 @@ class DecafPoint():
             raise Exception("Point didn't decode")
         
         return cls(cstruct,point)
+        
+    @classmethod
+    def random(cls):
+        while True:
+            try: return cls.deser(random_array(56))
+            except Exception: pass
 
     @staticmethod
     def _c_ser(cstruct):
@@ -277,5 +329,7 @@ class DecafPoint():
             print cs
             raise Exception("Check failed!")
         return True
+        
+run_all_tests()
     
     
