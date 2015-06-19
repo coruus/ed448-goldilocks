@@ -8,6 +8,8 @@
  * @brief Decaf high-level functions.
  */
 
+#include <stdio.h> // FIXME remove
+
 #define _XOPEN_SOURCE 600 /* for posix_memalign */
 #define __STDC_WANT_LIB_EXT1__ 1 /* for memset_s */
 #include "decaf.h"
@@ -170,6 +172,7 @@ siv gf_add_nr ( gf c, const gf a, const gf b ) {
 
 /** Constant time, x = is_z ? z : y */
 siv cond_sel(gf x, const gf y, const gf z, decaf_bool_t is_z) {
+    /*
     big_register_t br_mask = br_set_to_mask(is_z);
     big_register_t *out = (big_register_t *)x;
     const big_register_t *y_ = (const big_register_t *)y, *z_ = (const big_register_t *)z;
@@ -177,9 +180,8 @@ siv cond_sel(gf x, const gf y, const gf z, decaf_bool_t is_z) {
     for (k=0; k<sizeof(gf)/sizeof(big_register_t); k++) {
         out[k] = (~br_mask & y_[k]) | (br_mask & z_[k]);
     }
-    /*
-    constant_time_select(x,z,y,sizeof(gf),is_z);
     */
+    constant_time_select(x,z,y,sizeof(gf),is_z);
 }
 
 /** Constant time, if (neg) x=-x; */
@@ -1047,7 +1049,8 @@ unsigned char API_NS(point_from_hash_nonuniform) (
     decaf_bool_t sgn_r0 = hibit(r0);
     gf_canon(r0);
     gf_sqr(a,r0);
-    gf_sub(r,ZERO,a); /*gf_mlw(r,a,QUADRATIC_NONRESIDUE);*/
+    //gf_sub(r,ZERO,a); /*gf_mlw(r,a,QUADRATIC_NONRESIDUE);*/
+        gf_mul(r,a,SQRT_MINUS_ONE);
     gf_mlw(dee,ONE,EDWARDS_D);
     gf_mlw(c,r,EDWARDS_D);
     
@@ -1106,6 +1109,9 @@ unsigned char API_NS(point_from_hash_nonuniform) (
     cond_sel(b,c,ONE,gf_eq(c,ZERO)); /* 0,0 -> 1,0 */
 
     /* isogenize */
+    gf_mul(c,a,SQRT_MINUS_ONE);
+    gf_cpy(a,c); // TODO rename
+    
     gf_sqr(c,a); /* s^2 */
     gf_add(a,a,a); /* 2s */
     gf_add(e,c,ONE);
@@ -1114,6 +1120,8 @@ unsigned char API_NS(point_from_hash_nonuniform) (
     gf_sub(a,ONE,c);
     gf_mul(p->y,e,a); /* (1+s^2)(1-s^2) */
     gf_mul(p->z,a,b); /* (1-s^2)t */
+    
+    assert(API_NS(point_valid)(p));
     
     return (~square & 1) | (sgn_t_over_s & 2) | (sgn_r0 & 4) | (over & 8);
 }
