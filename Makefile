@@ -25,7 +25,7 @@ else
 ARCH ?= arch_arm_32
 endif
 
-FIELD ?= p448
+FIELD ?= p255
 
 WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
 	 -Wmissing-declarations -Wunused-function -Wno-overlength-strings $(EXWARN)

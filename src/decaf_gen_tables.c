@@ -12,11 +12,11 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "decaf.h"
-#include "decaf_448_config.h" /* MAGIC */
+#include "decaf_255_config.h" /* MAGIC */
 #include "field.h"
 
-#define API_NS(_id) decaf_448_##_id
-#define API_NS2(_pref,_id) _pref##_decaf_448_##_id
+#define API_NS(_id) decaf_255_##_id
+#define API_NS2(_pref,_id) _pref##_decaf_255_##_id
 
  /* To satisfy linker. */
 const field_t API_NS(precomputed_base_as_fe)[1];
@@ -24,7 +24,7 @@ const API_NS(scalar_t) API_NS(precomputed_scalarmul_adjustment);
 const API_NS(scalar_t) API_NS(point_scalarmul_adjustment);
 const API_NS(scalar_t) sc_r2 = {{{0}}};
 const decaf_word_t MONTGOMERY_FACTOR = 0;
-const unsigned char base_point_ser_for_pregen[DECAF_448_SER_BYTES];
+const unsigned char base_point_ser_for_pregen[DECAF_255_SER_BYTES];
 
 const API_NS(point_t) API_NS(point_base);
 
@@ -94,8 +94,8 @@ int main(int argc, char **argv) {
     printf("/** @warning: this file was automatically generated. */\n");
     printf("#include \"field.h\"\n\n");
     printf("#include \"decaf.h\"\n\n");
-    printf("#define API_NS(_id) decaf_448_##_id\n");
-    printf("#define API_NS2(_pref,_id) _pref##_decaf_448_##_id\n");
+    printf("#define API_NS(_id) decaf_255_##_id\n");
+    printf("#define API_NS2(_pref,_id) _pref##_decaf_255_##_id\n");
     
     output = (const field_t *)real_point_base;
     printf("const API_NS(point_t) API_NS(point_base) = {{\n");
@@ -138,8 +138,8 @@ int main(int argc, char **argv) {
     scalar_print("API_NS(precomputed_scalarmul_adjustment)", smadj);
     
     API_NS(scalar_copy)(smadj,API_NS(scalar_one));
-    for (i=0; i<DECAF_448_SCALAR_BITS-1 + DECAF_WINDOW_BITS
-            - ((DECAF_448_SCALAR_BITS-1)%DECAF_WINDOW_BITS); i++) {
+    for (i=0; i<DECAF_255_SCALAR_BITS-1 + DECAF_WINDOW_BITS
+            - ((DECAF_255_SCALAR_BITS-1)%DECAF_WINDOW_BITS); i++) {
         API_NS(scalar_add)(smadj,smadj,smadj);
     }
     API_NS(scalar_sub)(smadj, smadj, API_NS(scalar_one));

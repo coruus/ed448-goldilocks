@@ -13,20 +13,20 @@
 #include "decaf.h"
 #include <string.h>
 #include "field.h"
-#include "decaf_448_config.h"
+#include "decaf_255_config.h"
 
 #define WBITS DECAF_WORD_BITS
 
 /* Rename table for eventual factoring into .c.inc, MSR ECC style */
-#define SCALAR_LIMBS DECAF_448_SCALAR_LIMBS
-#define SCALAR_BITS DECAF_448_SCALAR_BITS
-#define NLIMBS DECAF_448_LIMBS
-#define API_NS(_id) decaf_448_##_id
-#define API_NS2(_pref,_id) _pref##_decaf_448_##_id
-#define scalar_t decaf_448_scalar_t
-#define point_t decaf_448_point_t
-#define precomputed_s decaf_448_precomputed_s
-#define SER_BYTES DECAF_448_SER_BYTES
+#define SCALAR_LIMBS DECAF_255_SCALAR_LIMBS
+#define SCALAR_BITS DECAF_255_SCALAR_BITS
+#define NLIMBS DECAF_255_LIMBS
+#define API_NS(_id) decaf_255_##_id
+#define API_NS2(_pref,_id) _pref##_decaf_255_##_id
+#define scalar_t decaf_255_scalar_t
+#define point_t decaf_255_point_t
+#define precomputed_s decaf_255_precomputed_s
+#define SER_BYTES DECAF_255_SER_BYTES
 
 #if WBITS == 64
 typedef __int128_t decaf_sdword_t;
@@ -45,25 +45,23 @@ typedef int64_t decaf_sdword_t;
 #define siv static inline void __attribute__((always_inline))
 static const gf ZERO = {{{0}}}, ONE = {{{1}}}, TWO = {{{2}}};
 
-static const int EDWARDS_D = -39081;
+static const int EDWARDS_D = 121665;
 
 static const scalar_t sc_p = {{{
-    SC_LIMB(0x2378c292ab5844f3),
-    SC_LIMB(0x216cc2728dc58f55),
-    SC_LIMB(0xc44edb49aed63690),
-    SC_LIMB(0xffffffff7cca23e9),
-    SC_LIMB(0xffffffffffffffff),
-    SC_LIMB(0xffffffffffffffff),
-    SC_LIMB(0x3fffffffffffffff)
+    SC_LIMB(0x5812631a5cf5d3ed),
+    SC_LIMB(0x14def9dea2f79cd6),
+    SC_LIMB(0),
+    SC_LIMB(0),
+    SC_LIMB(0x1000000000000000)
 }}};
 
 const scalar_t API_NS(scalar_one) = {{{1}}}, API_NS(scalar_zero) = {{{0}}};
 extern const scalar_t sc_r2;
 extern const decaf_word_t MONTGOMERY_FACTOR;
 
-/* sqrt(5) = 2phi-1 from the curve spec.  Not exported, but used by pregen tool. */
+/* sqrt(9) = 3 from the curve spec.  Not exported, but used by pregen tool. */
 const unsigned char base_point_ser_for_pregen[SER_BYTES] = {
-    -1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,-1,1
+    3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
 extern const point_t API_NS(point_base);
@@ -324,7 +322,8 @@ decaf_bool_t API_NS(scalar_invert) (
     scalar_t out,
     const scalar_t a
 ) {
-    /* FIELD MAGIC */
+#if 0
+    /* FIELD MAGIC.  FIXME: not updated for 25519 */
     scalar_t chain[7], tmp;
     sc_montmul(chain[0],a,sc_r2);
     
@@ -371,6 +370,11 @@ decaf_bool_t API_NS(scalar_invert) (
         API_NS(scalar_destroy)(chain[i]);
     }
     return ~API_NS(scalar_eq)(out,API_NS(scalar_zero));
+#else
+	(void)out;
+	(void)a;
+	return 0;
+#endif
 }
 
 void API_NS(scalar_sub) (
@@ -1067,7 +1071,7 @@ unsigned char API_NS(point_from_hash_nonuniform) (
 
 decaf_bool_t
 API_NS(invert_elligator_nonuniform) (
-    unsigned char recovered_hash[DECAF_448_SER_BYTES],
+    unsigned char recovered_hash[DECAF_255_SER_BYTES],
     const point_t p,
     unsigned char hint
 ) {
