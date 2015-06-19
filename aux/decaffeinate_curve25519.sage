@@ -40,8 +40,20 @@ def decaf_encode_from_E(X,Y):
 
 def isqrt(x):
     assert(x.is_square())
-    if x == 0: return 0
-    else: return 1/sqrt(x)
+    
+    def op(st,sh,add):
+        x,y,z = st
+        return x,st[1]^(2^sh)*st[add],y
+    
+    ops = [(1,0),(1,0),(3,1),(6,1),(1,0),(12,2),(25,1),(25,2),(50,2),(125,1),(2,0),(1,0)]
+    st = (x,x,x)
+    for sh,add in ops:
+        st = op(st,sh,add)
+    #assert st[2] == x^(2^252-3)
+    
+    i = sqrt(F(-1))
+    if st[1] == 1: return st[2]
+    else: return st[2] * i
 
 def decaf_encode_from_E_c(X,Y):
     Z = F.random_element()
