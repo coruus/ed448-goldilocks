@@ -61,7 +61,7 @@ typedef uint64_t decaf_dword_t;
 /** Galois field element internal structure */
 typedef struct gf_s {
     decaf_word_t limb[DECAF_255_LIMBS];
-} __attribute__((aligned(32))) gf_s, gf[1];
+} gf_s, gf[1];
 /** @endcond */
 
 /** Number of bytes in a serialized point. */

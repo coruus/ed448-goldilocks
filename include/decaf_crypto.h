@@ -18,7 +18,7 @@
 #include "shake.h"
 
 /** Number of bytes for a symmetric key (expanded to full key) */
-#define DECAF_448_SYMMETRIC_KEY_BYTES 32
+#define DECAF_255_SYMMETRIC_KEY_BYTES 32
 
 /** @cond internal */
 #define API_VIS __attribute__((visibility("default"))) __attribute__((noinline)) // TODO: synergize with decaf.h
@@ -31,29 +31,29 @@
 /** @endcond */
 
 /** A symmetric key, the compressed point of a private key. */
-typedef unsigned char decaf_448_symmetric_key_t[DECAF_448_SYMMETRIC_KEY_BYTES];
+typedef unsigned char decaf_255_symmetric_key_t[DECAF_255_SYMMETRIC_KEY_BYTES];
 
 /** An encoded public key. */
-typedef unsigned char decaf_448_public_key_t[DECAF_448_SER_BYTES];
+typedef unsigned char decaf_255_public_key_t[DECAF_255_SER_BYTES];
 
 /** A signature. */
-typedef unsigned char decaf_448_signature_t[DECAF_448_SER_BYTES + DECAF_448_SCALAR_BYTES];
+typedef unsigned char decaf_255_signature_t[DECAF_255_SER_BYTES + DECAF_255_SCALAR_BYTES];
 
 typedef struct {
     /** @cond intetrnal */
     /** The symmetric key from which everything is expanded */
-    decaf_448_symmetric_key_t sym;
+    decaf_255_symmetric_key_t sym;
     
     /** The scalar x */
-    decaf_448_scalar_t secret_scalar;
+    decaf_255_scalar_t secret_scalar;
     
     /** x*Base */
-    decaf_448_public_key_t pub;
+    decaf_255_public_key_t pub;
     /** @endcond */
 } /** Private key structure for pointers. */
-  decaf_448_private_key_s,
+  decaf_255_private_key_s,
   /** A private key (gmp array[1] style). */
-  decaf_448_private_key_t[1];
+  decaf_255_private_key_t[1];
 
 #ifdef __cplusplus
 extern "C" {
@@ -64,16 +64,16 @@ extern "C" {
  * @param [out] priv The derived private key.
  * @param [in] proto The compressed or proto-key, which must be 32 random bytes.
  */
-void decaf_448_derive_private_key (
-    decaf_448_private_key_t priv,
-    const decaf_448_symmetric_key_t proto
+void decaf_255_derive_private_key (
+    decaf_255_private_key_t priv,
+    const decaf_255_symmetric_key_t proto
 ) NONNULL2 API_VIS;
 
 /**
  * @brief Destroy a private key.
  */
-void decaf_448_destroy_private_key (
-    decaf_448_private_key_t priv
+void decaf_255_destroy_private_key (
+    decaf_255_private_key_t priv
 ) NONNULL1 API_VIS;
 
 /**
@@ -81,9 +81,9 @@ void decaf_448_destroy_private_key (
  * @param [out] pub The extracted private key.
  * @param [in] priv The private key.
  */
-void decaf_448_private_to_public (
-    decaf_448_public_key_t pub,
-    const decaf_448_private_key_t priv
+void decaf_255_private_to_public (
+    decaf_255_public_key_t pub,
+    const decaf_255_private_key_t priv
 ) NONNULL2 API_VIS;
     
 /**
@@ -104,11 +104,11 @@ void decaf_448_private_to_public (
  * and will almost definitely change in the future.
  */
 decaf_bool_t
-decaf_448_shared_secret (
+decaf_255_shared_secret (
     uint8_t *shared,
     size_t shared_bytes,
-    const decaf_448_private_key_t my_privkey,
-    const decaf_448_public_key_t your_pubkey
+    const decaf_255_private_key_t my_privkey,
+    const decaf_255_public_key_t your_pubkey
 ) NONNULL134 WARN_UNUSED API_VIS;
    
 /**
@@ -119,9 +119,9 @@ decaf_448_shared_secret (
  * @param [in] shake A SHAKE256 context with the message.
  */ 
 void
-decaf_448_sign_shake (
-    decaf_448_signature_t sig,
-    const decaf_448_private_key_t priv,
+decaf_255_sign_shake (
+    decaf_255_signature_t sig,
+    const decaf_255_private_key_t priv,
     const keccak_sponge_t shake
 ) NONNULL3 API_VIS;
 
@@ -134,9 +134,9 @@ decaf_448_sign_shake (
  * @param [in] message_len The message's length.
  */ 
 void
-decaf_448_sign (
-    decaf_448_signature_t sig,
-    const decaf_448_private_key_t priv,
+decaf_255_sign (
+    decaf_255_signature_t sig,
+    const decaf_255_private_key_t priv,
     const unsigned char *message,
     size_t message_len
 ) NONNULL3 API_VIS;
@@ -149,9 +149,9 @@ decaf_448_sign (
  * @param [in] shake A SHAKE256 context with the message.
  */    
 decaf_bool_t
-decaf_448_verify_shake (
-    const decaf_448_signature_t sig,
-    const decaf_448_public_key_t pub,
+decaf_255_verify_shake (
+    const decaf_255_signature_t sig,
+    const decaf_255_public_key_t pub,
     const keccak_sponge_t shake
 ) NONNULL3 API_VIS WARN_UNUSED;
 
@@ -164,9 +164,9 @@ decaf_448_verify_shake (
  * @param [in] message_len The message's length.
  */    
 decaf_bool_t
-decaf_448_verify (
-    const decaf_448_signature_t sig,
-    const decaf_448_public_key_t pub,
+decaf_255_verify (
+    const decaf_255_signature_t sig,
+    const decaf_255_public_key_t pub,
     const unsigned char *message,
     size_t message_len
 ) NONNULL3 API_VIS WARN_UNUSED;

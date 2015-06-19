@@ -22,164 +22,33 @@ p255_mul (
     const p255_t *as,
     const p255_t *bs
 ) {
-    const uint64_t *a = as->limb, *b = bs->limb;
+    const uint64_t *a = as->limb, *b = bs->limb, mask = ((1ull<<51)-1);
+    
+    uint64_t bh[4];
+    int i,j;
+    for (i=0; i<4; i++) bh[i] = b[i+1] * 19;
+    
     uint64_t *c = cs->limb;
 
-    __uint128_t accum0 = 0, accum1 = 0, accum2;
-    uint64_t mask = (1ull<<51) - 1;  
-
-    uint64_t aa[4], bb[4], bbb[4];
-
-    unsigned int i;
-    for (i=0; i<4; i++) {
-        aa[i]  = a[i] + a[i+4];
-        bb[i]  = b[i] + b[i+4];
-        bbb[i] = bb[i] + b[i+4];
-    }
-
-    int I_HATE_UNROLLED_LOOPS = 0;
-
-    if (I_HATE_UNROLLED_LOOPS) {
-        /* The compiler probably won't unroll this,
-         * so it's like 80% slower.
-         */
-        for (i=0; i<4; i++) {
-            accum2 = 0;
-
-            unsigned int j;
-            for (j=0; j<=i; j++) {
-                accum2 += widemul(a[j],   b[i-j]);
-                accum1 += widemul(aa[j], bb[i-j]);
-                accum0 += widemul(a[j+4], b[i-j+4]);
-            }
-            for (; j<4; j++) {
-                accum2 += widemul(a[j],   b[i-j+8]);
-                accum1 += widemul(aa[j], bbb[i-j+4]);
-                accum0 += widemul(a[j+4], bb[i-j+4]);
-            }
-
-            accum1 -= accum2;
-            accum0 += accum2;
-
-            c[i]   = ((uint64_t)(accum0)) & mask;
-            c[i+4] = ((uint64_t)(accum1)) & mask;
-
-            accum0 >>= 56;
-            accum1 >>= 56;
+    __uint128_t accum = 0;
+    for (i=0; i<5; i++) {
+        for (j=0; j<=i; j++) {
+            accum += widemul(b[i-j], a[j]);
         }
-    } else {
-        accum2  = widemul(a[0],  b[0]);
-        accum1 += widemul(aa[0], bb[0]);
-        accum0 += widemul(a[4],  b[4]);
-
-        accum2 += widemul(a[1],  b[7]);
-        accum1 += widemul(aa[1], bbb[3]);
-        accum0 += widemul(a[5],  bb[3]);
-
-        accum2 += widemul(a[2],  b[6]);
-        accum1 += widemul(aa[2], bbb[2]);
-        accum0 += widemul(a[6],  bb[2]);
-
-        accum2 += widemul(a[3],  b[5]);
-        accum1 += widemul(aa[3], bbb[1]);
-        accum0 += widemul(a[7],  bb[1]);
-
-        accum1 -= accum2;
-        accum0 += accum2;
-
-        c[0] = ((uint64_t)(accum0)) & mask;
-        c[4] = ((uint64_t)(accum1)) & mask;
-
-        accum0 >>= 56;
-        accum1 >>= 56;
-
-        accum2  = widemul(a[0],  b[1]);
-        accum1 += widemul(aa[0], bb[1]);
-        accum0 += widemul(a[4],  b[5]);
-
-        accum2 += widemul(a[1],  b[0]);
-        accum1 += widemul(aa[1], bb[0]);
-        accum0 += widemul(a[5],  b[4]);
-
-        accum2 += widemul(a[2],  b[7]);
-        accum1 += widemul(aa[2], bbb[3]);
-        accum0 += widemul(a[6],  bb[3]);
-
-        accum2 += widemul(a[3],  b[6]);
-        accum1 += widemul(aa[3], bbb[2]);
-        accum0 += widemul(a[7],  bb[2]);
-
-        accum1 -= accum2;
-        accum0 += accum2;
-
-        c[1] = ((uint64_t)(accum0)) & mask;
-        c[5] = ((uint64_t)(accum1)) & mask;
-
-        accum0 >>= 56;
-        accum1 >>= 56;
-
-        accum2  = widemul(a[0],  b[2]);
-        accum1 += widemul(aa[0], bb[2]);
-        accum0 += widemul(a[4],  b[6]);
-
-        accum2 += widemul(a[1],  b[1]);
-        accum1 += widemul(aa[1], bb[1]);
-        accum0 += widemul(a[5],  b[5]);
-
-        accum2 += widemul(a[2],  b[0]);
-        accum1 += widemul(aa[2], bb[0]);
-        accum0 += widemul(a[6],  b[4]);
-
-        accum2 += widemul(a[3],  b[7]);
-        accum1 += widemul(aa[3], bbb[3]);
-        accum0 += widemul(a[7],  bb[3]);
-
-        accum1 -= accum2;
-        accum0 += accum2;
-
-        c[2] = ((uint64_t)(accum0)) & mask;
-        c[6] = ((uint64_t)(accum1)) & mask;
-
-        accum0 >>= 56;
-        accum1 >>= 56;
-
-        accum2  = widemul(a[0],  b[3]);
-        accum1 += widemul(aa[0], bb[3]);
-        accum0 += widemul(a[4],  b[7]);
-
-        accum2 += widemul(a[1],  b[2]);
-        accum1 += widemul(aa[1], bb[2]);
-        accum0 += widemul(a[5],  b[6]);
-
-        accum2 += widemul(a[2],  b[1]);
-        accum1 += widemul(aa[2], bb[1]);
-        accum0 += widemul(a[6],  b[5]);
-
-        accum2 += widemul(a[3],  b[0]);
-        accum1 += widemul(aa[3], bb[0]);
-        accum0 += widemul(a[7],  b[4]);
-
-        accum1 -= accum2;
-        accum0 += accum2;
-
-        c[3] = ((uint64_t)(accum0)) & mask;
-        c[7] = ((uint64_t)(accum1)) & mask;
-
-        accum0 >>= 56;
-        accum1 >>= 56;
-    } /* !I_HATE_UNROLLED_LOOPS */
-
-    accum0 += accum1;
-    accum0 += c[4];
-    accum1 += c[0];
-    c[4] = ((uint64_t)(accum0)) & mask;
-    c[0] = ((uint64_t)(accum1)) & mask;
-
-    accum0 >>= 56;
-    accum1 >>= 56;
-
-    c[5] += ((uint64_t)(accum0));
-    c[1] += ((uint64_t)(accum1));
+        for (; j<5; j++) {
+            accum += widemul(bh[i-j+4], a[j]);
+        }
+        c[i] = accum & mask;
+        accum >>= 51;
+    }
+    /* PERF: parallelize? eh well this is reference */
+    accum *= 19;
+    accum += c[0];
+    c[0] = accum & mask;
+    accum >>= 51;
+    
+    assert(accum < mask);
+    c[1] += accum;
 }
 
 void
@@ -188,27 +57,25 @@ p255_mulw (
     const p255_t *as,
     uint64_t b
 ) {
-    const uint64_t *a = as->limb;
+    const uint64_t *a = as->limb, mask = ((1ull<<51)-1);
+    int i;
+    
     uint64_t *c = cs->limb;
 
-    __uint128_t accum0 = 0, accum4 = 0;
-    uint64_t mask = (1ull<<56) - 1;  
-
-    int i;
-    for (i=0; i<4; i++) {
-        accum0 += widemul(b, a[i]);
-        accum4 += widemul(b, a[i+4]);
-        c[i]   = accum0 & mask; accum0 >>= 56;
-        c[i+4] = accum4 & mask; accum4 >>= 56;
+    __uint128_t accum = 0;
+    for (i=0; i<5; i++) {
+        accum += widemul(b, a[i]);
+        c[i] = accum & mask;
+        accum >>= 51;
     }
+    /* PERF: parallelize? eh well this is reference */
+    accum *= 19;
+    accum += c[0];
+    c[0] = accum & mask;
+    accum >>= 51;
     
-    accum0 += accum4 + c[4];
-    c[4] = accum0 & mask;
-    c[5] += accum0 >> 56;
-
-    accum4 += c[0];
-    c[0] = accum4 & mask;
-    c[1] += accum4 >> 56;
+    assert(accum < mask);
+    c[1] += accum;
 }
 
 void
@@ -223,23 +90,21 @@ void
 p255_strong_reduce (
     p255_t *a
 ) {
-    uint64_t mask = (1ull<<56)-1;
+    uint64_t mask = (1ull<<51)-1;
 
     /* first, clear high */
-    a->limb[4] += a->limb[7]>>56;
-    a->limb[0] += a->limb[7]>>56;
-    a->limb[7] &= mask;
+    a->limb[0] += (a->limb[4]>>51)*19;
+    a->limb[4] &= mask;
 
-    /* now the total is less than 2^255 - 2^(255-56) + 2^(255-56+8) < 2p */
+    /* now the total is less than 2p */
 
     /* compute total_value - p.  No need to reduce mod p. */
-
     __int128_t scarry = 0;
     int i;
-    for (i=0; i<8; i++) {
-        scarry = scarry + a->limb[i] - ((i==4)?mask-1:mask);
+    for (i=0; i<5; i++) {
+        scarry = scarry + a->limb[i] - ((i==0)?mask-18:mask);
         a->limb[i] = scarry & mask;
-        scarry >>= 56;
+        scarry >>= 51;
     }
 
     /* uncommon case: it was >= p, so now scarry = 0 and this = x
@@ -253,10 +118,10 @@ p255_strong_reduce (
     __uint128_t carry = 0;
 
     /* add it back */
-    for (i=0; i<8; i++) {
-        carry = carry + a->limb[i] + ((i==4)?(scarry_mask&~1):scarry_mask);
+    for (i=0; i<5; i++) {
+        carry = carry + a->limb[i] + ((i==0)?(scarry_mask&~18):scarry_mask);
         a->limb[i] = carry & mask;
-        carry >>= 56;
+        carry >>= 51;
     }
 
     assert(is_zero(carry + scarry));
@@ -271,12 +136,13 @@ p255_serialize (
     p255_t red;
     p255_copy(&red, x);
     p255_strong_reduce(&red);
-    for (i=0; i<8; i++) {
-        for (j=0; j<7; j++) {
-            serial[7*i+j] = red.limb[i];
-            red.limb[i] >>= 8;
+    uint64_t *r = red.limb;
+    uint64_t ser64[4] = {r[0] | r[1]<<51, r[1]>>13|r[2]<<38, r[2]>>26|r[3]<<25, r[3]>>39|r[4]<<12};
+    for (i=0; i<4; i++) {
+        for (j=0; j<8; j++) {
+            serial[8*i+j] = ser64[i];
+            ser64[i] >>= 8;
         }
-        assert(red.limb[i] == 0);
     }
 }
 
@@ -286,33 +152,27 @@ p255_deserialize (
     const uint8_t serial[32]
 ) {
     int i,j;
-    for (i=0; i<8; i++) {
-        uint64_t out = 0;
-        for (j=0; j<7; j++) {
-            out |= ((uint64_t)serial[7*i+j])<<(8*j);
-        }
-        x->limb[i] = out;
-    }
-    
-    /* Check for reduction.
-     *
-     * The idea is to create a variable ge which is all ones (rather, 56 ones)
-     * if and only if the low $i$ words of $x$ are >= those of p.
-     *
-     * Remember p = little_endian(1111,1111,1111,1111,1110,1111,1111,1111)
-     */
-    uint64_t ge = -1, mask = (1ull<<56)-1;
+    uint64_t ser64[4], mask = ((1ull<<51)-1);
     for (i=0; i<4; i++) {
-        ge &= x->limb[i];
+        uint64_t out = 0;
+        for (j=0; j<8; j++) {
+            out |= ((uint64_t)serial[8*i+j])<<(8*j);
+        }
+        ser64[i] = out;
     }
     
-    /* At this point, ge = 1111 iff bottom are all 1111.  Now propagate if 1110, or set if 1111 */
-    ge = (ge & (x->limb[4] + 1)) | is_zero(x->limb[4] ^ mask);
+    /* Test for >= 2^255-19 */
+    uint64_t ge = -(((__uint128_t)ser64[0]+19)>>64);
+    ge &= ser64[1];
+    ge &= ser64[2];
+    ge &= (ser64[3]<<1) + 1;
+    ge |= -(((__uint128_t)ser64[3]+0x8000000000000000)>>64);
     
-    /* Propagate the rest */
-    for (i=5; i<8; i++) {
-        ge &= x->limb[i];
-    }
+    x->limb[0] = ser64[0] & mask;
+    x->limb[1] = (ser64[0]>>51 | ser64[1]<<13) & mask;
+    x->limb[2] = (ser64[1]>>38 | ser64[2]<<26) & mask;
+    x->limb[3] = (ser64[2]>>25 | ser64[3]<<39) & mask;
+    x->limb[4] = ser64[3]>>12;
     
-    return ~is_zero(ge ^ mask);
+    return ~is_zero(~ge);
 }

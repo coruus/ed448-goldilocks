@@ -19,13 +19,13 @@ ASM ?= $(CC)
 DECAF ?= decaf_fast
 
 ifneq (,$(findstring x86_64,$(MACHINE)))
-ARCH ?= arch_x86_64
+ARCH ?= arch_ref64
 else
 # no i386 port yet
-ARCH ?= arch_arm_32
+ARCH ?= arch_ref32
 endif
 
-FIELD ?= p255
+FIELD ?= p25519
 
 WARNFLAGS = -pedantic -Wall -Wextra -Werror -Wunreachable-code \
 	 -Wmissing-declarations -Wunused-function -Wno-overlength-strings $(EXWARN)
@@ -35,7 +35,7 @@ INCFLAGS = -Isrc/include -Iinclude -Isrc/$(FIELD) -Isrc/$(FIELD)/$(ARCH)
 LANGFLAGS = -std=c99 -fno-strict-aliasing
 LANGXXFLAGS = -fno-strict-aliasing
 GENFLAGS = -ffunction-sections -fdata-sections -fvisibility=hidden -fomit-frame-pointer -fPIC
-OFLAGS ?= -O3
+OFLAGS ?= -O2
 
 TODAY = $(shell date "+%Y-%m-%d")
 

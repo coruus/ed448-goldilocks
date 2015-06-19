@@ -45,14 +45,22 @@ typedef int64_t decaf_sdword_t;
 #define siv static inline void __attribute__((always_inline))
 static const gf ZERO = {{{0}}}, ONE = {{{1}}}, TWO = {{{2}}};
 
-static const int EDWARDS_D = 121665;
+static const int EDWARDS_D = -89747;
+    // Gonna test with PinkBikeShed until the math works...
+    // Curve25519: 121665;
 
 static const scalar_t sc_p = {{{
+    // Gonna test with PinkBikeShed until the math works...
+    SC_LIMB(0xb6b98fd8849faf35),
+    SC_LIMB(0x16241e6093b2ce59),
+    SC_LIMB(0),
+    SC_LIMB(0x2000000000000000)
+    /* Curve25519:
     SC_LIMB(0x5812631a5cf5d3ed),
     SC_LIMB(0x14def9dea2f79cd6),
     SC_LIMB(0),
-    SC_LIMB(0),
     SC_LIMB(0x1000000000000000)
+    */
 }}};
 
 const scalar_t API_NS(scalar_one) = {{{1}}}, API_NS(scalar_zero) = {{{0}}};
@@ -61,7 +69,7 @@ extern const decaf_word_t MONTGOMERY_FACTOR;
 
 /* sqrt(9) = 3 from the curve spec.  Not exported, but used by pregen tool. */
 const unsigned char base_point_ser_for_pregen[SER_BYTES] = {
-    3,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    5 /*PinkBikeShed.  Curve25519: 3*/, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
 extern const point_t API_NS(point_base);
@@ -82,16 +90,16 @@ const size_t API_NS2(alignof,precomputed_s) = 32;
 
 #ifdef __clang__
 #if 100*__clang_major__ + __clang_minor__ > 305
-#define VECTORIZE _Pragma("clang loop unroll(disable) vectorize(enable) vectorize_width(8)")
+#define UNROLL _Pragma("clang loop unroll(full)") // FIXME: vectorize?
 #endif
 #endif
 
-#ifndef VECTORIZE
-#define VECTORIZE
+#ifndef UNROLL
+#define UNROLL
 #endif
 
 #define FOR_LIMB(i,op) { unsigned int i=0; for (i=0; i<NLIMBS; i++)  { op; }}
-#define FOR_LIMB_V(i,op) { unsigned int i=0; VECTORIZE for (i=0; i<NLIMBS; i++)  { op; }}
+#define FOR_LIMB_U(i,op) { unsigned int i=0; UNROLL for (i=0; i<NLIMBS; i++)  { op; }}
 
 /** Copy x = y */
 siv gf_cpy(gf x, const gf y) { x[0] = y[0]; }
@@ -138,7 +146,7 @@ siv gf_bias ( gf c, int amt) {
 
 /** Subtract mod p.  Bias by 2 and don't reduce  */
 siv gf_sub_nr ( gf_s *__restrict__ c, const gf a, const gf b ) {
-//    FOR_LIMB_V(i, c->limb[i] = a->limb[i] - b->limb[i] + 2*P->limb[i] );
+//    FOR_LIMB_U(i, c->limb[i] = a->limb[i] - b->limb[i] + 2*P->limb[i] );
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_sub_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
     gf_bias(c, 2);
@@ -155,7 +163,7 @@ siv gf_sub_nr_x ( gf c, const gf a, const gf b, int amt ) {
 
 /** Add mod p.  Don't reduce. */
 siv gf_add_nr ( gf c, const gf a, const gf b ) {
-//    FOR_LIMB_V(i, c->limb[i] = a->limb[i] + b->limb[i]);
+//    FOR_LIMB_U(i, c->limb[i] = a->limb[i] + b->limb[i]);
     ANALYZE_THIS_ROUTINE_CAREFULLY; //TODO
     field_add_nr((field_t *)c, (const field_t *)a, (const field_t *)b);
 }
@@ -183,7 +191,7 @@ sv cond_neg(gf x, decaf_bool_t neg) {
 
 /** Constant time, if (swap) (x,y) = (y,x); */
 siv cond_swap(gf x, gf_s *__restrict__ y, decaf_bool_t swap) {
-    FOR_LIMB_V(i, {
+    FOR_LIMB_U(i, {
         decaf_word_t s = (x->limb[i] ^ y->limb[i]) & swap;
         x->limb[i] ^= s;
         y->limb[i] ^= s;
@@ -371,9 +379,27 @@ decaf_bool_t API_NS(scalar_invert) (
     }
     return ~API_NS(scalar_eq)(out,API_NS(scalar_zero));
 #else
-	(void)out;
-	(void)a;
-	return 0;
+    decaf_255_scalar_t b, ma;
+    int i;
+    sc_montmul(b,API_NS(scalar_one),sc_r2);
+    sc_montmul(ma,a,sc_r2);
+    for (i=SCALAR_BITS-1; i>=0; i--) {
+        sc_montsqr(b,b);
+            
+        decaf_word_t w = sc_p->limb[i/WBITS];
+        if (i<WBITS) {
+            assert(w >= 2);
+            w-=2;
+        }
+        if (1 & w>>(i%WBITS)) {
+            sc_montmul(b,b,ma);
+        }
+    }
+
+    sc_montmul(out,b,decaf_255_scalar_one);
+    API_NS(scalar_destroy)(b);
+    API_NS(scalar_destroy)(ma);
+    return ~API_NS(scalar_eq)(out,decaf_255_scalar_zero);
 #endif
 }
 

@@ -15,7 +15,17 @@ typedef struct p255_t {
 } p255_t;
 
 #define LBITS 51
-#define FIELD_LITERAL(a,b,c,d,e) {{a,b,c,d,e}}
+#define FIELD_LITERAL(a,b,c,d,e) {{ a,b,c,d,e }}
+
+/*
+#define FIELD_LITERAL(a,b,c,d) {{ \
+    (a##ull) & LMASK, \
+    ((a##ull)>>51 | (b##ull)<<13) & LMASK, \
+    ((b##ull)>>38 | (c##ull)<<26) & LMASK, \
+    ((c##ull)>>25 | (d##ull)<<39) & LMASK, \
+    (d##ull)>>12 \
+}}
+*/
 
 #ifdef __cplusplus
 extern "C" {
@@ -140,9 +150,9 @@ p255_weak_reduce (
     p255_t *a
 ) {
     uint64_t mask = (1ull<<51) - 1;
-    uint64_t tmp = a->limb[5] >> 51;
+    uint64_t tmp = a->limb[4] >> 51;
     int i;
-    for (i=7; i>0; i--) {
+    for (i=4; i>0; i--) {
         a->limb[i] = (a->limb[i] & mask) + (a->limb[i-1]>>51);
     }
     a->limb[0] = (a->limb[0] & mask) + tmp*19;

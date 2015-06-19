@@ -192,18 +192,18 @@ private:
 };
 
 /**@cond internal*/
-inline Ed448::Scalar::Scalar(SpongeRng &rng) NOEXCEPT {
+inline Ed255::Scalar::Scalar(SpongeRng &rng) NOEXCEPT {
     *this = rng.read(SER_BYTES);
 }
 
-inline Ed448::Point::Point(SpongeRng &rng, bool uniform) NOEXCEPT {
+inline Ed255::Point::Point(SpongeRng &rng, bool uniform) NOEXCEPT {
     SecureBuffer buffer((uniform ? 2 : 1) * HASH_BYTES);
     rng.read(buffer);
     set_to_hash(buffer);
 }
 
 
-inline SecureBuffer Ed448::Point::steg_encode(SpongeRng &rng) const NOEXCEPT {
+inline SecureBuffer Ed255::Point::steg_encode(SpongeRng &rng) const NOEXCEPT {
     SecureBuffer out(STEG_BYTES);
     bool done;
     do {
