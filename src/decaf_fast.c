@@ -512,38 +512,40 @@ decaf_bool_t API_NS(point_decode) (
     const unsigned char ser[SER_BYTES],
     decaf_bool_t allow_identity
 ) {
-    gf s, a, b, c, d, e, f, g;
+    gf s, a, b, c, d, e, f;
     decaf_bool_t succ = gf_deser(s, ser), zero = gf_eq(s, ZERO);
     succ &= allow_identity | ~zero;
     succ &= ~hibit(s);
     gf_sqr ( a, s );
-    gf_add ( g, ONE, a ); /* 1+s^2 = 1+as^2 since a=1 */
-    succ &= ~ gf_eq( g, ZERO );
-    gf_sqr ( b, g ); 
+    gf_add ( f, ONE, a ); /* 1+s^2 = 1+as^2 since a=1 */
+    succ &= ~ gf_eq( f, ZERO );
+    gf_sqr ( b, f ); 
     gf_mlw ( c, a, -4*EDWARDS_D ); 
     gf_add ( c, c, b ); /* t^2 */
-    gf_mul ( d, g, s ); /* s(1+s^2) for denoms */
+    gf_mul ( d, f, s ); /* s(1+s^2) for denoms */
     gf_sqr ( e, d );
     gf_mul ( b, c, e );
     
     succ &= gf_isqrt_chk ( e, b, DECAF_TRUE ); /* e = "the" */
-    gf_mul ( f, e, d ); /* 1/t */
-    gf_mul ( d, e, c ); /* d = later "the" */
-    gf_mul ( e, d, g ); /* t/s */
+    gf_mul ( b, e, d ); /* 1/t */
+    gf_mul ( d, e, c ); /* d = later "the" = t / (s(1+s^2)) */
+    gf_mul ( e, d, f ); /* t/s */
     gf_sub ( a, ONE, a); /* 1-s^2 */
     
-    gf_mul ( p->y, a, f );
-    gf_cpy ( p->z, ONE );
-    gf_sub ( d, e, d );
-    gf_mul ( c, d, f );
-    gf_mul ( b, c, SQRT_MINUS_ONE );
-    gf_add ( p->x, b, b );
+    gf_mul ( p->y, a, b ); /* y = (1-s^2) / t */
+    gf_sub ( d, e, d ); /* t/s - t/ s(1+s^2) = st / (1+s^2) */
+    gf_mul ( c, d, b ); /* s/(1+s^2) */
+    gf_mul ( b, c, SQRT_MINUS_ONE ); /* is/(1+s^2) */
+    gf_add ( p->x, b, b ); /* 2is */
     cond_neg ( p->x, hibit(e) );
     gf_mul ( p->t, p->x, p->y );
     
+    gf_cpy ( p->z, ONE );
+    
     p->y->limb[0] -= zero;
     
-    /* Curve25519: succ &= ~hibit(p->t); */
+    /* Curve25519: succ &= ~hibit(p->t); except there is a *i somewhere here */
+    assert(API_NS(point_valid)(p) | ~succ);
     
     return succ;
 }
