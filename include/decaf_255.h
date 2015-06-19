@@ -55,7 +55,7 @@ typedef uint64_t decaf_dword_t;
 #endif
 
 #define DECAF_255_LIMBS (320/DECAF_WORD_BITS)
-#define DECAF_255_SCALAR_BITS 252
+#define DECAF_255_SCALAR_BITS 254 // Curve25519: 253
 #define DECAF_255_SCALAR_LIMBS (256/DECAF_WORD_BITS)
 
 /** Galois field element internal structure */
