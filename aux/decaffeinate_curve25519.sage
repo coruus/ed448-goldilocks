@@ -3,7 +3,9 @@
 F = GF(2^255-19)
 d = -121665
 M = EllipticCurve(F,[0,2-4*d,0,1,0])
-
+    
+sqrtN1 = sqrt(F(-1))
+    
 def maybe(): return randint(0,1)
 
 def qpositive(x):
@@ -39,21 +41,16 @@ def decaf_encode_from_E(X,Y):
     return s
 
 def isqrt(x):
-    assert(x.is_square())
+    ops = [(1,2),(1,2),(3,1),(6,0),(1,2),(12,1),(25,1),(25,1),(50,0),(125,0),(2,2),(1,2)]
+    st = [x,x,x]
+    for i,(sh,add) in enumerate(ops):
+        od = i&1
+        st[od] = st[od^^1]^(2^sh)*st[add]
+    # assert st[2] == x^(2^252-3)
     
-    def op(st,sh,add):
-        x,y,z = st
-        return x,st[1]^(2^sh)*st[add],y
-    
-    ops = [(1,0),(1,0),(3,1),(6,1),(1,0),(12,2),(25,1),(25,2),(50,2),(125,1),(2,0),(1,0)]
-    st = (x,x,x)
-    for sh,add in ops:
-        st = op(st,sh,add)
-    #assert st[2] == x^(2^252-3)
-    
-    i = sqrt(F(-1))
-    if st[1] == 1: return st[2]
-    else: return st[2] * i
+    assert st[1] == 1 or st[1] == -1
+    if st[1] == 1: return st[0]
+    else: return st[0] * sqrtN1
 
 def decaf_encode_from_E_c(X,Y):
     Z = F.random_element()
