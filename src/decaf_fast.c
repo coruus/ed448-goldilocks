@@ -43,7 +43,7 @@ typedef int64_t decaf_sdword_t;
 #define sv static void
 #define snv static void __attribute__((noinline))
 #define siv static inline void __attribute__((always_inline))
-static const gf ZERO = {{{0}}}, ONE = {{{1}}}, TWO = {{{2}}};
+static const gf ZERO = {{{0}}}, ONE = {{{1}}};//, TWO = {{{2}}};
 
 static const int EDWARDS_D = -89747;
     // Gonna test with PinkBikeShed until the math works...
@@ -504,33 +504,47 @@ void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
 static decaf_bool_t gf_deser(gf s, const unsigned char ser[SER_BYTES]) {
     return field_deserialize((field_t *)s, ser);
 }
-    
+ 
+extern const gf SQRT_MINUS_ONE; /* Intern this? */
+   
 decaf_bool_t API_NS(point_decode) (
     point_t p,
     const unsigned char ser[SER_BYTES],
     decaf_bool_t allow_identity
 ) {
-    gf s, a, b, c, d;
+    gf s, a, b, c, d, e, f, g;
     decaf_bool_t succ = gf_deser(s, ser), zero = gf_eq(s, ZERO);
     succ &= allow_identity | ~zero;
     succ &= ~hibit(s);
     gf_sqr ( a, s );
-    gf_sub ( p->z, ONE, a ); /* 1-s^2 = 1+as^2 since a=-1 */
-    gf_sqr ( b, p->z ); 
-    gf_mlw ( c, a, 4-4*EDWARDS_D ); 
-    gf_add ( c, c, b ); /* u = Z^2 - 4ds^2 with d = EDWARDS_D-1 */
-    gf_mul ( b, c, a );
-    succ &= gf_isqrt_chk ( d, b, DECAF_TRUE ); /* v <- 1/sqrt(us^2) */
-    gf_mul ( b, c, d );
-    cond_neg ( d, hibit(b) ); /* v <- -v if uv negative */
-    gf_add ( p->x, s, s ); /* X = 2s */
-    gf_mul ( c, d, s );
-    gf_sub ( b, TWO, p->z ); 
-    gf_mul ( a, b, c ); /* vs(2-Z) */
-    gf_mul ( p->y,a,p->z ); /* Y = wZ */
-    gf_mul ( p->t,a,p->x ); /* T = wX */
+    gf_add ( g, ONE, a ); /* 1+s^2 = 1+as^2 since a=1 */
+    succ &= ~ gf_eq( g, ZERO );
+    gf_sqr ( b, g ); 
+    gf_mlw ( c, a, -4*EDWARDS_D ); 
+    gf_add ( c, c, b ); /* t^2 */
+    gf_mul ( d, g, s ); /* s(1+s^2) for denoms */
+    gf_sqr ( e, d );
+    gf_mul ( b, c, e );
+    
+    succ &= gf_isqrt_chk ( e, b, DECAF_TRUE ); /* e = "the" */
+    gf_mul ( f, e, d ); /* 1/t */
+    gf_mul ( d, e, c ); /* d = later "the" */
+    gf_mul ( e, d, g ); /* t/s */
+    gf_sub ( a, ONE, a); /* 1-s^2 */
+    
+    gf_mul ( p->y, a, f );
+    gf_cpy ( p->z, ONE );
+    gf_sub ( d, e, d );
+    gf_mul ( c, d, f );
+    gf_mul ( b, c, SQRT_MINUS_ONE );
+    gf_add ( p->x, b, b );
+    cond_neg ( p->x, hibit(e) );
+    gf_mul ( p->t, p->x, p->y );
+    
     p->y->limb[0] -= zero;
-    /* TODO: do something safe-ish if ~succ? */
+    
+    /* Curve25519: succ &= ~hibit(p->t); */
+    
     return succ;
 }
 
@@ -547,13 +561,13 @@ void API_NS(point_sub) (
     gf_add_nr ( b, q->y, q->x );
     gf_mul ( p->y, d, b );
     gf_mul ( b, r->t, q->t );
-    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
+    gf_mlw ( p->x, b, -2*EDWARDS_D );
     gf_add_nr ( b, a, p->y );
     gf_sub_nr ( c, p->y, a );
     gf_mul ( a, q->z, r->z );
     gf_add_nr ( a, a, a );
-    gf_sub_nr ( p->y, a, p->x );
-    gf_add_nr ( a, a, p->x );
+    gf_add_nr ( p->y, a, p->x );
+    gf_sub_nr ( a, a, p->x );
     gf_mul ( p->z, a, p->y );
     gf_mul ( p->x, p->y, c );
     gf_mul ( p->y, a, b );
@@ -573,13 +587,13 @@ void API_NS(point_add) (
     gf_add_nr ( b, q->y, q->x );
     gf_mul ( p->y, d, b );
     gf_mul ( b, r->t, q->t );
-    gf_mlw ( p->x, b, 2-2*EDWARDS_D );
+    gf_mlw ( p->x, b, -2*EDWARDS_D );
     gf_add_nr ( b, a, p->y );
     gf_sub_nr ( c, p->y, a );
     gf_mul ( a, q->z, r->z );
     gf_add_nr ( a, a, a );
-    gf_add_nr ( p->y, a, p->x );
-    gf_sub_nr ( a, a, p->x );
+    gf_sub_nr ( p->y, a, p->x );
+    gf_add_nr ( a, a, p->x );
     gf_mul ( p->z, a, p->y );
     gf_mul ( p->x, p->y, c );
     gf_mul ( p->y, a, b );
@@ -747,7 +761,7 @@ static void pt_to_pniels (
 ) {
     gf_sub ( b->n->a, a->y, a->x );
     gf_add ( b->n->b, a->x, a->y );
-    gf_mlw ( b->n->c, a->t, 2*EDWARDS_D-2 );
+    gf_mlw ( b->n->c, a->t, -2*EDWARDS_D );
     gf_add ( b->z, a->z, a->z );
 }
 
@@ -1012,7 +1026,14 @@ decaf_bool_t API_NS(point_eq) ( const point_t p, const point_t q ) {
     gf a, b;
     gf_mul ( a, p->y, q->x );
     gf_mul ( b, q->y, p->x );
-    return gf_eq(a,b);
+    decaf_bool_t succ = gf_eq(a,b);
+    
+    gf_mul ( a, p->y, q->y );
+    gf_mul ( b, q->x, p->x );
+    gf_add ( a, a, b);
+    succ |= gf_eq(a,ZERO);
+    
+    return succ;
 }
 
 unsigned char API_NS(point_from_hash_nonuniform) (
@@ -1190,9 +1211,9 @@ decaf_bool_t API_NS(point_valid) (
     gf_sqr(b,p->y);
     gf_sub(a,b,a);
     gf_sqr(b,p->t);
-    gf_mlw(c,b,1-EDWARDS_D);
+    gf_mlw(c,b,-EDWARDS_D);
     gf_sqr(b,p->z);
-    gf_sub(b,b,c);
+    gf_add(b,b,c);
     out &= gf_eq(a,b);
     out &= ~gf_eq(p->z,ZERO);
     return out;

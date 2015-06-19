@@ -1,7 +1,12 @@
 # This is as sketch of how to decaffeinate Curve25519
 
 F = GF(2^255-19)
-d = -121665
+
+doPinkBikeShed = True
+
+if doPinkBikeShed: d = -89747 # PinkBikeShed
+else: d = -121665 # Curve25519
+
 M = EllipticCurve(F,[0,2-4*d,0,1,0])
     
 sqrtN1 = sqrt(F(-1))
@@ -28,7 +33,7 @@ def M_to_E(P):
 
 def decaf_encode_from_E(X,Y):
     assert X^2 + Y^2 == 1 + d*X^2*Y^2
-    if not qpositive(X*Y): X,Y = Y,-X
+    if not (qpositive(X*Y) or doPinkBikeShed): X,Y = Y,-X
     assert qpositive(X*Y)
     
     assert (1-X^2).is_square()
@@ -69,7 +74,7 @@ def decaf_encode_from_E_c(X,Y):
     osx = ooAll * TZ
     ooTZ = ooAll * zx * osx
     
-    floop = qpositive(T^2 * ooTZ)
+    floop = qpositive(T^2 * ooTZ) or doPinkBikeShed
     if floop:
         frob = zx * ooTZ
     else:
@@ -92,7 +97,7 @@ def decaf_decode_to_E(s):
     t = sqrt(s^4 + (2-4*d)*s^2 + 1)
     if not qpositive(t/s): t = -t
     X,Y = 2*s / (1+s^2), (1-s^2) / t
-    assert qpositive(X*Y)
+    assert qpositive(X*Y) or doPinkBikeShed
     return X,Y
     
 def decaf_decode_to_E_c(s):
@@ -111,7 +116,7 @@ def decaf_decode_to_E_c(s):
     Y = (1-s2) * oot
     
     if not qpositive(tos): Y = -Y
-    assert qpositive(X*Y)
+    assert qpositive(X*Y) or doPinkBikeShed
     
     return X,Y
 

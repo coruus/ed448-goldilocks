@@ -10,7 +10,7 @@
 
 #include "field.h"
 
-static const field_a_t SQRT_MINUS_ONE = {FIELD_LITERAL( // FIXME goes elsewhere?
+const field_a_t SQRT_MINUS_ONE = {FIELD_LITERAL( // FIXME goes elsewhere?
     0x61b274a0ea0b0,
     0x0d5a5fc8f189d,
     0x7ef5e9cbd0c60,
