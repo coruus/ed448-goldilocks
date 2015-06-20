@@ -866,6 +866,7 @@ siv constant_time_lookup_xx (
     decaf_word_t n_table,
     decaf_word_t idx
 ) {
+    /*
     big_register_t big_one = br_set_to_mask(1), big_i = br_set_to_mask(idx);
     big_register_t *out = (big_register_t *)out_;
     const unsigned char *table = (const unsigned char *)table_;
@@ -881,6 +882,8 @@ siv constant_time_lookup_xx (
             out[k] |= br_mask & *(const big_register_t*)(&table[k*sizeof(big_register_t)+j*elem_bytes]);
         }
     }
+    */
+    constant_time_lookup(out_,table_,elem_bytes,n_table,idx);
 }
 
 snv prepare_fixed_window(
