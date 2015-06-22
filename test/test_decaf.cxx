@@ -72,8 +72,8 @@ static bool arith_check(
     const Scalar &x,
     const Scalar &y,
     const Scalar &z,
-    const Scalar &r,
     const Scalar &l,
+    const Scalar &r,
     const char *name
 ) {
     if (l == r) return true;
@@ -82,8 +82,8 @@ static bool arith_check(
     print("x", x);
     print("y", y);
     print("z", z);
-    print("lhs", r);
-    print("rhs", l);
+    print("lhs", l);
+    print("rhs", r);
     return false;
 }
 
@@ -112,8 +112,8 @@ static bool point_check(
     print("p", p);
     print("q", q);
     print("r", R);
-    print("lhs", l);
-    print("rhs", r);
+    print("lhs", r);
+    print("rhs", l);
     return false;
 }
 
@@ -163,7 +163,7 @@ static void test_elligator() {
         bool succ = p.invert_elligator(b1,i&7);
         Point q;
         unsigned char hint = q.set_to_hash(b1);
-
+        
         if (succ != ((i&7) != 4) || (q != p) || (succ && (hint != (i&7)))) {
             test.fail();
             printf("Elligator test: t=%d, h=%d->%d, q%sp, %s %02x%02x\n",
@@ -172,7 +172,7 @@ static void test_elligator() {
         }
     }
 
-    for (int i=0; i<NTESTS /*&& test.passing_now*/; i++) {
+    for (int i=0; i<NTESTS && test.passing_now; i++) {
         size_t len = (i % (2*Point::HASH_BYTES + 3));
         decaf::SecureBuffer b1(len), b2(len);
         rng.read(b1);
@@ -185,12 +185,12 @@ static void test_elligator() {
         bool succ = s.invert_elligator(b2,hint);
         if (!succ || memcmp(b1,b2,len)) {
             test.fail();
-            printf("    Fail elligator inversion i=%d, len=%d (claimed %s, hint=0x%02x)\n",
-                i, (int)len, succ ? "success" : "failure", hint);
+            printf("    Fail elligator inversion i=%d (claimed %s, hint=%d)\n",
+                i, succ ? "success" : "failure", hint);
         }
         
-        // Point t(rng);
-//point_check(test,t,t,t,0,0,t,Point::from_hash(t.steg_encode(rng)),"steg round-trip");
+        Point t(rng);
+        point_check(test,t,t,t,0,0,t,Point::from_hash(t.steg_encode(rng)),"steg round-trip");
     }
 }
 
@@ -201,7 +201,7 @@ static void test_ec() {
 
     Point id = Point::identity(), base = Point::base();
     point_check(test,id,id,id,0,0,Point::from_hash(""),id,"fh0");
-    //point_check(test,id,id,id,0,0,Point::from_hash("\x01"),id,"fh1"); // FIXME
+    //point_check(test,id,id,id,0,0,Point::from_hash("\x01"),id,"fh1"); FIXME
     
     for (int i=0; i<NTESTS && test.passing_now; i++) {
         /* TODO: pathological cases */
