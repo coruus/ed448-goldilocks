@@ -112,8 +112,8 @@ static bool point_check(
     print("p", p);
     print("q", q);
     print("r", R);
-    print("lhs", r);
-    print("rhs", l);
+    print("lhs", l);
+    print("rhs", r);
     return false;
 }
 

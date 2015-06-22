@@ -475,16 +475,52 @@ const point_t API_NS(point_identity) = {{{{{0}}},{{{1}}},{{{1}}},{{{0}}}}};
 static void gf_encode ( unsigned char ser[SER_BYTES], gf a ) {
     field_serialize(ser, (field_t *)a);
 }
+ 
+extern const gf SQRT_MINUS_ONE; /* Intern this? */
 
 void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
+    gf a, b, c, d, x, t;
+    
+    /* TODO: intern below */
+    gf_mul ( x, p->x, SQRT_MINUS_ONE);
+    gf_mul ( t, p->t, SQRT_MINUS_ONE);
+    gf_sub ( x, ZERO, x );
+    gf_sub ( t, ZERO, t );
+    
+    gf_add ( a, p->z, x );
+    gf_sub ( b, p->z, x );
+    gf_mul ( c, a, b ); /* "zx" = Z^2 - X^2 */
+    gf_mul ( a, p->z, t ); /* "tz" = T*Z */
+    gf_sqr ( b, a );
+    gf_mul ( d, b, c ); /* (TZ)^2 * (Z^2-X^2) */
+    gf_isqrt ( b, d );
+    gf_mul ( d, b, a ); /* "osx" = 1 / sqrt(z^2-x^2) */
+    gf_mul ( a, b, c ); 
+    gf_mul ( b, a, d ); /* 1/tz */
+    /*
+     * Curve25519: cond select between zx * 1/tz or sqrt(1-d); y=-x
+     * Pink bike shed: frob = zx * 1/tz
+     */
+    gf_mul ( a, b, c ); // "frob" in sage file
+    gf_mul ( c, a, d ); // new "osx"
+    gf_mul ( a, c, p->z );
+    gf_add ( a, a, a ); // 2 * "osx" * Z
+    cond_neg ( c, ~hibit(a) );
+    gf_mul ( a, b, p->z );
+    gf_add ( a, a, c );
+    gf_mul ( b, a, p->y );
+    cond_neg ( b, hibit(b) );
+    gf_encode ( ser, b );
+
+#if 0   
     /* Can shave off one mul here; not important but makes consistent with paper */
     gf a, b, c, d;
     gf_mlw ( a, p->y, 1-EDWARDS_D );
     gf_mul ( c, a, p->t );     /* -dYT, with EDWARDS_D = d-1 */
-    gf_mul ( a, p->x, p->z ); 
+    gf_mul ( a, p->x, p->z );
     gf_sub ( d, c, a );  /* aXZ-dYT with a=-1 */
-    gf_add ( a, p->z, p->y ); 
-    gf_sub ( b, p->z, p->y ); 
+    gf_add ( a, p->z, p->y );
+    gf_sub ( b, p->z, p->y );
     gf_mul ( c, b, a );
     gf_mlw ( b, c, -EDWARDS_D ); /* (a-d)(Z+Y)(Z-Y) */
     gf_isqrt ( a, b ); /* r in the paper */
@@ -494,10 +530,11 @@ void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
     gf_add ( d, b, b );  /* 2u = -2au since a=-1 */
     gf_mul ( c, d, p->z ); /* 2uZ */
     cond_neg ( b, ~hibit(c) ); /* u <- -u if negative. */
-    gf_mul ( c, b, p->y ); 
+    gf_mul ( c, b, p->y );
     gf_add ( a, a, c );
     cond_neg ( a, hibit(a) );
     gf_encode(ser, a);
+#endif
 }
 
 /**
@@ -506,8 +543,6 @@ void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
 static decaf_bool_t gf_deser(gf s, const unsigned char ser[SER_BYTES]) {
     return field_deserialize((field_t *)s, ser);
 }
- 
-extern const gf SQRT_MINUS_ONE; /* Intern this? */
    
 decaf_bool_t API_NS(point_decode) (
     point_t p,
