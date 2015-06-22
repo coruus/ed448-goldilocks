@@ -47,22 +47,20 @@ typedef int64_t decaf_sdword_t;
 #define siv static inline void __attribute__((always_inline))
 static const gf ZERO = {{{0}}}, ONE = {{{1}}};//, TWO = {{{2}}};
 
-static const int EDWARDS_D = -89747;
-    // Gonna test with PinkBikeShed until the math works...
-    // Curve25519: 121665;
+static const int EDWARDS_D = -121665;
+    // PinkBikeShed: -89747;
 
 static const scalar_t sc_p = {{{
-    // Gonna test with PinkBikeShed until the math works...
+    /* PinkBikeShed:
     SC_LIMB(0xb6b98fd8849faf35),
     SC_LIMB(0x16241e6093b2ce59),
     SC_LIMB(0),
     SC_LIMB(0x2000000000000000)
-    /* Curve25519:
+    */
     SC_LIMB(0x5812631a5cf5d3ed),
     SC_LIMB(0x14def9dea2f79cd6),
     SC_LIMB(0),
     SC_LIMB(0x1000000000000000)
-    */
 }}};
 
 const scalar_t API_NS(scalar_one) = {{{1}}}, API_NS(scalar_zero) = {{{0}}};
@@ -71,7 +69,7 @@ extern const decaf_word_t MONTGOMERY_FACTOR;
 
 /* sqrt(9) = 3 from the curve spec.  Not exported, but used by pregen tool. */
 const unsigned char base_point_ser_for_pregen[SER_BYTES] = {
-    5 /*PinkBikeShed.  Curve25519: 3*/, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
+    3 /*PinkBikeShed: 5 */, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0
 };
 
 extern const point_t API_NS(point_base);
