@@ -444,9 +444,16 @@ static void gf_encode ( unsigned char ser[SER_BYTES], gf a ) {
     field_serialize(ser, (field_t *)a);
 }
 
-void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
+static void deisogenize(
+    gf_s *__restrict__ s,
+    gf_s *__restrict__ minus_t_over_s,
+    const point_t p,
+    decaf_bool_t toggle_hibit_s,
+    decaf_bool_t toggle_hibit_t_over_s
+) {
     /* Can shave off one mul here; not important but makes consistent with paper */
-    gf a, b, c, d;
+    gf b, d;
+    gf_s *a = s, *c = minus_t_over_s;
     gf_mlw ( a, p->y, 1-EDWARDS_D );
     gf_mul ( c, a, p->t );     /* -dYT, with EDWARDS_D = d-1 */
     gf_mul ( a, p->x, p->z ); 
@@ -461,11 +468,17 @@ void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
     gf_mul ( a, c, d ); /* ur (aZX-dYT) */
     gf_add ( d, b, b );  /* 2u = -2au since a=-1 */
     gf_mul ( c, d, p->z ); /* 2uZ */
-    cond_neg ( b, ~hibit(c) ); /* u <- -u if negative. */
-    gf_mul ( c, b, p->y ); 
-    gf_add ( a, a, c );
-    cond_neg ( a, hibit(a) );
-    gf_encode(ser, a);
+    cond_neg ( b, toggle_hibit_t_over_s ^ ~hibit(c) ); /* u <- -u if negative. */
+    cond_neg ( c, toggle_hibit_t_over_s ^ ~hibit(c) ); /* u <- -u if negative. */
+    gf_mul ( d, b, p->y ); 
+    gf_add ( s, a, d );
+    cond_neg ( s, toggle_hibit_s ^ hibit(s) );
+}
+
+void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
+    gf s, t_over_s;
+    deisogenize(s, t_over_s, p, 0, 0);
+    gf_encode(ser, s);
 }
 
 /**
@@ -1071,29 +1084,14 @@ API_NS(invert_elligator_nonuniform) (
     const point_t p,
     unsigned char hint
 ) {
+    
+    
     decaf_bool_t sgn_s = -(hint & 1),
         sgn_t_over_s = -(hint>>1 & 1),
         sgn_r0 = -(hint>>2 & 1);
-    gf a, b, c, d;
-    gf_mlw ( a, p->y, 1-EDWARDS_D );
-    gf_mul ( c, a, p->t ); 
-    gf_mul ( a, p->x, p->z ); 
-    gf_sub ( d, c, a );
-    gf_add ( a, p->z, p->y ); 
-    gf_sub ( b, p->z, p->y ); 
-    gf_mul ( c, b, a );
-    gf_mlw ( b, c, -EDWARDS_D );
-    gf_isqrt ( a, b );
-    gf_mlw ( b, a, -EDWARDS_D ); 
-    gf_mul ( c, b, a );
-    gf_mul ( a, c, d );
-    gf_add ( d, b, b );
-    gf_mul ( c, d, p->z );
-    cond_neg ( b, sgn_t_over_s^~hibit(c) ); 
-    cond_neg ( c, sgn_t_over_s^~hibit(c) ); 
-    gf_mul ( d, b, p->y ); 
-    gf_add ( a, a, d );
-    cond_neg( a, hibit(a)^sgn_s);
+        
+    gf a,b,c,d;
+    deisogenize(a,c,p,sgn_s,sgn_t_over_s);
     
     /* ok, s = a; c = -t/s */
     gf_mul(b,c,a);
