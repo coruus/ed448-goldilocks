@@ -1194,7 +1194,7 @@ API_NS(invert_elligator_nonuniform) (
     gf_add ( a, a, d );
     cond_neg( a, hibit(a)^sgn_s);
     
-    /* ok, s = a; c = -t/s */
+    /* ok, a = s; c = -t/s */
     gf_mul(b,c,a);
     gf_sub(b,ONE,b); /* t+1 */
     gf_sqr(c,a); /* s^2 */
