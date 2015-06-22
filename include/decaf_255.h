@@ -520,7 +520,7 @@ void decaf_255_point_debugging_2torque (
  * @param [out] pt The data hashed to the curve.
  * @return A "hint" value which can be used to help invert the encoding.
  */
-unsigned char
+uint16_t
 decaf_255_point_from_hash_nonuniform (
     decaf_255_point_t pt,
     const unsigned char hashed_data[DECAF_255_SER_BYTES]
@@ -549,7 +549,7 @@ decaf_bool_t
 decaf_255_invert_elligator_nonuniform (
     unsigned char recovered_hash[DECAF_255_SER_BYTES],
     const decaf_255_point_t pt,
-    unsigned char hint
+    uint16_t hint
 ) API_VIS NONNULL2 NOINLINE WARN_UNUSED;
 
 /**
@@ -576,7 +576,7 @@ decaf_bool_t
 decaf_255_invert_elligator_uniform (
     unsigned char recovered_hash[2*DECAF_255_SER_BYTES],
     const decaf_255_point_t pt,
-    unsigned char hint
+    uint16_t hint
 ) API_VIS NONNULL2 NOINLINE WARN_UNUSED;
 
 /**
@@ -588,7 +588,7 @@ decaf_255_invert_elligator_uniform (
  * @param [out] pt The data hashed to the curve.
  * @return A "hint" value which can be used to help invert the encoding.
  */ 
-unsigned char decaf_255_point_from_hash_uniform (
+uint16_t decaf_255_point_from_hash_uniform (
     decaf_255_point_t pt,
     const unsigned char hashed_data[2*DECAF_255_SER_BYTES]
 ) API_VIS NONNULL2 NOINLINE;

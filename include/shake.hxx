@@ -208,7 +208,7 @@ inline SecureBuffer Ed255::Point::steg_encode(SpongeRng &rng) const NOEXCEPT {
     bool done;
     do {
         rng.read(out.slice(HASH_BYTES-1,STEG_BYTES-HASH_BYTES+1));
-        done = invert_elligator(out, out[HASH_BYTES-1] & 7); /* 7 is kind of MAGIC */
+        done = invert_elligator(out, out[HASH_BYTES-1] & 7); /* FIXME 7 is kind of MAGIC */
     } while (!done);
     return out;
 }

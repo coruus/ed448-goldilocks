@@ -585,7 +585,7 @@ public:
     }
     
     inline bool invert_elligator (
-        Buffer &buf, unsigned char hint
+        Buffer &buf, uint16_t hint
     ) const NOEXCEPT {
         unsigned char buf2[2*HASH_BYTES];
         memset(buf2,0,sizeof(buf2));

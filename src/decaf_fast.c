@@ -485,8 +485,8 @@ static void deisogenize (
     decaf_bool_t toggle_hibit_s,
     decaf_bool_t toggle_hibit_t_over_s
 ) {
-    gf a, d, x, t;
-    gf_s *b = s, *c = minus_t_over_s;
+    gf c, d, x, t;
+    gf_s *b = s, *a = minus_t_over_s;
     
     /* TODO: intern below */
     gf_mul ( x, p->x, SQRT_MINUS_ONE);
@@ -515,9 +515,9 @@ static void deisogenize (
     decaf_bool_t tg1 = toggle_hibit_t_over_s ^~ hibit(a);
     cond_neg ( c, tg1 );
     cond_neg ( a, tg1 );
-    gf_mul ( a, b, p->z );
-    gf_add ( a, a, c );
-    gf_mul ( b, a, p->y );
+    gf_mul ( d, b, p->z );
+    gf_add ( d, d, c );
+    gf_mul ( b, d, p->y );
     cond_neg ( b, toggle_hibit_s ^ hibit(b) );
 }
 
@@ -1068,7 +1068,7 @@ decaf_bool_t API_NS(point_eq) ( const point_t p, const point_t q ) {
     return succ;
 }
 
-unsigned char API_NS(point_from_hash_nonuniform) (
+uint16_t API_NS(point_from_hash_nonuniform) (
     point_t p,
     const unsigned char ser[SER_BYTES]
 ) {
@@ -1158,7 +1158,7 @@ decaf_bool_t
 API_NS(invert_elligator_nonuniform) (
     unsigned char recovered_hash[DECAF_255_SER_BYTES],
     const point_t p,
-    unsigned char hint
+    uint16_t hint
 ) {
     decaf_bool_t sgn_s = -(hint & 1),
         sgn_t_over_s = -(hint>>1 & 1),
@@ -1196,7 +1196,7 @@ API_NS(invert_elligator_nonuniform) (
     return succ;
 }
 
-unsigned char API_NS(point_from_hash_uniform) (
+uint16_t API_NS(point_from_hash_uniform) (
     point_t pt,
     const unsigned char hashed_data[2*SER_BYTES]
 ) {
@@ -1206,14 +1206,14 @@ unsigned char API_NS(point_from_hash_uniform) (
     unsigned char ret2 =
         API_NS(point_from_hash_nonuniform)(pt2,&hashed_data[SER_BYTES]);
     API_NS(point_add)(pt,pt,pt2);
-    return ret1 | (ret2<<4);
+    return ret1 | ((uint16_t)ret2<<8);
 }
 
 decaf_bool_t
 API_NS(invert_elligator_uniform) (
     unsigned char partial_hash[2*SER_BYTES],
     const point_t p,
-    unsigned char hint
+    uint16_t hint
 ) {
     point_t pt2;
     API_NS(point_from_hash_nonuniform)(pt2,&partial_hash[SER_BYTES]);
