@@ -474,7 +474,7 @@ static void gf_encode ( unsigned char ser[SER_BYTES], gf a ) {
     field_serialize(ser, (field_t *)a);
 }
  
-extern const gf SQRT_MINUS_ONE; /* Intern this? */
+extern const gf SQRT_MINUS_ONE, SQRT_ONE_MINUS_D; /* Intern this? */
 
 static void deisogenize (
     gf_s *__restrict__ s,
@@ -502,20 +502,33 @@ static void deisogenize (
     gf_mul ( d, b, a ); /* "osx" = 1 / sqrt(z^2-x^2) */
     gf_mul ( a, b, c ); 
     gf_mul ( b, a, d ); /* 1/tz */
-    /*
-     * Curve25519: cond select between zx * 1/tz or sqrt(1-d); y=-x
-     * Pink bike shed: frob = zx * 1/tz
-     */
-    gf_mul ( a, b, c ); // "frob" in sage file
+
+    decaf_bool_t rotate;
+    {
+        gf e;
+        gf_sqr(e, t);
+        gf_mul(a, e, b);
+        rotate = hibit(a);
+        /*
+         * Curve25519: cond select between zx * 1/tz or sqrt(1-d); y=-x
+         * Pink bike shed: frob = zx * 1/tz
+         */
+        gf_mul ( a, b, c ); /* this is the case for PinkBikeShed */
+        cond_sel ( a, a, SQRT_ONE_MINUS_D, rotate );
+        gf_sub ( e, ZERO, x );
+        cond_sel ( x, p->y, e, rotate );
+    }
+    
+    
     gf_mul ( c, a, d ); // new "osx"
     gf_mul ( a, c, p->z );
     gf_add ( a, a, a ); // 2 * "osx" * Z
-    decaf_bool_t tg1 = toggle_hibit_t_over_s ^~ hibit(a);
+    decaf_bool_t tg1 = rotate ^ toggle_hibit_t_over_s ^~ hibit(a);
     cond_neg ( c, tg1 );
     cond_neg ( a, tg1 );
     gf_mul ( d, b, p->z );
     gf_add ( d, d, c );
-    gf_mul ( b, d, p->y );
+    gf_mul ( b, d, x ); /* here "x" = y unless rotate */
     cond_neg ( b, toggle_hibit_s ^ hibit(b) );
 }
 
@@ -1058,10 +1071,13 @@ decaf_bool_t API_NS(point_eq) ( const point_t p, const point_t q ) {
     gf_mul ( b, q->y, p->x );
     decaf_bool_t succ = gf_eq(a,b);
     
+    /* Interesting note: the 4tor would normally be rotation.
+     * But because of the *i twist, it's actually
+     * (x,y) <-> (iy,ix)
+     */
     gf_mul ( a, p->y, q->y );
     gf_mul ( b, q->x, p->x );
-    gf_add ( a, a, b);
-    succ |= gf_eq(a,ZERO);
+    succ |= gf_eq(a,b);
     
     return succ;
 }

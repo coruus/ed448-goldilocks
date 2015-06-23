@@ -18,6 +18,14 @@ const field_a_t SQRT_MINUS_ONE = {FIELD_LITERAL( // FIXME goes elsewhere?
     0x2b8324804fc1d
 )};
     
+const field_a_t SQRT_ONE_MINUS_D = {FIELD_LITERAL( // FIXME MAGIC goes elsewhere?
+    0x6db8831bbddec,
+    0x38d7b56c9c165,
+    0x016b221394bdc,
+    0x7540f7816214a,
+    0x0a0d85b4032b1
+)};
+    
 static const field_a_t ONE = {FIELD_LITERAL( // FIXME copy-pasted
     1,0,0,0,0
 )}; 
