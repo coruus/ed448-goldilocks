@@ -57,6 +57,14 @@ static void print(const char *name, const Scalar &x) {
     printf("\n");
 }
 
+static void hexprint(const char *name, const decaf::SecureBuffer &buffer) {
+    printf("  %s = 0x", name);
+    for (int i=buffer.size()-1; i>=0; i--) {
+        printf("%02x", buffer[i]);
+    }
+    printf("\n");
+}
+
 static void print(const char *name, const Point &x) {
     unsigned char buffer[Point::SER_BYTES];
     x.encode(buffer);
@@ -156,6 +164,7 @@ static void test_elligator() {
     decaf::SpongeRng rng(decaf::Block("test_elligator"));
     Test test("Elligator");
     
+    /*
     for (int i=0; i<32; i++) {
         decaf::SecureBuffer b1(Point::HASH_BYTES);
         Point p = Point::identity();
@@ -171,26 +180,74 @@ static void test_elligator() {
                 b1[0], b1[1]);
         }
     }
+    */
+    
+    const int NHINTS = 1<<4;
+    decaf::SecureBuffer *alts[NHINTS];
+    bool successes[NHINTS];
 
-    for (int i=0; i<NTESTS && (i<16 || test.passing_now); i++) {
-        size_t len = (i % (2*Point::HASH_BYTES + 3));
-        decaf::SecureBuffer b1(len), b2(len);
+    for (int i=0; i<NTESTS && (test.passing_now || i < 100); i++) {
+        size_t len =  8 + (i % (2*Point::HASH_BYTES + 3)); // FIXME: 0
+        decaf::SecureBuffer b1(len);
         rng.read(b1);
         if (i==1) b1[0] = 1; /* special case test */
-        if (len > Point::HASH_BYTES)
-            memcpy(&b2[Point::HASH_BYTES], &b1[Point::HASH_BYTES], len-Point::HASH_BYTES);
-        Point s;
-        unsigned char hint = s.set_to_hash(b1);
+        if (len >= Point::HASH_BYTES) b1[Point::HASH_BYTES-1] &= 0x7F; // FIXME MAGIC
+        Point s = Point::from_hash(b1);
         for (int j=0; j<(i&3); j++) s.debugging_torque_in_place();
-        bool succ = s.invert_elligator(b2,hint);
-        if (!succ || memcmp(b1,b2,len)) {
+        
+        bool good = false;
+        for (int j=0; j<NHINTS; j++) {
+            alts[j] = new decaf::SecureBuffer(len);
+
+            if (len > Point::HASH_BYTES)
+                memcpy(&(*alts[j])[Point::HASH_BYTES], &b1[Point::HASH_BYTES], len-Point::HASH_BYTES);
+            
+            successes[j] = s.invert_elligator(*alts[j],j);
+           
+            if (successes[j]) {
+                good = good || (b1 == *alts[j]);
+                for (int k=0; k<j; k++) {
+                    if (successes[k] && *alts[j] == *alts[k]) {
+                        test.fail();
+                        printf("   Duplicate Elligator inversion: i=%d, hints=%d, %d\n",i,j,k);
+                        hexprint("x",b1);
+                        hexprint("X",*alts[j]);
+                    }
+                }
+                if (s != Point::from_hash(*alts[j])) {
+                    test.fail();
+                    printf("   Fail Elligator inversion round-trip: i=%d, hint=%d %s\n",i,j,
+                        (s==-Point::from_hash(*alts[j])) ? "[output was -input]": "");
+                    hexprint("x",b1);
+                    hexprint("X",*alts[j]);
+                }
+            }
+        }
+        
+        if (!good) {
             test.fail();
-            printf("    Fail elligator inversion i=%d (claimed %s, hint=%d)\n",
-                i, succ ? "success" : "failure", hint);
+            printf("   %s Elligator inversion: i=%d\n",good ? "Passed" : "Failed", i);
+            hexprint("B", b1);
+            for (int j=0; j<NHINTS; j++) {
+                printf("  %d: %s%s", j, successes[j] ? "succ" : "fail\n", (successes[j] && *alts[j] == b1) ? " [x]" : "");
+                if (successes[j]) {
+                    hexprint("b", *alts[j]);
+                }
+            }
+            printf("\n");
+        }
+        
+        for (int j=0; j<NHINTS; j++) {
+            delete alts[j];
+            alts[j] = NULL;
         }
         
         Point t(rng);
         point_check(test,t,t,t,0,0,t,Point::from_hash(t.steg_encode(rng)),"steg round-trip");
+        
+        
+        
+        
     }
 }
 
@@ -216,7 +273,8 @@ static void test_ec() {
         
         point_check(test,p,q,r,0,0,p,Point((decaf::SecureBuffer)p),"round-trip");
         Point pp = p;
-        (pp).debugging_torque_in_place();
+        pp = p + q - q;
+        pp.debugging_torque_in_place();
         if (decaf::SecureBuffer(pp) != decaf::SecureBuffer(p)) {
             test.fail();
             printf("Fail torque seq test\n");

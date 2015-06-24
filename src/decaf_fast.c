@@ -509,15 +509,14 @@ static void deisogenize (
         gf e;
         gf_sqr(e, t);
         gf_mul(a, e, b);
-        rotate = hibit(a);
+        rotate = hibit(a) ^ toggle_rotation;
         /*
          * Curve25519: cond select between zx * 1/tz or sqrt(1-d); y=-x
          * Pink bike shed: frob = zx * 1/tz
          */
         gf_mul ( a, b, c ); /* this is the case for PinkBikeShed */
-        cond_sel ( a, a, SQRT_ONE_MINUS_D, rotate^toggle_rotation );
-        gf_sub ( e, ZERO, x );
-        cond_sel ( x, p->y, e, rotate );
+        cond_sel ( a, a, SQRT_ONE_MINUS_D, rotate );
+        cond_sel ( x, p->y, x, rotate );
     }
     
     
@@ -526,7 +525,7 @@ static void deisogenize (
     gf_add ( a, a, a ); // 2 * "osx" * Z
     decaf_bool_t tg1 = rotate ^ toggle_hibit_t_over_s ^~ hibit(a);
     cond_neg ( c, tg1 );
-    cond_neg ( a, tg1 );
+    cond_neg ( a, rotate ^ tg1 );
     gf_mul ( d, b, p->z );
     gf_add ( d, d, c );
     gf_mul ( b, d, x ); /* here "x" = y unless rotate */
@@ -1173,8 +1172,9 @@ decaf_bool_t
 API_NS(invert_elligator_nonuniform) (
     unsigned char recovered_hash[DECAF_255_SER_BYTES],
     const point_t p,
-    uint16_t hint
+    uint16_t hint_
 ) {
+    uint64_t hint = hint_;
     decaf_bool_t sgn_s = -(hint & 1),
         sgn_t_over_s = -(hint>>1 & 1),
         sgn_r0 = -(hint>>2 & 1),
