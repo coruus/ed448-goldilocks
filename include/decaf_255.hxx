@@ -107,6 +107,18 @@ public:
             throw LengthException();
         return Block(data()+off, length);
     }
+    
+    /* Content-wise comparison; constant-time if they are the same length.
+     * FIXME: is it wise to have a content-wise compare on objects that may be mutable?
+     */ 
+    inline decaf_bool_t operator==(const Block &b) const NOEXCEPT {
+        return ~(*this != b);
+    }
+    
+    inline decaf_bool_t operator!=(const Block &b) const NOEXCEPT {
+        if (b.size() != size()) return true;
+        return ~decaf_memeq(b,*this,size());
+    }
 
     /** Virtual destructor for SecureBlock. TODO: probably means vtable?  Make bool? */
     inline virtual ~Block() {};

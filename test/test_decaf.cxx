@@ -215,6 +215,13 @@ static void test_ec() {
         Point r = Point::from_hash(buffer);
         
         point_check(test,p,q,r,0,0,p,Point((decaf::SecureBuffer)p),"round-trip");
+        Point pp = p;
+        (pp).debugging_torque_in_place();
+        if (decaf::SecureBuffer(pp) != decaf::SecureBuffer(p)) {
+            test.fail();
+            printf("Fail torque seq test\n");
+        }
+        point_check(test,p,q,r,0,0,p,pp,"torque eq");
         point_check(test,p,q,r,0,0,p+q,q+p,"commute add");
         point_check(test,p,q,r,0,0,(p-q)+q,p,"correct sub");
         point_check(test,p,q,r,0,0,p+(q+r),(p+q)+r,"assoc add");
