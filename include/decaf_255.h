@@ -486,7 +486,7 @@ decaf_bool_t decaf_255_point_valid (
  * @param [out] q The point to torque.
  * @param [in] p The point to torque.
  */
-void decaf_255_point_debugging_2torque (
+void decaf_255_point_debugging_torque (
      decaf_255_point_t q,
      const decaf_255_point_t p
 ) API_VIS NONNULL2 NOINLINE;

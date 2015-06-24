@@ -891,7 +891,7 @@ decaf_448_invert_elligator_nonuniform (
     return succ;
 }
 
-void decaf_448_point_debugging_2torque (
+void decaf_448_point_debugging_torque (
     decaf_448_point_t q,
     const decaf_448_point_t p
 ) {

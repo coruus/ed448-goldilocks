@@ -580,7 +580,7 @@ public:
     }
     
     inline Point& debugging_torque_in_place() {
-        decaf_255_point_debugging_2torque(p,p);
+        decaf_255_point_debugging_torque(p,p);
         return *this;
     }
     

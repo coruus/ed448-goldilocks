@@ -481,7 +481,8 @@ static void deisogenize (
     gf_s *__restrict__ minus_t_over_s,
     const point_t p,
     decaf_bool_t toggle_hibit_s,
-    decaf_bool_t toggle_hibit_t_over_s
+    decaf_bool_t toggle_hibit_t_over_s,
+    decaf_bool_t toggle_rotation
 ) {
     gf c, d, x, t;
     gf_s *b = s, *a = minus_t_over_s;
@@ -514,7 +515,7 @@ static void deisogenize (
          * Pink bike shed: frob = zx * 1/tz
          */
         gf_mul ( a, b, c ); /* this is the case for PinkBikeShed */
-        cond_sel ( a, a, SQRT_ONE_MINUS_D, rotate );
+        cond_sel ( a, a, SQRT_ONE_MINUS_D, rotate^toggle_rotation );
         gf_sub ( e, ZERO, x );
         cond_sel ( x, p->y, e, rotate );
     }
@@ -534,7 +535,7 @@ static void deisogenize (
 
 void API_NS(point_encode)( unsigned char ser[SER_BYTES], const point_t p ) {
     gf s, mtos;
-    deisogenize(s,mtos,p,0,0);
+    deisogenize(s,mtos,p,0,0,0);
     gf_encode ( ser, s );
 }
 
@@ -1165,7 +1166,7 @@ uint16_t API_NS(point_from_hash_nonuniform) (
     
     assert(API_NS(point_valid)(p));
     
-    return (~square & 1) | (sgn_t_over_s & 2) | (sgn_r0 & 4) | (over & 8);
+    return (~square & 1) | (sgn_t_over_s & 2) | (sgn_r0 & 4) | (over & 16);
 }
 
 decaf_bool_t
@@ -1176,9 +1177,10 @@ API_NS(invert_elligator_nonuniform) (
 ) {
     decaf_bool_t sgn_s = -(hint & 1),
         sgn_t_over_s = -(hint>>1 & 1),
-        sgn_r0 = -(hint>>2 & 1);
+        sgn_r0 = -(hint>>2 & 1),
+        sgn_ed_T = -(hint>>3 & 1);
     gf a, b, c, d;
-    deisogenize(a,c,p,sgn_s,sgn_t_over_s);
+    deisogenize(a,c,p,sgn_s,sgn_t_over_s,sgn_ed_T);
     
     /* ok, a = s; c = -t/s */
     gf_mul(b,c,a);
@@ -1254,14 +1256,23 @@ decaf_bool_t API_NS(point_valid) (
     return out;
 }
 
-void API_NS(point_debugging_2torque) (
+void API_NS(point_debugging_torque) (
     point_t q,
     const point_t p
 ) {
+#if 0
     gf_sub(q->x,ZERO,p->x);
     gf_sub(q->y,ZERO,p->y);
     gf_cpy(q->z,p->z);
     gf_cpy(q->t,p->t);
+#else
+    gf tmp;
+    gf_mul(tmp,p->x,SQRT_MINUS_ONE);
+    gf_mul(q->x,p->y,SQRT_MINUS_ONE);
+    gf_cpy(q->y,tmp);
+    gf_cpy(q->z,p->z);
+    gf_sub(q->t,ZERO,p->t);
+#endif
 }
 
 static void gf_batch_invert (
