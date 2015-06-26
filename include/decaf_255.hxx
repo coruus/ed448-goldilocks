@@ -491,19 +491,19 @@ public:
     * If the buffer is shorter than 2*HASH_BYTES, well, it won't be as uniform,
     * but the buffer will be zero-padded on the right.
     */
-    inline unsigned char set_to_hash( const Block &s ) NOEXCEPT {
+    inline void set_to_hash( const Block &s ) NOEXCEPT {
         if (s.size() < HASH_BYTES) {
             SecureBuffer b(HASH_BYTES);
             memcpy(b.data(), s.data(), s.size());
-            return decaf_255_point_from_hash_nonuniform(p,b);
+            decaf_255_point_from_hash_nonuniform(p,b);
         } else if (s.size() == HASH_BYTES) {
-            return decaf_255_point_from_hash_nonuniform(p,s);
+            decaf_255_point_from_hash_nonuniform(p,s);
         } else if (s.size() < 2*HASH_BYTES) {
             SecureBuffer b(2*HASH_BYTES);
             memcpy(b.data(), s.data(), s.size());
-            return decaf_255_point_from_hash_uniform(p,b);
+            decaf_255_point_from_hash_uniform(p,b);
         } else {
-            return decaf_255_point_from_hash_uniform(p,s);
+            decaf_255_point_from_hash_uniform(p,s);
         }
     }
     

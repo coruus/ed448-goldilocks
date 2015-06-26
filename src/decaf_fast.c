@@ -493,9 +493,11 @@ static void deisogenize (
     gf_sub ( x, ZERO, x );
     gf_sub ( t, ZERO, t );
     
+    gf DEBUG;
     gf_add ( a, p->z, x );
     gf_sub ( b, p->z, x );
     gf_mul ( c, a, b ); /* "zx" = Z^2 - X^2 */
+    gf_cpy(DEBUG,c);
     gf_mul ( a, p->z, t ); /* "tz" = T*Z */
     gf_sqr ( b, a );
     gf_mul ( d, b, c ); /* (TZ)^2 * (Z^2-X^2) */
@@ -1082,13 +1084,13 @@ decaf_bool_t API_NS(point_eq) ( const point_t p, const point_t q ) {
     return succ;
 }
 
-uint16_t API_NS(point_from_hash_nonuniform) (
+void API_NS(point_from_hash_nonuniform) (
     point_t p,
     const unsigned char ser[SER_BYTES]
 ) {
+    // TODO: simplify since we don't return a hint anymore
     gf r0,r,a,b,c,dee,D,N,rN,e;
-    decaf_bool_t over = ~gf_deser(r0,ser);
-    decaf_bool_t sgn_r0 = hibit(r0);
+    gf_deser(r0,ser);
     gf_canon(r0);
     gf_sqr(a,r0);
     //gf_sub(r,ZERO,a); /*gf_mlw(r,a,QUADRATIC_NONRESIDUE);*/
@@ -1143,9 +1145,6 @@ uint16_t API_NS(point_from_hash_nonuniform) (
     /* Normalize/negate */
     decaf_bool_t neg_s = hibit(a)^~square;
     cond_neg(a,neg_s); /* ends up negative if ~square */
-    decaf_bool_t sgn_t_over_s = hibit(b)^neg_s;
-    sgn_t_over_s &= ~gf_eq(N,ZERO);
-    sgn_t_over_s |= gf_eq(D,ZERO);
     
     /* b <- t */
     cond_sel(b,c,ONE,gf_eq(c,ZERO)); /* 0,0 -> 1,0 */
@@ -1164,8 +1163,6 @@ uint16_t API_NS(point_from_hash_nonuniform) (
     gf_mul(p->z,a,b); /* (1-s^2)t */
     
     assert(API_NS(point_valid)(p));
-    
-    return (~square & 1) | (sgn_t_over_s & 2) | (sgn_r0 & 4) | (over & 16);
 }
 
 decaf_bool_t
@@ -1212,17 +1209,14 @@ API_NS(invert_elligator_nonuniform) (
     return succ;
 }
 
-uint16_t API_NS(point_from_hash_uniform) (
+void API_NS(point_from_hash_uniform) (
     point_t pt,
     const unsigned char hashed_data[2*SER_BYTES]
 ) {
     point_t pt2;
-    unsigned char ret1 =
-        API_NS(point_from_hash_nonuniform)(pt,hashed_data);
-    unsigned char ret2 =
-        API_NS(point_from_hash_nonuniform)(pt2,&hashed_data[SER_BYTES]);
+    API_NS(point_from_hash_nonuniform)(pt,hashed_data);
+    API_NS(point_from_hash_nonuniform)(pt2,&hashed_data[SER_BYTES]);
     API_NS(point_add)(pt,pt,pt2);
-    return ret1 | ((uint16_t)ret2<<8);
 }
 
 decaf_bool_t

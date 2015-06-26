@@ -164,30 +164,12 @@ static void test_elligator() {
     decaf::SpongeRng rng(decaf::Block("test_elligator"));
     Test test("Elligator");
     
-    /*
-    for (int i=0; i<32; i++) {
-        decaf::SecureBuffer b1(Point::HASH_BYTES);
-        Point p = Point::identity();
-        for (int j=0; j<i/8; j++) p.debugging_torque_in_place();
-        bool succ = p.invert_elligator(b1,i&7);
-        Point q;
-        unsigned char hint = q.set_to_hash(b1);
-        
-        if (succ != ((i&7) != 4) || (q != p) || (succ && (hint != (i&7)))) {
-            test.fail();
-            printf("Elligator test: t=%d, h=%d->%d, q%sp, %s %02x%02x\n",
-                i/8, i&7, hint, (q==p)?"==":"!=",succ ? "SUCC" : "FAIL",
-                b1[0], b1[1]);
-        }
-    }
-    */
-    
     const int NHINTS = 1<<4;
     decaf::SecureBuffer *alts[NHINTS];
     bool successes[NHINTS];
 
     for (int i=0; i<NTESTS && (test.passing_now || i < 100); i++) {
-        size_t len =  8 + (i % (2*Point::HASH_BYTES + 3)); // FIXME: 0
+        size_t len =  (i % (2*Point::HASH_BYTES + 3)); // FIXME: 0
         decaf::SecureBuffer b1(len);
         rng.read(b1);
         if (i==1) b1[0] = 1; /* special case test */

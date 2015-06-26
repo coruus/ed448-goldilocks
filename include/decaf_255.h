@@ -518,9 +518,8 @@ void decaf_255_point_debugging_torque (
  *
  * @param [in] hashed_data Output of some hash function.
  * @param [out] pt The data hashed to the curve.
- * @return A "hint" value which can be used to help invert the encoding.
  */
-uint16_t
+void
 decaf_255_point_from_hash_nonuniform (
     decaf_255_point_t pt,
     const unsigned char hashed_data[DECAF_255_SER_BYTES]
@@ -530,13 +529,11 @@ decaf_255_point_from_hash_nonuniform (
  * @brief Inverse of elligator-like hash to curve.
  *
  * This function writes to the buffer, to make it so that
- * decaf_255_point_from_hash_nonuniform(buffer) = pt,hint
- * if possible.
+ * decaf_255_point_from_hash_nonuniform(buffer) = pt if possible.
  *
  * @param [out] recovered_hash Encoded data.
  * @param [in] pt The point to encode.
- * @param [in] hint The hint value returned from 
- *   decaf_255_point_from_hash_nonuniform.
+ * @param [in] which A "hint" that indicates which inverse to return.
  *
  * @retval DECAF_SUCCESS The inverse succeeded.
  * @retval DECAF_FAILURE The pt isn't the image of 
@@ -549,7 +546,7 @@ decaf_bool_t
 decaf_255_invert_elligator_nonuniform (
     unsigned char recovered_hash[DECAF_255_SER_BYTES],
     const decaf_255_point_t pt,
-    uint16_t hint
+    uint16_t which
 ) API_VIS NONNULL2 NOINLINE WARN_UNUSED;
 
 /**
@@ -557,26 +554,21 @@ decaf_255_invert_elligator_nonuniform (
  *
  * This function modifies the first DECAF_255_SER_BYTES of the
  * buffer, to make it so that
- * decaf_255_point_from_hash_uniform(buffer) = pt,hint
- * if possible.
+ * decaf_255_point_from_hash_uniform(buffer) = pt if possible.
  *
  * @param [out] recovered_hash Encoded data.
  * @param [in] pt The point to encode.
- * @param [in] hint The hint value returned from 
- *   decaf_255_point_from_hash_nonuniform.
+ * @param [in] which A "hint" that indicates which inverse to return.
  *
  * @retval DECAF_SUCCESS The inverse succeeded.
  * @retval DECAF_FAILURE The pt isn't the image of 
  *    decaf_255_point_from_hash_uniform with the given hint.
- *
- * @warning The hinting system is subject to change, especially in corner cases.
- * @warning FIXME The hinting system doesn't work for certain inputs which have many 0xFF.
  */
 decaf_bool_t
 decaf_255_invert_elligator_uniform (
     unsigned char recovered_hash[2*DECAF_255_SER_BYTES],
     const decaf_255_point_t pt,
-    uint16_t hint
+    uint16_t which
 ) API_VIS NONNULL2 NOINLINE WARN_UNUSED;
 
 /**
@@ -586,9 +578,8 @@ decaf_255_invert_elligator_uniform (
  *
  * @param [in] hashed_data Output of some hash function.
  * @param [out] pt The data hashed to the curve.
- * @return A "hint" value which can be used to help invert the encoding.
  */ 
-uint16_t decaf_255_point_from_hash_uniform (
+void decaf_255_point_from_hash_uniform (
     decaf_255_point_t pt,
     const unsigned char hashed_data[2*DECAF_255_SER_BYTES]
 ) API_VIS NONNULL2 NOINLINE;
